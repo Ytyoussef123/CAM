@@ -1,0 +1,201 @@
+<title>VS-1 Carte Mère</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: drawing sheet — title block, keep/remove/add columns, board layout plate, legend, notes */
+:root{
+  --bg:#E8ECEE; --sheet:#FFFFFF; --fg:#15212A; --muted:#5B6A74; --line:#C9D2D8;
+  --pcb:#1F6B45; --pcb-edge:#14492F; --silk:#F2F5F3; --part:#2A3238; --metal:#AEB7BD;
+  --z-power:#E0A23A; --z-io:#3D8FD6; --z-light:#F2D45C; --z-cpu:#8E6BD1; --z-net:#3FB6A8;
+  --keep:#1FA45A; --drop:#D8352B; --add:#0B7A8F;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1418; --sheet:#152027; --fg:#E2E9ED; --muted:#8FA0AA; --line:#2B3942; --add:#45BBCF; --keep:#3CC57A; --drop:#FF5D52; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1418; --sheet:#152027; --fg:#E2E9ED; --muted:#8FA0AA; --line:#2B3942; --add:#45BBCF; --keep:#3CC57A; --drop:#FF5D52; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.titleblock{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px 28px;align-items:end}
+h1{font-family:var(--f-display);font-weight:700;font-size:34px;line-height:1;margin:0;text-wrap:balance}
+.tb{display:flex;flex-direction:column}
+.lbl{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tb b{font-family:var(--f-mono);font-weight:500;font-size:13px}
+.plate{background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.plate h2{font-family:var(--f-display);font-weight:600;font-size:21px;margin:0}
+.plate p{margin:0;font-size:14px;color:var(--muted);max-width:75ch}
+.key{border-left:4px solid var(--add);padding:10px 14px;background:var(--sheet);border-radius:0 8px 8px 0;border-top:1px solid var(--line);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.key b{font-family:var(--f-display);font-size:19px;font-weight:600;display:block}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.col h3{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0;display:flex;align-items:center;gap:8px}
+.col h3 i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.col li{font-size:14px;border-bottom:1px solid var(--line);padding-bottom:7px}
+.col li b{display:block;font-weight:600}
+.col li span{color:var(--muted)}
+.svgbox{overflow-x:auto}
+svg{display:block;width:100%;height:auto;min-width:560px}
+svg text{font-family:var(--f-mono);font-size:10.5px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:3px;display:inline-block;opacity:.85}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.note{border-left:3px solid var(--add);padding:4px 0 4px 10px;font-size:14px}
+.note b{display:block}
+</style>
+
+<div class="wrap">
+  <header class="titleblock">
+    <h1>VS-1 · Carte mère du capteur</h1>
+    <div class="tb"><span class="lbl">Base</span><b>CM5 Lite · CM5002000</b></div>
+    <div class="tb"><span class="lbl">Carte</span><b>90 × 65 mm · 4 couches</b></div>
+    <div class="tb"><span class="lbl">Alim.</span><b>24 V industriel</b></div>
+    <div class="tb"><span class="lbl">Rév.</span><b>A · concept</b></div>
+  </header>
+
+  <div class="key">
+    <b>Tu ne refais pas le cerveau du Pi 5. Tu le gardes et tu refais la carte autour.</b>
+    Le processeur Broadcom BCM2712 n'est pas vendu aux petites entreprises et sa documentation est confidentielle. Raspberry Pi vend le même cerveau sous forme de petit module de 55 × 40 mm, le Compute Module 5 (CM5), qui contient processeur, RAM et gestion d'alimentation. Version retenue : <b>CM5002000</b> (CM5 Lite, 2 Go, sans Wi-Fi, sans eMMC), environ 76 €. Tu dessines seulement la carte porteuse sur laquelle il se clipse.
+  </div>
+
+  <section class="plate">
+    <h2>Par rapport au Pi 5</h2>
+    <div class="cols">
+      <div class="col">
+        <h3><i style="background:var(--keep)"></i>On garde (dans le CM5)</h3>
+        <ul>
+          <li><b>Processeur BCM2712</b><span>Le même cerveau que le Pi 5</span></li>
+          <li><b>RAM LPDDR4X</b><span>Choisis 2 ou 4 Go selon le modèle de CM5</span></li>
+          <li><b>Gestion d'alimentation (PMIC)</b><span>Déjà intégrée au module</span></li>
+          <li><b>Carte microSD</b><span>Le CM5 Lite n'a pas d'eMMC : lecteur microSD sur la carte porteuse, avec une carte industrielle</span></li>
+          <li><b>1 connecteur caméra MIPI CSI</b><span>Sur ta carte, orienté vers la caméra</span></li>
+          <li><b>Ethernet Gigabit</b><span>Pour le réglage depuis un PC et le réseau usine</span></li>
+          <li><b>Quelques GPIO</b><span>Pour le trigger, OK/NG, les voyants et le flash</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3><i style="background:var(--drop)"></i>On enlève</h3>
+        <ul>
+          <li><b>2 × micro-HDMI</b><span>Pas d'écran, l'interface passe par le web</span></li>
+          <li><b>4 × USB-A</b><span>Remplacés par 1 USB-C interne pour programmer</span></li>
+          <li><b>Wi-Fi / Bluetooth</b><span>Choisis un CM5 « Lite » sans radio : moins cher et plus sûr en usine</span></li>
+          <li><b>Mémoire eMMC</b><span>Absente du CM5 Lite, moins cher ; remplacée par la microSD</span></li>
+          <li><b>Connecteur écran DSI et 2e caméra</b><span>Une seule caméra suffit</span></li>
+          <li><b>Header 40 broches</b><span>Remplacé par les E/S industrielles</span></li>
+          <li><b>Alimentation USB-C 5 V</b><span>Remplacée par une entrée 24 V</span></li>
+          <li><b>Bouton, pile RTC, ventilateur actif</b><span>Optionnels. Un dissipateur relié au boîtier alu suffit souvent</span></li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3><i style="background:var(--add)"></i>On ajoute</h3>
+        <ul>
+          <li><b>Entrée 24 V protégée</b><span>Fusible, diode anti-inversion, protection surtension (TVS)</span></li>
+          <li><b>Convertisseur 24 V → 5 V, 5 A</b><span>Pour alimenter le CM5</span></li>
+          <li><b>Entrée trigger isolée</b><span>Optocoupleur 24 V → 3,3 V</span></li>
+          <li><b>2 sorties OK / NG</b><span>Transistors 24 V isolés, en PNP ou NPN selon le PLC</span></li>
+          <li><b>Driver flash LED</b><span>Courant constant + MOSFET, synchronisé avec la prise de photo</span></li>
+          <li><b>Drivers voyants vert / rouge</b><span>Sur le connecteur vers la face avant</span></li>
+          <li><b>Protection ESD</b><span>Sur l'Ethernet et toutes les E/S externes</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="plate">
+    <h2>Plan de la carte, vue de dessus</h2>
+    <p>90 × 65 mm, pour rentrer dans le boîtier VS-1. La caméra est devant, donc son connecteur est sur le bord haut. La puissance et les connecteurs externes sont à droite, vers l'arrière du boîtier.</p>
+    <div class="svgbox">
+    <svg viewBox="0 0 760 470" role="img" aria-label="Plan de la carte porteuse">
+      <!-- board 90x65 at 6px/mm, origin 40,40 -->
+      <rect x="40" y="40" width="540" height="390" rx="12" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="3"/>
+      <!-- mounting holes -->
+      <g fill="var(--bg)" stroke="var(--metal)" stroke-width="3">
+        <circle cx="61" cy="61" r="9"/><circle cx="559" cy="61" r="9"/><circle cx="61" cy="409" r="9"/><circle cx="559" cy="409" r="9"/>
+      </g>
+      <!-- zones -->
+      <rect x="96" y="96" width="336" height="246" rx="6" fill="var(--z-cpu)" opacity=".25"/>
+      <rect x="440" y="76" width="122" height="168" rx="6" fill="var(--z-power)" opacity=".28"/>
+      <rect x="440" y="256" width="122" height="146" rx="6" fill="var(--z-net)" opacity=".28"/>
+      <rect x="96" y="350" width="166" height="62" rx="6" fill="var(--z-io)" opacity=".3"/>
+      <rect x="270" y="350" width="162" height="62" rx="6" fill="var(--z-light)" opacity=".3"/>
+
+      <!-- CM5 module 55x40 -->
+      <rect x="104" y="104" width="320" height="230" rx="6" fill="#1b5236" stroke="var(--silk)" stroke-width="2"/>
+      <rect x="130" y="128" width="110" height="94" rx="4" fill="var(--metal)"/>
+      <text x="185" y="172" text-anchor="middle" fill="var(--part)" style="font-weight:600">BCM2712</text>
+      <text x="185" y="188" text-anchor="middle" fill="var(--part)">processeur</text>
+      <rect x="256" y="128" width="70" height="56" rx="3" fill="var(--part)"/><text x="291" y="160" text-anchor="middle" fill="var(--silk)">RAM</text>
+      <rect x="340" y="128" width="64" height="50" rx="3" fill="var(--part)"/><text x="372" y="157" text-anchor="middle" fill="var(--silk)">PHY Eth</text>
+      <rect x="46" y="150" width="44" height="60" rx="3" fill="#c9cfd3"/><text x="68" y="176" text-anchor="middle" fill="var(--part)" style="font-size:9.5px">micro</text><text x="68" y="190" text-anchor="middle" fill="var(--part)" style="font-size:9.5px">SD</text>
+      <rect x="256" y="196" width="58" height="40" rx="3" fill="var(--part)"/><text x="285" y="220" text-anchor="middle" fill="var(--silk)">PMIC</text>
+      <rect x="326" y="196" width="78" height="40" rx="3" fill="var(--part)"/><text x="365" y="220" text-anchor="middle" fill="var(--silk)">RP1 E/S</text>
+      <!-- board-to-board connectors -->
+      <rect x="120" y="258" width="290" height="14" rx="2" fill="#ccd3d8"/><rect x="120" y="296" width="290" height="14" rx="2" fill="#ccd3d8"/>
+      <text x="265" y="290" text-anchor="middle" fill="var(--silk)">2 × connecteurs 100 broches</text>
+      <text x="114" y="122" fill="var(--silk)" style="font-weight:600">CM5 · 55 × 40 mm</text>
+
+      <!-- camera connector top edge -->
+      <rect x="200" y="46" width="130" height="26" rx="3" fill="#e9e1cf" stroke="#b8a77c"/>
+      <text x="265" y="63" text-anchor="middle" fill="var(--part)">CAMÉRA CSI</text>
+      <!-- status LED + flash connectors top -->
+      <rect x="344" y="48" width="66" height="22" rx="3" fill="#f2f2f2"/><text x="377" y="63" text-anchor="middle" fill="var(--part)">VOYANTS</text>
+      <rect x="110" y="48" width="70" height="22" rx="3" fill="#f2f2f2"/><text x="145" y="63" text-anchor="middle" fill="var(--part)">USB-C prog</text>
+
+      <!-- power zone -->
+      <rect x="452" y="90" width="98" height="40" rx="3" fill="var(--part)"/><text x="501" y="108" text-anchor="middle" fill="var(--silk)">PROTECTION</text><text x="501" y="122" text-anchor="middle" fill="var(--silk)">fusible · TVS</text>
+      <rect x="452" y="142" width="64" height="58" rx="3" fill="var(--part)"/><text x="484" y="168" text-anchor="middle" fill="var(--silk)">BUCK</text><text x="484" y="182" text-anchor="middle" fill="var(--silk)">24→5V</text>
+      <rect x="524" y="146" width="28" height="28" rx="14" fill="#5f666b"/><text x="538" y="190" text-anchor="middle" fill="var(--silk)">L</text>
+      <rect x="452" y="208" width="98" height="28" rx="3" fill="#c9cfd3"/><text x="501" y="226" text-anchor="middle" fill="var(--part)">BORNIER M12</text>
+
+      <!-- ethernet -->
+      <rect x="470" y="268" width="104" height="124" rx="4" fill="var(--metal)"/>
+      <rect x="490" y="292" width="64" height="50" rx="3" fill="var(--part)"/>
+      <text x="522" y="368" text-anchor="middle" fill="var(--part)" style="font-weight:600">RJ45</text>
+      <text x="522" y="382" text-anchor="middle" fill="var(--part)">+ ESD</text>
+
+      <!-- IO zone -->
+      <g fill="var(--part)"><rect x="106" y="362" width="40" height="34" rx="3"/><rect x="156" y="362" width="40" height="34" rx="3"/><rect x="206" y="362" width="40" height="34" rx="3"/></g>
+      <g fill="var(--silk)"><text x="126" y="384" text-anchor="middle">TRIG</text><text x="176" y="384" text-anchor="middle">OK</text><text x="226" y="384" text-anchor="middle">NG</text></g>
+      <!-- light zone -->
+      <rect x="280" y="362" width="66" height="34" rx="3" fill="var(--part)"/><text x="313" y="384" text-anchor="middle" fill="var(--silk)">DRIVER</text>
+      <rect x="354" y="362" width="30" height="34" rx="3" fill="var(--part)"/><text x="369" y="384" text-anchor="middle" fill="var(--silk)">FET</text>
+      <rect x="392" y="366" width="34" height="26" rx="3" fill="#f2f2f2"/><text x="409" y="383" text-anchor="middle" fill="var(--part)">LED</text>
+
+      <!-- dims -->
+      <path d="M40 452 H580 M40 446 V458 M580 446 V458" stroke="var(--muted)" fill="none"/>
+      <text x="310" y="468" text-anchor="middle" fill="var(--muted)">90 mm</text>
+      <path d="M600 40 V430 M594 40 H606 M594 430 H606" stroke="var(--muted)" fill="none"/>
+      <text x="612" y="239" fill="var(--muted)">65 mm</text>
+      <!-- orientation -->
+      <text x="310" y="26" text-anchor="middle" fill="var(--muted)">↑ AVANT · côté caméra et vitre</text>
+      <text x="660" y="160" fill="var(--muted)">ARRIÈRE →</text>
+      <text x="660" y="176" fill="var(--muted)">câbles 24 V,</text>
+      <text x="660" y="192" fill="var(--muted)">E/S, Ethernet</text>
+    </svg>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--z-cpu)"></i>Cerveau (module CM5)</span>
+      <span><i style="background:var(--z-power)"></i>Alimentation 24 V</span>
+      <span><i style="background:var(--z-net)"></i>Réseau</span>
+      <span><i style="background:var(--z-io)"></i>E/S isolées vers le PLC</span>
+      <span><i style="background:var(--z-light)"></i>Commande du flash</span>
+    </div>
+  </section>
+
+  <section class="plate">
+    <h2>Pour la concevoir</h2>
+    <div class="notes">
+      <div class="note"><b>Logiciel gratuit : KiCad</b>Raspberry Pi publie les fichiers KiCad de sa carte d'évaluation CM5 IO Board. Pars de là et supprime ce dont tu n'as pas besoin.</div>
+      <div class="note"><b>Les pistes délicates</b>La caméra CSI et l'Ethernet sont des signaux rapides en paires différentielles. Ils demandent une carte 4 couches et des longueurs de pistes égales.</div>
+      <div class="note"><b>Fabrication</b>JLCPCB ou PCBWay fabriquent et soudent les composants. Compte environ 100 à 300 $ pour 5 cartes prototypes, sans le CM5.</div>
+      <div class="note"><b>Le même logiciel</b>Le CM5 fait tourner le même Raspberry Pi OS que le Pi 5, donc ton code Python et OpenCV marche sans modification.</div>
+    </div>
+  </section>
+</div>
