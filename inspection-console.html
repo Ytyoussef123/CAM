@@ -121,18 +121,42 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 [hidden]{display:none!important}
 .verdict.live{background:var(--accent);color:var(--accent-fg);font-size:22px;padding:8px 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* program flow + link */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--panel-2);padding:6px 12px;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.link{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.link.on{color:var(--ok)} .link.err{color:var(--ng)}
+.role-mon .sensor-only{display:none!important}
+.mon-only{display:none!important}
+.role-mon .mon-only:not([hidden]){display:flex!important}
+.screen canvas.edit{cursor:crosshair;touch-action:none}
+.areas{display:flex;flex-direction:column;gap:8px}
+.area{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:6px 10px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.area .sw{width:14px;height:14px;border-radius:3px;border:2px solid var(--accent)}
+.area b{font-family:var(--f-display);font-size:17px;font-weight:600}
+.area .val{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.area .val.ng{color:var(--ng)} .area .val.ok{color:var(--ok)}
+.area .slider{grid-column:1/-1}
+.area .x{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 8px}
+.pair{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.code{font-family:var(--f-mono);font-size:26px;font-weight:500;letter-spacing:.12em;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 12px}
+.pair input[type=text]{font-family:var(--f-mono);font-size:18px;letter-spacing:.1em;width:9ch;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);text-transform:lowercase}
+.refbox{display:flex;gap:12px;align-items:center}
+.refbox img{width:96px;height:96px;object-fit:cover;border-radius:6px;background:var(--screen);border:2px solid var(--accent)}
+.step.locked{opacity:.55}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
   <header class="bar">
     <div class="brand">VS-1<small>Vision Sensor</small></div>
     <div class="stat"><span class="lbl">Source</span><b id="srcStat">Image files</b></div>
-    <div class="stat"><span class="lbl">Model</span><b id="modelStat">—</b></div>
-    <div class="stat"><span class="lbl">Method</span><b>Pixel deviation</b></div>
+    <div class="stat"><span class="lbl">Program</span><b id="modelStat">—</b></div>
     <span class="spacer"></span>
     <div class="stat"><span class="lbl">This device is</span>
       <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleSen" aria-pressed="true">📱 Sensor</button><button type="button" id="roleMon" aria-pressed="false">🖥 Monitor</button></div></div>
-    <div class="stat"><span class="lbl">Link</span><span class="link" id="linkStat">connecting…</span></div>
+    <div class="stat"><span class="lbl">Link to PC</span><span class="link" id="linkStat">starting…</span></div>
     <span class="mode" id="modeTag">SETUP</span>
   </header>
 
@@ -140,7 +164,7 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
     <section class="viewer" aria-label="Inspection image">
       <div class="screen">
         <canvas id="view" width="640" height="640"></canvas>
-        <div class="verdict idle" id="verdict">NOT LEARNED</div>
+        <div class="verdict idle" id="verdict">NO REFERENCE</div>
         <div class="imgname" id="imgName">—</div>
         <div class="readout"><span id="roScore">Score —</span><span id="roThr">Threshold —</span></div>
       </div>
@@ -151,19 +175,21 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
       </div>
 
       <div class="cambar sensor-only">
-        <button class="btn primary" id="camBtn" type="button">📷 Start camera</button>
+        <button class="btn primary" id="camBtn" type="button">📷 Start live camera</button>
         <button class="btn" id="flipBtn" type="button" hidden>Switch camera</button>
         <button class="btn" id="lockBtn" type="button" hidden>Lock exposure</button>
         <button class="btn" id="liveBtn" type="button" hidden>Back to live</button>
-        <label class="toggle" id="ghostL" hidden><input type="checkbox" id="ghostT" checked> Alignment ghost</label>
-        <span class="msg" id="camMsg">Use the phone's camera as the sensor: keep the phone fixed, put the part under it, capture.</span>
+        <label class="toggle" id="ghostL" hidden><input type="checkbox" id="ghostT" checked> Reference ghost</label>
+        <span class="msg" id="camMsg">Keep the phone fixed above the part. Start the live camera, or use the 📷 Phone photo buttons.</span>
       </div>
 
       <div class="controls">
         <button class="btn primary sensor-only" id="runBtn" type="button">▶ Run line</button>
         <button class="btn sensor-only" id="stepBtn" type="button">Trigger once</button>
+        <button class="btn primary mon-only" id="monTrig" type="button">📷 Trigger sensor</button>
+        <button class="btn mon-only" id="monLive" type="button">Show live</button>
         <button class="btn" id="resetBtn" type="button">Reset counters</button>
-        <label class="toggle sensor-only"><input type="checkbox" id="heatT" checked> Show defect heat map</label>
+        <label class="toggle sensor-only"><input type="checkbox" id="heatT" checked> Defect heat map</label>
       </div>
 
       <div class="line">
@@ -179,59 +205,82 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
     </section>
 
     <aside class="setup">
+      <section class="step" id="pairStep" hidden>
+        <div class="stephead"><span class="stepnum">⇄</span><h2 id="pairTitle">Link to PC</h2><span class="state" id="pairState">—</span></div>
+        <div class="pair sensor-only"><span class="hint">Type this code on the PC (Monitor):</span><span class="code" id="pairCode">······</span></div>
+        <div class="pair mon-only"><span class="hint">Sensor code (shown on the phone):</span><input type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Sensor code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
+      </section>
+
       <section class="step mon-only" id="monStep">
         <div class="stephead"><span class="stepnum">PC</span><h2>Monitor</h2><span class="state" id="monState">—</span></div>
-        <p class="hint" id="monHint">This screen shows what the phone sensor sees. Open the same link on the phone, choose <b>Sensor</b>, and every inspection appears here within a second or two.</p>
+        <p class="hint" id="monHint">This screen shows what the phone sensor sees. Open the same page on the phone and choose <b>Sensor</b>.</p>
         <div class="thumbs" id="monList"></div>
       </section>
 
-      <section class="step sensor-only" id="learnStep">
-        <div class="stephead"><span class="stepnum">1</span><h2>Learn good parts</h2><span class="state" id="learnState">—</span></div>
-        <p class="hint">Add 5–20 photos of <b>good</b> parts, all in the same position and light. Then press Learn.</p>
-        <div class="thumbs" id="learnList"></div>
+      <section class="step mon-only" id="monAreaStep">
+        <div class="stephead"><span class="stepnum">⚙</span><h2>Control areas on the sensor</h2></div>
+        <p class="hint">Changing a threshold here changes it on the phone.</p>
+        <div class="areas" id="monAreas"></div>
+      </section>
+
+      <section class="step sensor-only" id="refStep">
+        <div class="stephead"><span class="stepnum">1</span><h2>Reference image</h2><span class="state" id="refState">—</span></div>
+        <p class="hint">Put one <b>good</b> part in its exact position and take the reference picture. Everything else is set on this image.</p>
+        <div class="refbox" id="refBox"></div>
         <div class="controls">
-          <button class="btn primary" id="learnBtn" type="button">Learn OK</button>
-          <button class="btn primary" id="capLearn" type="button" hidden>📷 Capture good part</button>
-          <label class="btn primary" id="nativeLearn">📷 Phone photo<input type="file" id="learnShot" accept="image/*" capture="environment"></label>
-          <label class="btn small">+ Add images<input type="file" id="learnFile" accept="image/*" multiple></label>
-          <button class="btn small" id="learnClear" type="button">Clear</button>
+          <button class="btn primary" id="refCap" type="button" hidden>📷 Capture reference</button>
+          <label class="btn primary">📷 Phone photo<input type="file" id="refShot" accept="image/*" capture="environment"></label>
+          <label class="btn small">+ Image file<input type="file" id="refFile" accept="image/*"></label>
+          <button class="btn small" id="sampleBtn" type="button">Load sample program</button>
         </div>
       </section>
 
-      <section class="step">
-        <div class="stephead"><span class="stepnum">2</span><h2>Set the threshold</h2></div>
-        <p class="hint">A part scoring above the threshold is NG. Learn sets it automatically from the good parts; slide to make it stricter or looser.</p>
-        <div class="slider">
-          <input type="range" id="thr" min="0.5" max="20" step="0.1" value="5" aria-label="Threshold">
-          <output id="thrOut">5.0</output>
-          <button class="btn small" id="autoThr" type="button">Auto</button>
+      <section class="step sensor-only" id="areaStep">
+        <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
+        <p class="hint">Press <b>+ Draw area</b>, then drag a box on the image around what must be checked (a hole, a label, an edge…). Only these areas are inspected. Drag inside a box to move it.</p>
+        <div class="areas" id="areaList"></div>
+        <div class="controls">
+          <button class="btn primary" id="drawBtn" type="button">+ Draw area</button>
+          <button class="btn small" id="doneBtn" type="button" hidden>Done</button>
+        </div>
+      </section>
+
+      <section class="step sensor-only" id="goodStep">
+        <div class="stephead"><span class="stepnum">3</span><h2>More good parts</h2><span class="state" id="goodState">—</span></div>
+        <p class="hint">Recommended: add 5–20 more photos of <b>good</b> parts (take each part out and put it back). The sensor learns normal variation and sets the thresholds by itself.</p>
+        <div class="thumbs" id="goodList"></div>
+        <div class="controls">
+          <button class="btn primary" id="goodCap" type="button" hidden>📷 Capture good part</button>
+          <label class="btn primary">📷 Phone photo<input type="file" id="goodShot" accept="image/*" capture="environment"></label>
+          <label class="btn small">+ Images<input type="file" id="goodFile" accept="image/*" multiple></label>
+          <button class="btn small" id="goodClear" type="button">Clear</button>
         </div>
       </section>
 
       <section class="step sensor-only" id="testStep">
-        <div class="stephead"><span class="stepnum">3</span><h2>Inspect parts</h2><span class="state" id="testState">—</span></div>
-        <p class="hint">Add the photos to check. Click one to see its result, or press Run line to inspect them in sequence like a production line.</p>
+        <div class="stephead"><span class="stepnum">4</span><h2>Inspect parts</h2><span class="state" id="testState">—</span></div>
+        <p class="hint">Put a part in place and take a picture: the result appears at once (and on the PC). With the live camera, Run line takes one picture every 2.5 s.</p>
         <div class="thumbs" id="testList"></div>
         <div class="controls">
-          <button class="btn primary" id="capTest" type="button" hidden>📷 Capture &amp; inspect</button>
-          <label class="btn primary" id="nativeTest">📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
-          <label class="btn small">+ Add images<input type="file" id="testFile" accept="image/*" multiple></label>
+          <button class="btn primary" id="testCap" type="button" hidden>📷 Capture &amp; inspect</button>
+          <label class="btn primary">📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
+          <label class="btn small">+ Images<input type="file" id="testFile" accept="image/*" multiple></label>
           <button class="btn small" id="testClear" type="button">Clear</button>
-          <button class="btn small" id="sampleBtn" type="button">Load sample parts</button>
         </div>
       </section>
 
-      <div class="note sensor-only"><b>Sample loaded:</b> machined flanges generated in the browser. 10 good parts teach the model; the inspection set mixes good parts with a missing bolt hole, a scratch, an edge chip and a stain. You can drag your own photos onto steps 1 and 3.<br><br><b>With the phone camera:</b> press Start camera, fix the phone (stand or tape) above the part, clear the samples, capture 5–20 good parts, press Learn OK, then press Trigger once (or Run line for one capture every 2.5 s) for each part to check. The faint ghost shows the learned part so you can place the next one in the same spot.<br><br><b>How this version works:</b> it compares each pixel to the average of the good parts, so parts must sit in the same position, as on a fixture. The Python version with PatchCore will tolerate more movement.</div>
+      <div class="note sensor-only"><b>How it works:</b> each picture is compared pixel by pixel with the reference and the good parts, <b>inside the control areas only</b>. An area whose score is above its threshold is NG, and one NG area makes the part NG. Parts must sit in the same place each time, as on a fixture: the faint reference ghost on the live image helps you place them.</div>
     </aside>
   </div>
 </div>
 
 <script>
 (function(){
-const W=96, D=640, FLOOR=6;
-let uid=0;
-const S={learn:[],test:[],model:null,suggest:5,thr:5,sel:null,c:{ok:0,ng:0},heat:true,timer:null,cursor:0};
+const W=96, D=640, FLOOR=6, DEF_THR=5;
+let uid=0, aid=0;
 const $=id=>document.getElementById(id);
+const S={ref:null,good:[],areas:[],whole:{id:0,name:'Whole image',x0:0,y0:0,x1:1,y1:1,thr:DEF_THR,manual:false},
+  model:null,test:[],sel:null,c:{ok:0,ng:0},heat:true,timer:null,cursor:0,sample:false,hold:false,edit:false,drag:null};
 
 /* ---------- image processing ---------- */
 function blur(a,r){
@@ -240,49 +289,67 @@ function blur(a,r){
   for(let y=0;y<W;y++)for(let x=0;x<W;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const yy=y+k;if(yy>=0&&yy<W){s+=tmp[yy*W+x];n++}}out[y*W+x]=s/n}
   return out;
 }
+const smC=document.createElement('canvas');smC.width=smC.height=W;
+const smX=smC.getContext('2d',{willReadFrequently:true});
+function grayOf(disp){
+  smX.drawImage(disp,0,0,W,W);
+  const px=smX.getImageData(0,0,W,W).data, g=new Float32Array(W*W);
+  for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
+  return blur(g,1);
+}
 function toItem(src,name){
   const disp=document.createElement('canvas');disp.width=disp.height=D;
   const c=disp.getContext('2d');
   const sw=src.videoWidth||src.naturalWidth||src.width, sh=src.videoHeight||src.naturalHeight||src.height, s=Math.min(sw,sh);
   c.drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
   const th=document.createElement('canvas');th.width=th.height=160;th.getContext('2d').drawImage(disp,0,0,160,160);
-  return {id:++uid,name,disp,thumb:th.toDataURL('image/jpeg',.8),gray:grayOf(disp),score:null,map:null};
-}
-const smC=document.createElement('canvas');smC.width=smC.height=W;
-const smX=smC.getContext('2d',{willReadFrequently:true});
-function grayOf(disp){
-  smX.drawImage(disp,0,0,W,W);
-  const px=smX.getImageData(0,0,W,W).data;
-  const g=new Float32Array(W*W);
-  for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
-  return blur(g,1);
+  return {id:++uid,name,disp,thumb:th.toDataURL('image/jpeg',.8),gray:grayOf(disp),map:null};
 }
 function buildModel(items){
-  const n=items.length; if(n<2)return null;
+  const n=items.length; if(!n)return null;
   const mean=new Float32Array(W*W), sd=new Float32Array(W*W);
   for(const it of items)for(let i=0;i<W*W;i++)mean[i]+=it.gray[i]/n;
-  for(const it of items)for(let i=0;i<W*W;i++){const d=it.gray[i]-mean[i];sd[i]+=d*d/(n-1)}
+  if(n>1)for(const it of items)for(let i=0;i<W*W;i++){const d=it.gray[i]-mean[i];sd[i]+=d*d/(n-1)}
   for(let i=0;i<W*W;i++)sd[i]=Math.max(Math.sqrt(sd[i]),FLOOR);
   return {mean,sd,n};
 }
-function inspect(m,gray){
-  let map=new Float32Array(W*W);
+function diffMap(m,gray){
+  const map=new Float32Array(W*W);
   for(let i=0;i<W*W;i++)map[i]=Math.abs(gray[i]-m.mean[i])/m.sd[i];
-  map=blur(map,1);
-  let mx=0;for(let i=0;i<map.length;i++)if(map[i]>mx)mx=map[i];
-  return {score:mx,map};
+  return blur(map,1);
 }
-function suggestThreshold(items){
-  if(items.length<3)return 5;
-  let worst=0;
-  for(let k=0;k<items.length;k++){
-    const m=buildModel(items.filter((_,j)=>j!==k));
-    worst=Math.max(worst,inspect(m,items[k].gray).score);
-  }
-  return Math.max(1,Math.round(worst*1.25*10)/10);
+const areas=()=>S.areas.length?S.areas:[S.whole];
+function box(a){return[Math.max(0,Math.floor(a.x0*W)),Math.max(0,Math.floor(a.y0*W)),Math.min(W,Math.ceil(a.x1*W)),Math.min(W,Math.ceil(a.y1*W))]}
+function areaScores(map){
+  return areas().map(a=>{const[x0,y0,x1,y1]=box(a);let mx=0;for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const v=map[y*W+x];if(v>mx)mx=v}return mx});
 }
+function evaluate(map){
+  const as=areas(), sc=areaScores(map);
+  let worst=0,ng=false;
+  const res=as.map((a,i)=>{const r={id:a.id,name:a.name,score:sc[i],thr:a.thr,ng:sc[i]>a.thr};if(r.ng)ng=true;if(sc[i]/a.thr>sc[worst]/as[worst].thr)worst=i;return r});
+  return {res,ng,worst:res[worst]};
+}
+const goodSet=()=>S.ref?[S.ref,...S.good]:[];
+function relearn(){
+  const g=goodSet();
+  S.model=buildModel(g);
+  if(!S.model){for(const t of S.test)t.map=null;return}
+  // automatic thresholds: leave-one-out over the good parts, per area
+  const as=areas();
+  if(g.length>=3){
+    const worst=as.map(()=>0);
+    for(let k=0;k<g.length;k++){
+      const m=buildModel(g.filter((_,j)=>j!==k)), sc=areaScores(diffMap(m,g[k].gray));
+      sc.forEach((v,i)=>{if(v>worst[i])worst[i]=v});
+    }
+    as.forEach((a,i)=>{a.auto=Math.max(1,Math.round(worst[i]*1.25*10)/10)});
+  }else as.forEach(a=>{a.auto=DEF_THR});
+  as.forEach(a=>{if(!a.manual)a.thr=a.auto});
+  for(const t of S.test)t.map=diffMap(S.model,t.gray);
+}
+const result=t=>t&&t.map&&S.model?evaluate(t.map):null;
 
-/* ---------- sample parts ---------- */
+/* ---------- sample program ---------- */
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function grey(v){v=Math.max(0,Math.min(255,Math.round(v)));return`rgb(${v},${v},${v+4})`}
 function samplePart(seed,defect){
@@ -309,294 +376,400 @@ function samplePart(seed,defect){
   return c;
 }
 function loadSample(){
-  stopRun();S.sample=true;
-  S.learn=[];S.test=[];
-  for(let i=0;i<10;i++)S.learn.push(toItem(samplePart(11+i*7),`good_${String(i+1).padStart(2,'0')}.png`));
+  stopRun();S.sample=true;S.edit=false;
+  S.ref=toItem(samplePart(11),'reference.png');
+  S.good=[];for(let i=1;i<10;i++)S.good.push(toItem(samplePart(11+i*7),`good_${String(i+1).padStart(2,'0')}.png`));
+  aid=0;S.areas=[
+    {id:++aid,name:'Area 1 · bolt holes',x0:.18,y0:.18,x1:.82,y1:.45,thr:DEF_THR,manual:false},
+    {id:++aid,name:'Area 2 · lower rim',x0:.16,y0:.55,x1:.84,y1:.86,thr:DEF_THR,manual:false}];
+  S.test=[];
   const plan=[null,'missing',null,'scratch','chip',null,'stain',null];
   plan.forEach((d,i)=>S.test.push(toItem(samplePart(500+i*13,d),`part_${String(i+1).padStart(4,'0')}.png`)));
-  learn();
-  S.sel=S.test[1];S.c={ok:0,ng:0};
+  relearn();
+  S.sel=S.test[1];S.c={ok:0,ng:0};S.cursor=0;
   renderAll();
 }
+function clearSample(){if(!S.sample)return;S.sample=false;stopRun();S.ref=null;S.good=[];S.areas=[];S.whole.manual=false;S.test=[];S.model=null;S.sel=null;S.cursor=0;S.c={ok:0,ng:0}}
 
-/* ---------- actions ---------- */
-function learn(){
-  S.model=buildModel(S.learn);
-  if(!S.model){renderAll();return}
-  S.suggest=suggestThreshold(S.learn);
-  setThr(S.suggest,false);
-  scoreTests();
+/* ---------- program actions ---------- */
+function setRef(it){
+  clearSample();S.ref=it;S.sel=it;relearn();
+  if(!S.areas.length)S.edit=true;
+  setMsg(S.areas.length?'New reference saved. Control areas were kept.':'Reference saved. Step 2: press + Draw area and drag a box on the image.');
+  renderAll();pubState();
 }
-function scoreTests(){
-  for(const t of S.test){if(S.model){const r=inspect(S.model,t.gray);t.score=r.score;t.map=r.map}else{t.score=null;t.map=null}}
+function addGood(items){
+  if(!S.ref){setMsg('Take the reference image first (step 1).',true);return}
+  S.good.push(...items);relearn();S.sel=items[items.length-1]||S.sel;renderAll();pubState();
 }
-function setThr(v,render=true){
-  S.thr=Math.round(v*10)/10;pubState();
-  const sl=$('thr');if(+sl.max<S.thr*2)sl.max=Math.ceil(S.thr*2);
-  sl.value=S.thr;$('thrOut').textContent=S.thr.toFixed(1);
-  if(render)renderAll();
+function addTests(items,count){
+  if(!S.model){setMsg('Take the reference image first (step 1).',true);return}
+  S.test.push(...items);for(const t of items)t.map=diffMap(S.model,t.gray);
+  const t=items[items.length-1];if(!t)return;
+  S.sel=t;S.edit=false;
+  if(count){const r=result(t);r.ng?S.c.ng++:S.c.ok++;if(r.ng&&navigator.vibrate)navigator.vibrate(200);S.hold=true;renderAll();S.hold=camOn();pubShot(t);holdThenLive()}
+  else renderAll();
 }
-const isNG=t=>t.score!=null&&t.score>S.thr;
+function setThr(a,v){a.thr=Math.max(.1,Math.round(v*10)/10);a.manual=true;renderAll();pubState()}
+function autoThr(a){a.manual=false;a.thr=a.auto||DEF_THR;renderAll();pubState()}
+function removeArea(a){S.areas=S.areas.filter(x=>x!==a);relearn();renderAll();pubState()}
 function trigger(){
   if(camOn()){captureTest();return}
   if(!S.model||!S.test.length)return;
   const t=S.test[S.cursor%S.test.length];S.cursor++;
-  S.sel=t;isNG(t)?S.c.ng++:S.c.ok++;
+  S.sel=t;S.edit=false;const r=result(t);r.ng?S.c.ng++:S.c.ok++;
   renderAll();pubShot(t);
 }
-function stopRun(){if(S.timer){clearInterval(S.timer);S.timer=null}$('runBtn').textContent='▶ Run line';$('modeTag').textContent='SETUP';$('modeTag').classList.remove('run')}
+function stopRun(){if(S.timer){clearInterval(S.timer);S.timer=null}$('runBtn').textContent='▶ Run line';if(L.role==='sen'){$('modeTag').textContent='SETUP';$('modeTag').classList.remove('run')}}
 function toggleRun(){
   if(S.timer){stopRun();return}
   if(!S.model||!(S.test.length||camOn()))return;
-  S.timer=setInterval(trigger,camOn()?2500:900);trigger();
+  S.edit=false;S.timer=setInterval(trigger,camOn()?2500:900);trigger();
   $('runBtn').textContent='■ Stop';$('modeTag').textContent='RUN';$('modeTag').classList.add('run');
 }
-async function addFiles(files,list){
-  for(const f of files){
-    if(!f.type.startsWith('image/'))continue;
-    try{const bmp=await createImageBitmap(f);list.push(toItem(bmp,f.name))}catch(e){}
-  }
+async function filesToItems(files){
+  const out=[];
+  for(const f of files){if(!f.type.startsWith('image/'))continue;try{const bmp=await createImageBitmap(f);out.push(toItem(bmp,f.name&&f.name!=='image.jpg'?f.name:`photo_${new Date().toLocaleTimeString().replace(/:/g,'')}.jpg`))}catch(e){}}
+  return out;
 }
 
-/* ---------- rendering ---------- */
-function drawView(){
-  const cv=$('view'),x=cv.getContext('2d');
-  x.fillStyle='#05080a';x.fillRect(0,0,D,D);
-  const t=S.sel;
+/* ---------- drawing ---------- */
+function strokeArea(x,a,color,label){
+  const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;
+  x.lineWidth=3;x.strokeStyle=color;x.setLineDash(color==='#41B8CD'?[10,6]:[]);x.strokeRect(X,Y,w,h);x.setLineDash([]);
+  if(label){x.font='600 26px "Barlow Condensed",Arial,sans-serif';const tw=x.measureText(label).width+12;const ly=Y>34?Y-32:Y+3;
+    x.fillStyle=color;x.fillRect(X,ly,tw,30);x.fillStyle=color==='#F5C542'?'#222':'#fff';x.fillText(label,X+6,ly+23)}
+}
+const OKC='#1FA45A',NGC='#E0352B',EDC='#41B8CD';
+function drawAreasRes(x,res){
+  areas().forEach((a,i)=>{const r=res&&res[i];if(!S.areas.length&&!r)return;
+    strokeArea(x,a,r?(r.ng?NGC:OKC):EDC,(S.areas.length?a.name.split(' · ')[0]:'')+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''))});
+}
+function heat(x,map){
+  const hm=document.createElement('canvas');hm.width=hm.height=W;const hx=hm.getContext('2d'),id=hx.createImageData(W,W);
+  const as=areas();
+  for(const a of as){const[x0,y0,x1,y1]=box(a);
+    for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++){const i=y*W+xx,r=map[i]/a.thr;if(r<.5)continue;const q=Math.min(1,(r-.5)/1.5);
+      id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}}
+  hx.putImageData(id,0,0);x.imageSmoothingEnabled=true;x.drawImage(hm,0,0,D,D);
+}
+function readout(r,label){
   const v=$('verdict');
-  if(!t){v.className='verdict idle';v.textContent=S.model?'NO IMAGE':'NOT LEARNED';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';$('fill').style.width='0';setLamps(null);return}
-  x.drawImage(t.disp,0,0);
-  $('imgName').textContent=t.name;
-  const master=S.learn.includes(t);
-  if(master){v.className='verdict idle';v.textContent='MASTER IMAGE';$('roScore').textContent='Used for learning';$('roThr').textContent=`Threshold ${S.thr.toFixed(1)}`;$('fill').style.width='0';setLamps(null);return}
-  if(t.score==null){v.className='verdict idle';v.textContent='NOT LEARNED';$('roScore').textContent='Score —';$('roThr').textContent='Press Learn OK';$('fill').style.width='0';setLamps(null);return}
-  const ng=isNG(t);
-  if(S.heat&&t.map){
-    const hm=document.createElement('canvas');hm.width=hm.height=W;const hx=hm.getContext('2d'),id=hx.createImageData(W,W);
-    let x0=W,y0=W,x1=-1,y1=-1;
-    for(let i=0;i<W*W;i++){
-      const r=t.map[i]/S.thr;
-      if(r>1){const px=i%W,py=(i/W)|0;x0=Math.min(x0,px);y0=Math.min(y0,py);x1=Math.max(x1,px);y1=Math.max(y1,py)}
-      if(r<.5)continue;
-      const q=Math.min(1,(r-.5)/1.5);
-      id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q));
-    }
-    hx.putImageData(id,0,0);
-    x.imageSmoothingEnabled=true;x.drawImage(hm,0,0,D,D);
-    if(ng&&x1>=0){const s=D/W,p=8;x.strokeStyle='#ff4a3d';x.lineWidth=3;x.strokeRect(x0*s-p,y0*s-p,(x1-x0+1)*s+2*p,(y1-y0+1)*s+2*p)}
+  if(!r){$('fill').style.width='0';setLamps(null);return}
+  const w=r.worst;
+  v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(label||'')+(r.ng?'NG':'OK');
+  $('roScore').textContent=`${S.areas.length||r.res.length>1?w.name.split(' · ')[0]+' · ':''}score ${w.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${w.thr.toFixed(1)}`;
+  const max=Math.max(w.thr*2,w.score*1.05);
+  $('fill').style.width=(Math.min(1,w.score/max)*100)+'%';$('fill').className='fill'+(r.ng?' ng':'');
+  $('tick').style.left=`calc(${w.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
+  setLamps(label?null:r.ng);
+}
+function drawView(){
+  const cv=$('view'),x=cv.getContext('2d'),v=$('verdict');
+  cv.classList.toggle('edit',S.edit);
+  x.fillStyle='#05080a';x.fillRect(0,0,D,D);
+  if(S.edit&&S.ref){
+    x.drawImage(S.ref.disp,0,0);
+    S.areas.forEach(a=>strokeArea(x,a,EDC,a.name.split(' · ')[0]));
+    if(S.drag&&S.drag.mode==='new'){const d=S.drag;strokeArea(x,{x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},'#F5C542','')}
+    v.className='verdict idle';v.textContent='DRAW AREAS';$('imgName').textContent='reference';
+    $('roScore').textContent=`${S.areas.length} area${S.areas.length===1?'':'s'}`;$('roThr').textContent='Drag on the image';readout(null);return;
   }
-  v.className='verdict '+(ng?'ng':'ok');v.textContent=ng?'NG':'OK';
-  $('roScore').textContent=`Score ${t.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${S.thr.toFixed(1)}`;
-  const max=Math.max(S.thr*2,t.score*1.05);
-  $('fill').style.width=(Math.min(1,t.score/max)*100)+'%';$('fill').className='fill'+(ng?' ng':'');
-  $('tick').style.left=`calc(${S.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
-  setLamps(ng);
+  const t=S.sel;
+  if(!t){v.className='verdict idle';v.textContent=S.ref?'NO IMAGE':'NO REFERENCE';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';readout(null);return}
+  x.drawImage(t.disp,0,0);$('imgName').textContent=t.name;
+  if(t===S.ref||S.good.includes(t)){drawAreasRes(x,null);v.className='verdict idle';v.textContent=t===S.ref?'REFERENCE':'GOOD PART';$('roScore').textContent='Used for learning';$('roThr').textContent=`${goodSet().length} good images`;readout(null);return}
+  const r=result(t);
+  if(!r){v.className='verdict idle';v.textContent='NO REFERENCE';readout(null);return}
+  if(S.heat)heat(x,t.map);
+  drawAreasRes(x,r.res);readout(r);
 }
 function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
 function thumbList(el,items,kind){
   el.innerHTML='';
-  if(!items.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent=kind==='learn'?'No good-part images yet. Add images or drop them here.':'No parts to inspect yet. Add images or drop them here.';el.appendChild(e);return}
+  if(!items.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent=kind==='good'?'No extra good parts yet.':'No parts inspected yet.';el.appendChild(e);return}
   for(const t of items){
-    const b=document.createElement('button');b.type='button';b.className='thumb'+(S.sel===t?' sel':'');b.title=t.name;
+    const b=document.createElement('button');b.type='button';b.className='thumb'+(S.sel===t&&!S.edit?' sel':'');b.title=t.name;
     const im=document.createElement('img');im.src=t.thumb;im.alt=t.name;b.appendChild(im);
-    if(kind==='test'){const c=document.createElement('span');
-      if(t.score==null){c.className='chip';c.textContent='—'}else{const ng=isNG(t);c.className='chip '+(ng?'ng':'ok');c.textContent=(ng?'NG ':'OK ')+t.score.toFixed(1)}
+    if(kind==='test'){const c=document.createElement('span'),r=result(t);
+      if(!r){c.className='chip';c.textContent='—'}else{c.className='chip '+(r.ng?'ng':'ok');c.textContent=(r.ng?'NG ':'OK ')+r.worst.score.toFixed(1)}
       b.appendChild(c)}
-    b.onclick=()=>{S.sel=t;holdResult();renderAll()};
+    b.onclick=()=>{S.sel=t;S.edit=false;if(camOn())S.hold=true;renderAll()};
     el.appendChild(b);
   }
 }
+function areaRow(a,i,r,onThr,onAuto,onDel){
+  const row=document.createElement('div');row.className='area';
+  const sw=document.createElement('span');sw.className='sw';
+  const nm=document.createElement('b');nm.textContent=a.name;
+  const val=document.createElement('span');val.className='val'+(r?(r.ng?' ng':' ok'):'');val.textContent=r?`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`:(a.auto?`auto ${(+a.auto).toFixed(1)}`:'');
+  row.append(sw,nm,val);
+  if(onDel){const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.title='Delete area';x.onclick=onDel;row.append(x)}else row.append(document.createElement('span'));
+  const sl=document.createElement('div');sl.className='slider';
+  const inp=document.createElement('input');inp.type='range';inp.min=.5;inp.max=Math.max(20,Math.ceil(a.thr*2));inp.step=.1;inp.value=a.thr;inp.setAttribute('aria-label',a.name+' threshold');
+  const out=document.createElement('output');out.textContent=(+a.thr).toFixed(1);
+  inp.oninput=()=>{out.textContent=(+inp.value).toFixed(1);onThr(+inp.value)};
+  const au=document.createElement('button');au.type='button';au.className='btn small';au.textContent='Auto';au.onclick=onAuto;
+  const lb=document.createElement('span');lb.className='lbl';lb.textContent='Threshold';
+  sl.append(lb,inp,out,au);row.append(sl);return row;
+}
 function renderAll(){
   if(L.role==='mon'){renderMon();return}
-  thumbList($('learnList'),S.learn,'learn');thumbList($('testList'),S.test,'test');
-  const ls=$('learnState');
-  if(S.model&&S.model.n===S.learn.length){ls.className='state good';ls.textContent=`Learned · ${S.model.n} images`}
-  else if(S.learn.length<2){ls.className='state warn';ls.textContent='Need 2+ images'}
-  else{ls.className='state warn';ls.textContent='Press Learn OK'}
-  $('modelStat').textContent=S.model?`${S.model.n} good parts · auto thr ${S.suggest.toFixed(1)}`:'Not learned';
-  const scored=S.test.filter(t=>t.score!=null),ng=scored.filter(isNG).length;
-  const ts=$('testState');ts.className='state'+(scored.length?(ng?' warn':' good'):'');ts.textContent=scored.length?`${scored.length-ng} OK · ${ng} NG`:'—';
+  // step 1
+  const rb=$('refBox');rb.innerHTML='';
+  if(S.ref){const im=document.createElement('img');im.src=S.ref.thumb;im.alt='Reference image';const s=document.createElement('span');s.className='hint';s.textContent=S.ref.name;rb.append(im,s)}
+  $('refState').className='state '+(S.ref?'good':'warn');$('refState').textContent=S.ref?'Saved':'Needed';
+  // step 2
+  $('areaStep').classList.toggle('locked',!S.ref);$('drawBtn').disabled=!S.ref;
+  const sel=S.sel&&S.test.includes(S.sel)?result(S.sel):null;
+  const al=$('areaList');al.innerHTML='';
+  if(!S.areas.length){const e=document.createElement('div');e.className='empty';e.textContent=S.ref?'No area yet: the whole image is checked. Press + Draw area.':'Take the reference image first.';al.appendChild(e)}
+  S.areas.forEach((a,i)=>al.appendChild(areaRow(a,i,sel&&sel.res[i],v=>setThr(a,v),()=>autoThr(a),()=>removeArea(a))));
+  if(!S.areas.length&&S.ref)al.appendChild(areaRow(S.whole,0,sel&&sel.res[0],v=>setThr(S.whole,v),()=>autoThr(S.whole),null));
+  $('areaState').className='state'+(S.areas.length?' good':'');$('areaState').textContent=S.areas.length?`${S.areas.length} area${S.areas.length>1?'s':''}`:'Whole image';
+  $('drawBtn').textContent=S.edit?'Drawing… drag on the image':'+ Draw area';$('drawBtn').classList.toggle('primary',!S.edit);$('doneBtn').hidden=!S.edit;
+  // step 3
+  $('goodStep').classList.toggle('locked',!S.ref);
+  thumbList($('goodList'),S.good,'good');
+  const n=goodSet().length;$('goodState').className='state'+(n>=6?' good':n?' warn':'');$('goodState').textContent=n?`${n} good image${n>1?'s':''}`:'—';
+  // step 4
+  $('testStep').classList.toggle('locked',!S.model);
+  thumbList($('testList'),S.test,'test');
+  const rs=S.test.map(result).filter(Boolean),ng=rs.filter(r=>r.ng).length;
+  $('testState').className='state'+(rs.length?(ng?' warn':' good'):'');$('testState').textContent=rs.length?`${rs.length-ng} OK · ${ng} NG`:'—';
+  $('modelStat').textContent=S.ref?`${n} good image${n>1?'s':''} · ${S.areas.length||'whole image,'} ${S.areas.length?'area'+(S.areas.length>1?'s':''):'no area'}`:'No reference';
   const tot=S.c.ok+S.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=S.c.ok;$('cNg').textContent=S.c.ng;$('cRate').textContent=(tot?S.c.ng/tot*100:0).toFixed(1)+'%';
   $('runBtn').disabled=$('stepBtn').disabled=!(S.model&&(S.test.length||camOn()));
   $('stepBtn').textContent=camOn()?'📷 Trigger once':'Trigger once';
-  $('liveBtn').hidden=!camOn()||!S.hold;
-  if(camOn()&&!S.hold)return;
+  $('liveBtn').hidden=!camOn()||!(S.hold||S.edit);
+  if(camOn()&&!S.hold&&!S.edit)return;
   drawView();
 }
 
-/* ---------- wiring ---------- */
-$('learnBtn').onclick=()=>{learn();pubState();if(camOn()&&S.model){S.hold=false;camMsg(`Learned ${S.model.n} good parts. Now place a part and press Trigger once.`)}renderAll()};
-$('learnShot').onchange=async e=>{clearSample();await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
-$('testShot').onchange=async e=>{if(!S.model||S.sample){e.target.value='';camMsg('Learn the good parts first (step 1).',true);$('camMsg').scrollIntoView({block:'center'});return}await addFiles(e.target.files,S.test);e.target.value='';scoreTests();const t=S.test[S.test.length-1];if(t){S.sel=t;if(S.model)isNG(t)?S.c.ng++:S.c.ok++}S.hold=true;renderAll();S.hold=false;if(t&&S.model)pubShot(t)};
-$('learnFile').onchange=async e=>{await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
-$('testFile').onchange=async e=>{const n=S.test.length;await addFiles(e.target.files,S.test);e.target.value='';scoreTests();if(S.test[n])S.sel=S.test[n];renderAll()};
-$('learnClear').onclick=()=>{stopRun();S.learn=[];S.model=null;if(S.sel&&!S.test.includes(S.sel))S.sel=null;scoreTests();renderAll()};
-$('testClear').onclick=()=>{stopRun();S.test=[];S.cursor=0;if(S.sel&&!S.learn.includes(S.sel))S.sel=null;renderAll()};
-$('sampleBtn').onclick=loadSample;
-$('thr').oninput=e=>{if(L.role==='mon'){$('thrOut').textContent=(+e.target.value).toFixed(1);sendCmd({thr:+e.target.value});return}setThr(+e.target.value)};
-$('autoThr').onclick=()=>{if(L.role==='mon'){if(L.last&&L.last.autoThr)sendCmd({thr:L.last.autoThr});return}setThr(S.suggest)};
-$('runBtn').onclick=toggleRun;
-$('stepBtn').onclick=trigger;
-$('resetBtn').onclick=()=>{if(L.role==='mon'){sendCmd({reset:Date.now()});return}S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()};
-$('heatT').onchange=e=>{S.heat=e.target.checked;drawView()};
-[['learnStep',()=>S.learn,true],['testStep',()=>S.test,false]].forEach(([id,get,isLearn])=>{
-  const el=$(id);
-  el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag')});
-  el.addEventListener('dragleave',()=>el.classList.remove('drag'));
-  el.addEventListener('drop',async e=>{e.preventDefault();el.classList.remove('drag');await addFiles(e.dataTransfer.files,get());if(isLearn)S.model=null;scoreTests();renderAll()});
+/* ---------- drawing control areas on the image ---------- */
+function ptr(e){const r=$('view').getBoundingClientRect();return[Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]}
+$('view').addEventListener('pointerdown',e=>{
+  if(!S.edit||L.role!=='sen')return;
+  e.preventDefault();$('view').setPointerCapture(e.pointerId);
+  const[px,py]=ptr(e);
+  const hit=[...S.areas].reverse().find(a=>px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1);
+  S.drag=hit?{mode:'move',a:hit,sx:px,sy:py,o:{...hit}}:{mode:'new',sx:px,sy:py,cx:px,cy:py};
 });
-
-/* ---------- phone / webcam camera ---------- */
-const C={stream:null,video:null,facing:'environment',locked:false,lastLive:0};
-S.hold=false;S.sample=true;
-const camOn=()=>!!C.stream;
-function camMsg(t,err){const m=$('camMsg');m.textContent=t;m.classList.toggle('err',!!err)}
-function grab(){
-  const v=C.video, c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
-  c.getContext('2d').drawImage(v,0,0);return c;
+$('view').addEventListener('pointermove',e=>{
+  if(!S.drag)return;const[px,py]=ptr(e),d=S.drag;
+  if(d.mode==='new'){d.cx=px;d.cy=py}
+  else{const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0;let nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));d.a.x0=nx;d.a.y0=ny;d.a.x1=nx+w;d.a.y1=ny+h}
+  drawView();
+});
+function endDrag(){
+  const d=S.drag;if(!d)return;S.drag=null;
+  if(d.mode==='new'){const a={x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)};
+    if(a.x1-a.x0>.03&&a.y1-a.y0>.03){aid=Math.max(aid,...S.areas.map(x=>x.id))+1;S.areas.push({id:aid,name:`Area ${S.areas.length+1}`,...a,thr:DEF_THR,manual:false});
+      setMsg(`Area ${S.areas.length} added. Draw another, or press Done.`)}}
+  relearn();renderAll();pubState();
 }
-function clearSample(){if(!S.sample)return;S.sample=false;stopRun();S.learn=[];S.test=[];S.model=null;S.sel=null;S.cursor=0;S.c={ok:0,ng:0}}
+$('view').addEventListener('pointerup',endDrag);$('view').addEventListener('pointercancel',endDrag);
+
+/* ---------- live camera (works when the page is opened directly, not inside claude.ai) ---------- */
+const C={stream:null,video:null,facing:'environment',locked:false,lastLive:0,ht:null,live:null};
+const camOn=()=>!!C.stream;
+function setMsg(t,err){const m=$('camMsg');m.textContent=t;m.classList.toggle('err',!!err)}
+function grab(){const v=C.video,c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c}
+function camButtons(){const on=camOn();$('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=!on;$('refCap').hidden=$('goodCap').hidden=$('testCap').hidden=!on;
+  $('camBtn').textContent=on?'■ Stop camera':'📷 Start live camera';$('camBtn').classList.toggle('primary',!on)}
 async function startCam(){
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    camMsg('Live camera needs a secure page (https://). Use the "Phone photo" buttons instead: they open the phone camera app.',true);
-    return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setMsg('Live camera needs a secure (https) page. Use the 📷 Phone photo buttons.',true);return}
   try{
     stopCam(false);
     C.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:C.facing},width:{ideal:1920},height:{ideal:1080}}});
     if(!C.video){C.video=document.createElement('video');C.video.playsInline=true;C.video.muted=true;C.video.setAttribute('playsinline','')}
     C.video.srcObject=C.stream;await C.video.play();
-    C.locked=false;clearSample();S.hold=false;
-    const tr=C.stream.getVideoTracks()[0], st=tr.getSettings?tr.getSettings():{};
+    C.locked=false;S.hold=false;
+    const tr=C.stream.getVideoTracks()[0],st=tr.getSettings?tr.getSettings():{};
     $('srcStat').textContent=`Camera ${st.width||C.video.videoWidth}×${st.height||C.video.videoHeight}`;
-    $('camBtn').textContent='■ Stop camera';$('camBtn').classList.remove('primary');
-    $('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=false;$('lockBtn').textContent='Lock exposure';
-    $('capLearn').hidden=$('capTest').hidden=false;
-    camMsg(S.model?'Camera on. Place a part and press Trigger once.':'Camera on. Step 1: place a good part and press "Capture good part". Repeat 5–20 times, then Learn OK.');
-    renderAll();requestAnimationFrame(liveLoop);
-  }catch(e){
-    C.stream=null;
-    camMsg(e&&e.name==='NotAllowedError'?'Camera permission refused. Allow the camera in the browser settings, or use "Phone photo".':'Could not open the camera ('+(e&&e.name||e)+'). Use "Phone photo" instead.',true);
-  }
+    camButtons();setMsg(S.ref?'Camera on. Place a part and press Trigger once.':'Camera on. Step 1: place a good part and press "Capture reference".');
+    renderAll();requestAnimationFrame(liveLoop);peerVideo();pubState();
+  }catch(e){C.stream=null;camButtons();
+    setMsg(e&&e.name==='NotAllowedError'?'The camera is blocked on this page. Use the 📷 Phone photo buttons (they open the camera app).':'Could not open the camera ('+(e&&e.name||e)+'). Use 📷 Phone photo.',true)}
 }
 function stopCam(render=true){
-  if(C.stream)C.stream.getTracks().forEach(t=>t.stop());
-  C.stream=null;if(!render)return;
-  stopRun();S.hold=false;
-  $('srcStat').textContent='Image files';$('camBtn').textContent='📷 Start camera';$('camBtn').classList.add('primary');
-  $('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=$('capLearn').hidden=$('capTest').hidden=true;
-  camMsg('Camera stopped.');renderAll();
+  if(C.stream)C.stream.getTracks().forEach(t=>t.stop());C.stream=null;if(!render)return;
+  stopRun();S.hold=false;$('srcStat').textContent='Image files';camButtons();setMsg('Camera stopped.');renderAll();pubState();
 }
 async function lockCam(){
   const tr=C.stream&&C.stream.getVideoTracks()[0];if(!tr)return;
-  const caps=tr.getCapabilities?tr.getCapabilities():{}, adv={};
-  const mode=C.locked?'continuous':'manual';
-  for(const k of ['exposureMode','whiteBalanceMode','focusMode'])if(caps[k]&&caps[k].includes(mode))adv[k]=mode;
-  if(!Object.keys(adv).length){camMsg('This browser cannot lock exposure. Keep the light constant (no window light, lamp fixed).',true);return}
-  try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure';camMsg(C.locked?'Exposure, focus and white balance locked: light changes now show up as differences.':'Automatic exposure again.')}
-  catch(e){camMsg('Lock failed: '+e.name,true)}
+  const caps=tr.getCapabilities?tr.getCapabilities():{},adv={},mode=C.locked?'continuous':'manual';
+  for(const k of['exposureMode','whiteBalanceMode','focusMode'])if(caps[k]&&caps[k].includes(mode))adv[k]=mode;
+  if(!Object.keys(adv).length){setMsg('This browser cannot lock exposure. Keep the light constant (fixed lamp, no window light).',true);return}
+  try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure';setMsg(C.locked?'Exposure, focus and white balance locked.':'Automatic exposure again.')}
+  catch(e){setMsg('Lock failed: '+e.name,true)}
 }
-function holdResult(){if(camOn()){S.hold=true}}
-function capture(kind){
-  if(!camOn()||!C.video.videoWidth)return null;
-  const list=kind==='learn'?S.learn:S.test, n=list.length+1;
-  const it=toItem(grab(),kind==='learn'?`cam_good_${String(n).padStart(2,'0')}.jpg`:`cam_part_${String(n).padStart(4,'0')}.jpg`);
-  list.push(it);return it;
-}
-function captureLearn(){
-  clearSample();const it=capture('learn');if(!it)return;
-  S.model=null;scoreTests();
-  camMsg(`${S.learn.length} good part${S.learn.length>1?'s':''} captured.`+(S.learn.length>=5?' Press Learn OK when you have enough.':' Move the part out and back in, then capture again.'));
-  flash();renderAll();
-}
+function capItem(prefix,n){return camOn()&&C.video.videoWidth?toItem(grab(),`${prefix}_${String(n).padStart(prefix==='part'?4:2,'0')}.jpg`):null}
 function captureTest(){
-  if(!S.model){camMsg('Learn the good parts first (step 1).',true);return}
-  clearSample();const t=capture('test');if(!t)return;
-  const r=inspect(S.model,t.gray);t.score=r.score;t.map=r.map;
-  S.sel=t;const ng=isNG(t);ng?S.c.ng++:S.c.ok++;
-  if(ng&&navigator.vibrate)navigator.vibrate(200);
-  S.hold=true;renderAll();drawView();flash();pubShot(t);
-  clearTimeout(C.ht);C.ht=setTimeout(()=>{S.hold=false;renderAll()},S.timer?1800:2500);
+  if(!S.model){setMsg('Take the reference image first (step 1).',true);return}
+  const t=capItem('part',S.test.length+1);if(!t)return;flash();addTests([t],true);
 }
-function flash(){const sc=document.querySelector('.screen');sc.animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
-function ghostOf(m){
-  if(m.ghost)return m.ghost;
-  const c=document.createElement('canvas');c.width=c.height=W;const x=c.getContext('2d'),id=x.createImageData(W,W);
-  for(let i=0;i<W*W;i++){const v=m.mean[i];id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}
-  x.putImageData(id,0,0);return m.ghost=c;
+function holdThenLive(){if(!camOn())return;clearTimeout(C.ht);C.ht=setTimeout(()=>{S.hold=false;renderAll()},S.timer?1800:2500)}
+function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
+function ghost(){
+  if(!S.ref)return null;if(S.ref.ghost)return S.ref.ghost;
+  const c=document.createElement('canvas');c.width=c.height=160;c.getContext('2d').drawImage(S.ref.disp,0,0,160,160);return S.ref.ghost=c;
 }
 function liveLoop(ts){
-  if(!camOn())return;
-  requestAnimationFrame(liveLoop);
-  if(S.hold||!C.video.videoWidth)return;
-  const cv=$('view'),x=cv.getContext('2d'),v=C.video;
-  const sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
+  if(!camOn())return;requestAnimationFrame(liveLoop);
+  if(S.hold||S.edit||L.role!=='sen'||!C.video.videoWidth)return;
+  const cv=$('view'),x=cv.getContext('2d'),v=C.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
   x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  const liveGray=S.model&&ts-C.lastLive>250?grayOf(cv):null;
-  if(S.model&&$('ghostT').checked){x.globalAlpha=.3;x.imageSmoothingEnabled=true;x.drawImage(ghostOf(S.model),0,0,D,D);x.globalAlpha=1}
-  x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1;x.beginPath();x.moveTo(D/2,0);x.lineTo(D/2,D);x.moveTo(0,D/2);x.lineTo(D,D/2);x.stroke();
-  const vd=$('verdict');vd.className='verdict live';
+  if(S.model&&ts-C.lastLive>250){C.lastLive=ts;C.live=evaluate(diffMap(S.model,grayOf(cv)));pubLive(C.live)}
+  if(!S.model)C.live=null;
+  if(ghost()&&$('ghostT').checked){x.globalAlpha=.28;x.drawImage(ghost(),0,0,D,D);x.globalAlpha=1}
+  drawAreasRes(x,C.live&&C.live.res);
   $('imgName').textContent=C.locked?'LIVE · exposure locked':'LIVE';
-  if(liveGray){
-    C.lastLive=ts;const r=inspect(S.model,liveGray);const ng=r.score>S.thr;
-    vd.textContent=`LIVE · ${ng?'NG':'OK'}`;
-    $('roScore').textContent=`Live score ${r.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${S.thr.toFixed(1)}`;
-  }else if(!S.model){vd.textContent='LIVE';$('roScore').textContent='Not learned';$('roThr').textContent=`Good parts ${S.learn.length}`}
-  $('fill').style.width='0';setLamps(null);
+  if(C.live)readout(C.live,'LIVE · ');else{const vd=$('verdict');vd.className='verdict live';vd.textContent='LIVE';$('roScore').textContent='No reference';$('roThr').textContent='—';readout(null)}
 }
-$('camBtn').onclick=()=>camOn()?stopCam():startCam();
-$('flipBtn').onclick=()=>{C.facing=C.facing==='environment'?'user':'environment';startCam()};
-$('lockBtn').onclick=lockCam;
-$('liveBtn').onclick=()=>{S.hold=false;renderAll()};
-$('capLearn').onclick=captureLearn;
-$('capTest').onclick=captureTest;
 
-/* ---------- phone sensor -> PC monitor link (claude.ai shared data) ---------- */
-const L={role:'sen',db:null,last:null,log:[],loaded:Date.now(),busy:false,next:null,view:null,tick:null};
+/* ---------- link to the PC ----------
+   Inside claude.ai: shared data store (photos only, no live video there).
+   Opened directly (https): peer-to-peer link with a pairing code, carries live video too. */
+const L={role:'sen',kind:null,db:null,peer:null,conns:[],conn:null,calls:[],last:null,state:null,log:[],loaded:Date.now(),busy:false,next:null,view:null,tick:null,
+  video:null,showLive:true,live:null,lastLiveSent:0};
 function linkStat(t,cls){const e=$('linkStat');e.textContent=t;e.className='link'+(cls?' '+cls:'')}
 function jpeg(canvas,size,q){const c=document.createElement('canvas');c.width=c.height=size;c.getContext('2d').drawImage(canvas,0,0,size,size);return c.toDataURL('image/jpeg',q)}
-function stateFields(){return{thr:S.thr,ok:S.c.ok,ng:S.c.ng,learned:S.model?S.model.n:0,autoThr:S.model?S.suggest:null,sensorTs:Date.now()}}
-async function write(path,data){
-  if(!L.db)return;
-  // one write at a time; keep only the newest pending one
+function stateMsg(){return{areas:areas().map(a=>({id:a.id,name:a.name,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,auto:a.auto||null})),
+  whole:!S.areas.length,ok:S.c.ok,ng:S.c.ng,learned:goodSet().length,hasRef:!!S.ref,cam:camOn(),sensorTs:Date.now()}}
+let lastShot=null;
+function canPub(){return L.role==='sen'&&!S.sample&&(L.db||L.conns.length)}
+async function dbWrite(path,data){
   if(L.busy){L.next=[path,data];return}
   L.busy=true;
-  try{await L.db.doc(path).set(data);linkStat('sent '+new Date().toLocaleTimeString(),'on')}
-  catch(e){linkStat('send failed: '+(e&&e.code||e),'err')}
-  L.busy=false;
-  if(L.next){const n=L.next;L.next=null;write(...n)}
+  try{await L.db.doc(path).set(data);linkStat('sent '+new Date().toLocaleTimeString(),'on')}catch(e){linkStat('send failed: '+(e&&e.code||e),'err')}
+  L.busy=false;if(L.next){const n=L.next;L.next=null;dbWrite(...n)}
 }
-let lastShot={};
-function pubState(){if(L.role!=='sen'||!L.db||S.sample)return;write('live/last',{...lastShot,...stateFields()})}
+function peerSend(m){for(const c of L.conns)if(c.open)try{c.send(m)}catch(e){}}
+function pubState(){
+  if(!canPub())return;const st=stateMsg();
+  if(L.db)dbWrite('live/last',{state:st,shot:lastShot});
+  peerSend({type:'state',state:st});
+}
 function pubShot(t){
-  if(L.role!=='sen'||!L.db||S.sample||t.score==null)return;
-  drawView();
-  const ng=isNG(t), ts=Date.now();
-  lastShot={name:t.name,ts,verdict:ng?'NG':'OK',score:Math.round(t.score*10)/10,img:jpeg($('view'),480,.72)};
-  write('live/last',{...lastShot,...stateFields()});
-  L.log.unshift({name:t.name,ts,verdict:lastShot.verdict,score:lastShot.score,thumb:jpeg($('view'),120,.6)});
-  L.log=L.log.slice(0,16);
-  setTimeout(()=>L.db.doc('live/log').set({items:L.log}).catch(()=>{}),300);
+  if(!canPub())return;const r=result(t);if(!r)return;
+  drawView();const cv=$('view'),ts=Date.now();
+  lastShot={name:t.name,ts,verdict:r.ng?'NG':'OK',worst:{name:r.worst.name,score:+r.worst.score.toFixed(2),thr:r.worst.thr},
+    res:r.res.map(x=>({id:x.id,name:x.name,score:+x.score.toFixed(2),thr:x.thr,ng:x.ng})),img:jpeg(cv,480,.72)};
+  const entry={name:t.name,ts,verdict:lastShot.verdict,score:lastShot.worst.score,thumb:jpeg(cv,120,.6)};
+  L.log.unshift(entry);L.log=L.log.slice(0,16);
+  const st=stateMsg();
+  if(L.db){dbWrite('live/last',{state:st,shot:lastShot});setTimeout(()=>L.db.doc('live/log').set({items:L.log}).catch(()=>{}),300)}
+  peerSend({type:'shot',state:st,shot:lastShot,entry});
 }
-function sendCmd(c){if(L.db)L.db.doc('live/cmd').set({...c,ts:Date.now()}).then(()=>linkStat('command sent','on'),e=>linkStat('send failed: '+(e&&e.code||e),'err'))}
-function onCmd(snap){
-  const c=snap.exists&&snap.data();if(!c||L.role!=='sen'||!(c.ts>L.loaded))return;
-  L.loaded=c.ts;
-  if(typeof c.thr==='number'&&isFinite(c.thr))setThr(Math.min(100,Math.max(.1,c.thr)));
-  if(c.reset){S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()}
+function pubLive(r){
+  if(!L.conns.length||L.role!=='sen')return;const now=Date.now();if(now-L.lastLiveSent<300)return;L.lastLiveSent=now;
+  peerSend({type:'live',live:{ng:r.ng,res:r.res.map(x=>({score:+x.score.toFixed(2),thr:x.thr,ng:x.ng})),worst:{name:r.worst.name,score:+r.worst.score.toFixed(2),thr:r.worst.thr}}});
 }
+function applyCmd(c){
+  if(!c||L.role!=='sen')return;
+  if(c.thrs&&typeof c.thrs==='object')for(const a of areas()){const v=c.thrs[a.id];if(typeof v==='number'&&isFinite(v)){a.thr=Math.min(100,Math.max(.1,v));a.manual=true}}
+  if(c.auto)for(const a of areas())if(a.id===c.auto){a.manual=false;a.thr=a.auto||DEF_THR}
+  if(c.reset){S.c={ok:0,ng:0};S.cursor=0}
+  renderAll();pubState();
+  if(c.trigger){if(camOn())captureTest();else setMsg('The PC asked for a picture: start the live camera to allow remote triggers.',true)}
+}
+function sendCmd(c){
+  if(L.db)L.db.doc('live/cmd').set({...c,ts:Date.now()}).then(()=>linkStat('command sent','on'),e=>linkStat('send failed: '+(e&&e.code||e),'err'));
+  else if(L.conn&&L.conn.open){L.conn.send({type:'cmd',cmd:c});linkStat('command sent','on')}
+  else linkStat('not connected','err');
+}
+function onMsg(m){
+  if(!m||typeof m!=='object')return;
+  if(L.role==='sen'){if(m.type==='cmd')applyCmd(m.cmd);return}
+  if(m.type==='state'||m.type==='shot'||m.type==='hello')L.state=m.state||L.state;
+  if(m.type==='shot'&&m.shot){L.last=m.shot;if(m.entry){L.log.unshift(m.entry);L.log=L.log.slice(0,16)}L.view=null;L.showLive=false;clearTimeout(L.backLive);L.backLive=setTimeout(()=>{L.showLive=true;renderMon()},2500)}
+  if(m.type==='hello'){L.last=m.shot||null;L.log=Array.isArray(m.log)?m.log:[]}
+  if(m.type==='live')L.live=m.live;
+  if(m.type!=='live')renderMon();
+}
+
+/* peer-to-peer (PeerJS) */
+const Q=new URLSearchParams(location.search);
+function peerOpts(){const h=Q.get('peer');if(!h)return{};const[host,port]=h.split(':');return{host,port:+port||443,path:'/',secure:(+port||443)===443}}
+function loadPeerJs(){return new Promise((ok,bad)=>{if(window.Peer)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';s.onload=ok;s.onerror=bad;document.head.appendChild(s)})}
+function newCode(){const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+function store(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+function stored(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function peerVideo(){
+  for(const c of L.calls)try{c.close()}catch(e){}L.calls=[];
+  if(!L.peer||!C.stream)return;
+  for(const c of L.conns)if(c.open)L.calls.push(L.peer.call(c.peer,C.stream));
+}
+function startSensorPeer(){
+  if(L.peer){L.peer.destroy();L.peer=null}
+  let code=stored('vs1-code');if(!code){code=newCode();store('vs1-code',code)}
+  $('pairCode').textContent=code;$('pairState').className='state';$('pairState').textContent='Waiting for PC';
+  const p=new Peer('vs1-'+code,peerOpts());L.peer=p;
+  p.on('open',()=>{linkStat('ready · code '+code,'on')});
+  p.on('error',e=>{if(e.type==='unavailable-id'){store('vs1-code',newCode());setTimeout(startSensorPeer,500)}else linkStat('link error: '+e.type,'err')});
+  p.on('disconnected',()=>{try{p.reconnect()}catch(e){}});
+  p.on('connection',c=>{
+    c.on('open',()=>{L.conns.push(c);$('pairState').className='state good';$('pairState').textContent='PC connected';linkStat('PC connected','on');
+      c.send({type:'hello',state:stateMsg(),shot:lastShot,log:L.log});if(C.stream)L.calls.push(p.call(c.peer,C.stream))});
+    c.on('data',onMsg);
+    c.on('close',()=>{L.conns=L.conns.filter(x=>x!==c);if(!L.conns.length){$('pairState').className='state';$('pairState').textContent='Waiting for PC';linkStat('ready · code '+code,'on')}});
+  });
+}
+function startMonitorPeer(){
+  if(L.peer){L.peer.destroy();L.peer=null}
+  const code=($('pairIn').value||'').trim().toLowerCase();
+  if(code.length!==6){$('pairState').className='state warn';$('pairState').textContent='Type the 6-letter code';return}
+  store('vs1-pair',code);$('pairState').className='state';$('pairState').textContent='Connecting…';linkStat('connecting…');
+  const p=new Peer(peerOpts());L.peer=p;
+  p.on('open',()=>{
+    const c=p.connect('vs1-'+code,{reliable:true});L.conn=c;
+    c.on('open',()=>{$('pairState').className='state good';$('pairState').textContent='Connected';linkStat('sensor '+code+' connected','on')});
+    c.on('data',onMsg);
+    c.on('close',()=>{$('pairState').className='state warn';$('pairState').textContent='Disconnected';linkStat('disconnected','err');L.live=null;if(L.video)L.video.srcObject=null;renderMon()});
+  });
+  p.on('call',call=>{call.answer();call.on('stream',st=>{if(!L.video){L.video=document.createElement('video');L.video.playsInline=true;L.video.muted=true;L.video.setAttribute('playsinline','')}
+    L.video.srcObject=st;L.video.play().catch(()=>{});L.showLive=true;requestAnimationFrame(monLoop)})});
+  p.on('error',e=>{$('pairState').className='state warn';$('pairState').textContent=e.type==='peer-unavailable'?'Code not found':'Error';linkStat('link error: '+e.type,'err')});
+}
+
+/* ---------- monitor (PC) ---------- */
 function ago(ts){const s=Math.max(0,Math.round((Date.now()-ts)/1000));return s<60?s+' s ago':Math.round(s/60)+' min ago'}
+const hasVideo=()=>L.video&&L.video.srcObject&&L.video.videoWidth&&L.state&&L.state.cam;
+function monLoop(){
+  if(L.role!=='mon'||!L.video||!L.video.srcObject)return;requestAnimationFrame(monLoop);
+  if(!(L.showLive&&!L.view&&hasVideo()))return;
+  const cv=$('view'),x=cv.getContext('2d'),v=L.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
+  x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
+  const st=L.state;
+  if(st)st.areas.forEach((a,i)=>{if(st.whole&&!(L.live&&L.live.res[i]))return;const r=L.live&&L.live.res[i];
+    strokeArea(x,a,r?(r.ng?NGC:OKC):EDC,(st.whole?'':a.name.split(' · ')[0])+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''))});
+  $('imgName').textContent='LIVE from sensor';
+  if(L.live)readout(L.live,'LIVE · ');else{const vd=$('verdict');vd.className='verdict live';vd.textContent='LIVE';$('roScore').textContent='—';$('roThr').textContent='—';readout(null)}
+}
 function renderMon(){
-  const d=L.view||L.last, v=$('verdict'), cv=$('view'), x=cv.getContext('2d');
-  $('srcStat').textContent='Phone sensor (remote)';
-  const st=$('monState');
-  if(!L.db){st.className='state warn';st.textContent='No link';$('monHint').textContent='The live link only works when this page is opened from its claude.ai link, signed in.'}
-  else if(!L.last){st.className='state';st.textContent='Waiting…'}
-  else{st.className='state good';st.textContent='Last image '+ago(L.last.ts||L.last.sensorTs)}
-  const m=L.last||{};
-  $('modelStat').textContent=m.learned?`${m.learned} good parts · auto thr ${(m.autoThr||0).toFixed(1)}`:'Not learned (on phone)';
-  const ok=m.ok||0,ng=m.ng||0,tot=ok+ng;
+  if(L.role!=='mon')return;
+  const st=L.state||{}, d=L.view||L.last, v=$('verdict'), x=$('view').getContext('2d');
+  $('view').classList.remove('edit');
+  $('srcStat').textContent=st.cam?'Phone sensor · live camera':'Phone sensor (remote)';
+  const ms=$('monState');
+  if(!L.kind){ms.className='state';ms.textContent='Starting…'}
+  else if(!L.db&&!(L.conn&&L.conn.open)){ms.className='state warn';ms.textContent='Not connected';$('monHint').textContent=L.kind==='peer'?'Open this same page on the phone, choose Sensor, then type the code it shows in the box above.':'No link available here.'}
+  else if(!L.last){ms.className='state';ms.textContent='Waiting…'}
+  else{ms.className='state good';ms.textContent='Last image '+ago(L.last.ts)}
+  $('monTrig').hidden=!(L.kind==='peer'&&st.cam);$('monLive').hidden=!(L.kind==='peer'&&st.cam);
+  $('monLive').textContent=L.showLive&&!L.view?'Showing live':'Show live';
+  $('modelStat').textContent=st.hasRef?`${st.learned} good image${st.learned>1?'s':''} · ${st.whole?'whole image':st.areas.length+' area'+(st.areas.length>1?'s':'')}`:'No reference (set it on the phone)';
+  const ok=st.ok||0,ng=st.ng||0,tot=ok+ng;
   $('cTotal').textContent=tot;$('cOk').textContent=ok;$('cNg').textContent=ng;$('cRate').textContent=(tot?ng/tot*100:0).toFixed(1)+'%';
-  if(typeof m.thr==='number'&&document.activeElement!==$('thr')){const sl=$('thr');if(+sl.max<m.thr*2)sl.max=Math.ceil(m.thr*2);sl.value=m.thr;$('thrOut').textContent=m.thr.toFixed(1)}
+  // area thresholds (not while the user drags a slider)
+  const ma=$('monAreas');
+  if(!ma.contains(document.activeElement)||document.activeElement.type!=='range'){
+    ma.innerHTML='';
+    if(!st.areas||!st.hasRef){const e=document.createElement('div');e.className='empty';e.textContent='No program on the sensor yet.';ma.appendChild(e)}
+    else st.areas.forEach((a,i)=>{const r=L.last&&L.last.res&&L.last.res.find(z=>z.id===a.id);
+      ma.appendChild(areaRow(a,i,r,val=>sendCmd({thrs:{[a.id]:val}}),()=>sendCmd({auto:a.id}),null))});
+  }
   const ml=$('monList');ml.innerHTML='';
   if(!L.log.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent='No inspections received yet.';ml.appendChild(e)}
   for(const it of L.log){
@@ -605,44 +778,81 @@ function renderMon(){
     const c=document.createElement('span');c.className='chip '+(it.verdict==='NG'?'ng':'ok');c.textContent=it.verdict+' '+(+it.score).toFixed(1);b.appendChild(c);
     b.onclick=()=>{L.view=L.view===it?null:it;renderMon()};ml.appendChild(b);
   }
+  if(L.showLive&&!L.view&&hasVideo())return; // live loop draws the screen
   x.fillStyle='#05080a';x.fillRect(0,0,D,D);
   const src=d&&(d.img||d.thumb);
-  if(!src){v.className='verdict idle';v.textContent='WAITING FOR SENSOR';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';$('fill').style.width='0';setLamps(null);return}
-  const im=new Image();im.onload=()=>{if((L.view||L.last)===d)x.drawImage(im,0,0,D,D)};im.src=src;
-  const isNg=d.verdict==='NG', thr=m.thr||S.thr;
-  v.className='verdict '+(isNg?'ng':'ok');v.textContent=d.verdict;
+  if(!src){v.className='verdict idle';v.textContent='WAITING FOR SENSOR';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';readout(null);return}
+  const im=new Image();im.onload=()=>{if((L.view||L.last)===d&&!(L.showLive&&!L.view&&hasVideo()))x.drawImage(im,0,0,D,D)};im.src=src;
   $('imgName').textContent=(L.view?'history · ':'')+d.name+' · '+new Date(d.ts).toLocaleTimeString();
-  $('roScore').textContent=`Score ${(+d.score).toFixed(1)}`;$('roThr').textContent=`Threshold ${thr.toFixed(1)}`;
-  const max=Math.max(thr*2,d.score*1.05);
-  $('fill').style.width=(Math.min(1,d.score/max)*100)+'%';$('fill').className='fill'+(isNg?' ng':'');
-  $('tick').style.left=`calc(${thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
-  setLamps(L.view?null:isNg);
+  if(L.view){const isNg=d.verdict==='NG';v.className='verdict '+(isNg?'ng':'ok');v.textContent=d.verdict;$('roScore').textContent=`Score ${(+d.score).toFixed(1)}`;$('roThr').textContent='—';$('fill').style.width='0';setLamps(null)}
+  else readout({ng:d.verdict==='NG',res:d.res||[],worst:d.worst});
 }
+
+/* ---------- roles ---------- */
 function setRole(r){
-  L.role=r;try{localStorage.setItem('vs1-role',r)}catch(e){}
+  L.role=r;store('vs1-role',r);
   $('roleSen').setAttribute('aria-pressed',r==='sen');$('roleMon').setAttribute('aria-pressed',r==='mon');
   document.body.classList.toggle('role-mon',r==='mon');
   clearInterval(L.tick);
-  if(r==='mon'){stopRun();if(camOn())stopCam(false);S.hold=false;$('modeTag').textContent='MONITOR';L.tick=setInterval(()=>{if(L.last)renderMon()},5000)}
-  else{$('modeTag').textContent='SETUP';$('srcStat').textContent=camOn()?$('srcStat').textContent:'Image files'}
+  if(r==='mon'){stopRun();if(camOn())stopCam(false);camButtons();S.hold=false;S.edit=false;$('modeTag').textContent='MONITOR';$('modeTag').classList.remove('run');L.tick=setInterval(renderMon,5000)}
+  else{$('modeTag').textContent='SETUP';$('srcStat').textContent='Image files'}
+  $('pairTitle').textContent=r==='mon'?'Connect to the sensor':'Link to PC';
+  if(L.kind==='peer'){if(r==='sen')startSensorPeer();else{if(L.peer){L.peer.destroy();L.peer=null}L.conn=null;const c=stored('vs1-pair');if(c){$('pairIn').value=c;startMonitorPeer()}}}
+  if(L.kind==='db'&&r==='mon'){L.log=L.dbLog||[]}
   renderAll();
 }
-$('roleSen').onclick=()=>setRole('sen');
-$('roleMon').onclick=()=>setRole('mon');
-(async()=>{
-  const db=window.claude&&window.claude.use?await window.claude.use('db').catch(()=>null):null;
-  if(!db){linkStat('off (open from the claude.ai link)','err');if(L.role==='mon')renderMon();return}
-  L.db=db;linkStat('connected','on');
-  db.doc('live/last').onSnapshot(s=>{L.last=s.exists?s.data():null;if(L.role==='mon')renderMon()},e=>linkStat('error: '+e.code,'err'));
-  db.doc('live/log').onSnapshot(s=>{const d=s.exists&&s.data();const items=d&&Array.isArray(d.items)?d.items:[];if(L.role==='mon'||!L.log.length)L.log=items;if(L.role==='mon'){if(L.view&&!items.some(i=>i.ts===L.view.ts))L.view=null;renderMon()}});
-  db.doc('live/cmd').onSnapshot(onCmd);
-})();
+
+/* ---------- wiring ---------- */
+const onFile=(id,fn)=>{$(id).onchange=async e=>{const items=await filesToItems(e.target.files);e.target.value='';if(items.length)fn(items)}};
+onFile('refShot',it=>setRef(it[0]));onFile('refFile',it=>setRef(it[0]));
+onFile('goodShot',addGood);onFile('goodFile',addGood);
+onFile('testShot',it=>addTests(it,true));onFile('testFile',it=>addTests(it,false));
+$('refCap').onclick=()=>{const it=capItem('reference',1);if(it){flash();setRef(it)}};
+$('goodCap').onclick=()=>{const it=capItem('good',S.good.length+2);if(it){flash();addGood([it]);S.hold=true;renderAll();holdThenLive()}};
+$('testCap').onclick=captureTest;
+$('goodClear').onclick=()=>{S.good=[];relearn();if(S.sel&&!S.test.includes(S.sel)&&S.sel!==S.ref)S.sel=null;renderAll();pubState()};
+$('testClear').onclick=()=>{stopRun();S.test=[];S.cursor=0;if(S.sel&&S.test.indexOf(S.sel)<0&&S.sel!==S.ref&&!S.good.includes(S.sel))S.sel=null;renderAll()};
+$('sampleBtn').onclick=loadSample;
+$('drawBtn').onclick=()=>{if(!S.ref)return;stopRun();S.edit=true;S.hold=false;setMsg('Drag on the image to draw a control area.');renderAll()};
+$('doneBtn').onclick=()=>{S.edit=false;if(S.test.length)S.sel=S.test[S.test.length-1];else S.sel=S.ref;renderAll()};
+$('runBtn').onclick=toggleRun;$('stepBtn').onclick=trigger;
+$('resetBtn').onclick=()=>{if(L.role==='mon'){sendCmd({reset:1});return}S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()};
+$('heatT').onchange=e=>{S.heat=e.target.checked;drawView()};
+$('camBtn').onclick=()=>camOn()?stopCam():startCam();
+$('flipBtn').onclick=()=>{C.facing=C.facing==='environment'?'user':'environment';startCam()};
+$('lockBtn').onclick=lockCam;
+$('liveBtn').onclick=()=>{S.hold=false;S.edit=false;renderAll()};
+$('roleSen').onclick=()=>setRole('sen');$('roleMon').onclick=()=>setRole('mon');
+$('pairBtn').onclick=startMonitorPeer;$('pairIn').onkeydown=e=>{if(e.key==='Enter')startMonitorPeer()};
+$('monTrig').onclick=()=>sendCmd({trigger:1});
+$('monLive').onclick=()=>{L.view=null;L.showLive=true;renderMon()};
+['refStep','goodStep','testStep'].forEach(id=>{const el=$(id);
+  el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag')});
+  el.addEventListener('dragleave',()=>el.classList.remove('drag'));
+  el.addEventListener('drop',async e=>{e.preventDefault();el.classList.remove('drag');const it=await filesToItems(e.dataTransfer.files);if(!it.length)return;
+    id==='refStep'?setRef(it[0]):id==='goodStep'?addGood(it):addTests(it,false)});
+});
+
+/* ---------- start ---------- */
 loadSample();
-// Live video is blocked when the page runs inside claude.ai (framed): hide it, point to Phone photo.
 {const fp=document.featurePolicy||document.permissionsPolicy;
  const blocked=fp&&fp.allowsFeature?!fp.allowsFeature('camera'):window.self!==window.top;
- if(blocked){$('camBtn').hidden=true;camMsg('Here, take each picture with the 📷 Phone photo buttons (step 1 for good parts, step 3 to inspect). They open the phone camera app. No live video on this page.')}}
-{let r=null;try{r=localStorage.getItem('vs1-role')}catch(e){}
- if(r!=='sen'&&r!=='mon')r=matchMedia('(pointer:coarse)').matches?'sen':'mon';setRole(r)}
+ if(blocked){$('camBtn').hidden=true;setMsg('Take each picture with the 📷 Phone photo buttons: they open the phone camera app.')}}
+{let r=stored('vs1-role');if(r!=='sen'&&r!=='mon')r=matchMedia('(pointer:coarse)').matches?'sen':'mon';setRole(r)}
+(async()=>{
+  const db=window.claude&&window.claude.use?await window.claude.use('db').catch(()=>null):null;
+  if(db){
+    L.kind='db';L.db=db;linkStat('connected','on');
+    db.doc('live/last').onSnapshot(s=>{const d=s.exists?s.data():null;L.state=d&&d.state||null;const shot=d&&d.shot||null;
+      if(shot&&(!L.last||shot.ts!==L.last.ts)){L.last=shot;L.view=null}renderMon()},e=>linkStat('error: '+e.code,'err'));
+    db.doc('live/log').onSnapshot(s=>{const d=s.exists&&s.data();L.dbLog=d&&Array.isArray(d.items)?d.items:[];if(L.role==='mon'){L.log=L.dbLog;renderMon()}else if(!L.log.length)L.log=L.dbLog.slice()});
+    db.doc('live/cmd').onSnapshot(s=>{const c=s.exists&&s.data();if(c&&c.ts>L.loaded){L.loaded=c.ts;applyCmd(c)}});
+    renderAll();return;
+  }
+  if(window.claude&&window.claude.use){linkStat('off','err');L.kind='none';renderAll();return}
+  try{await loadPeerJs()}catch(e){linkStat('link unavailable (no internet?)','err');L.kind='none';renderAll();return}
+  L.kind='peer';$('pairStep').hidden=false;
+  setRole(L.role);
+})();
 })();
 </script>
