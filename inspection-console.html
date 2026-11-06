@@ -638,6 +638,10 @@ $('roleMon').onclick=()=>setRole('mon');
   db.doc('live/cmd').onSnapshot(onCmd);
 })();
 loadSample();
+// Live video is blocked when the page runs inside claude.ai (framed): hide it, point to Phone photo.
+{const fp=document.featurePolicy||document.permissionsPolicy;
+ const blocked=fp&&fp.allowsFeature?!fp.allowsFeature('camera'):window.self!==window.top;
+ if(blocked){$('camBtn').hidden=true;camMsg('Here, take each picture with the 📷 Phone photo buttons (step 1 for good parts, step 3 to inspect). They open the phone camera app. No live video on this page.')}}
 {let r=null;try{r=localStorage.getItem('vs1-role')}catch(e){}
  if(r!=='sen'&&r!=='mon')r=matchMedia('(pointer:coarse)').matches?'sen':'mon';setRole(r)}
 })();
