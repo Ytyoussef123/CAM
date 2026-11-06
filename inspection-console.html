@@ -39,6 +39,14 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 .bar .spacer{flex:1}
 .mode{font-family:var(--f-mono);font-size:12px;padding:4px 9px;border-radius:4px;border:1px solid var(--line);background:var(--panel-2)}
 .mode.run{background:var(--ok);color:#fff;border-color:transparent}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--panel-2);padding:6px 12px;font-weight:600;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.link{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.link.on{color:var(--ok)} .link.err{color:var(--ng)}
+.role-mon .sensor-only{display:none!important}
+.mon-only{display:none!important}
+.role-mon .mon-only{display:flex!important}
 
 .main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
 @media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
@@ -122,6 +130,9 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
     <div class="stat"><span class="lbl">Model</span><b id="modelStat">—</b></div>
     <div class="stat"><span class="lbl">Method</span><b>Pixel deviation</b></div>
     <span class="spacer"></span>
+    <div class="stat"><span class="lbl">This device is</span>
+      <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleSen" aria-pressed="true">📱 Sensor</button><button type="button" id="roleMon" aria-pressed="false">🖥 Monitor</button></div></div>
+    <div class="stat"><span class="lbl">Link</span><span class="link" id="linkStat">connecting…</span></div>
     <span class="mode" id="modeTag">SETUP</span>
   </header>
 
@@ -139,7 +150,7 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
         <div class="scorerow"><span>0</span><span id="scaleMax">—</span></div>
       </div>
 
-      <div class="cambar">
+      <div class="cambar sensor-only">
         <button class="btn primary" id="camBtn" type="button">📷 Start camera</button>
         <button class="btn" id="flipBtn" type="button" hidden>Switch camera</button>
         <button class="btn" id="lockBtn" type="button" hidden>Lock exposure</button>
@@ -149,10 +160,10 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
       </div>
 
       <div class="controls">
-        <button class="btn primary" id="runBtn" type="button">▶ Run line</button>
-        <button class="btn" id="stepBtn" type="button">Trigger once</button>
+        <button class="btn primary sensor-only" id="runBtn" type="button">▶ Run line</button>
+        <button class="btn sensor-only" id="stepBtn" type="button">Trigger once</button>
         <button class="btn" id="resetBtn" type="button">Reset counters</button>
-        <label class="toggle"><input type="checkbox" id="heatT" checked> Show defect heat map</label>
+        <label class="toggle sensor-only"><input type="checkbox" id="heatT" checked> Show defect heat map</label>
       </div>
 
       <div class="line">
@@ -168,14 +179,20 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
     </section>
 
     <aside class="setup">
-      <section class="step" id="learnStep">
+      <section class="step mon-only" id="monStep">
+        <div class="stephead"><span class="stepnum">PC</span><h2>Monitor</h2><span class="state" id="monState">—</span></div>
+        <p class="hint" id="monHint">This screen shows what the phone sensor sees. Open the same link on the phone, choose <b>Sensor</b>, and every inspection appears here within a second or two.</p>
+        <div class="thumbs" id="monList"></div>
+      </section>
+
+      <section class="step sensor-only" id="learnStep">
         <div class="stephead"><span class="stepnum">1</span><h2>Learn good parts</h2><span class="state" id="learnState">—</span></div>
         <p class="hint">Add 5–20 photos of <b>good</b> parts, all in the same position and light. Then press Learn.</p>
         <div class="thumbs" id="learnList"></div>
         <div class="controls">
           <button class="btn primary" id="learnBtn" type="button">Learn OK</button>
           <button class="btn primary" id="capLearn" type="button" hidden>📷 Capture good part</button>
-          <label class="btn small" id="nativeLearn" hidden>📷 Phone photo<input type="file" id="learnShot" accept="image/*" capture="environment"></label>
+          <label class="btn primary" id="nativeLearn">📷 Phone photo<input type="file" id="learnShot" accept="image/*" capture="environment"></label>
           <label class="btn small">+ Add images<input type="file" id="learnFile" accept="image/*" multiple></label>
           <button class="btn small" id="learnClear" type="button">Clear</button>
         </div>
@@ -191,20 +208,20 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
         </div>
       </section>
 
-      <section class="step" id="testStep">
+      <section class="step sensor-only" id="testStep">
         <div class="stephead"><span class="stepnum">3</span><h2>Inspect parts</h2><span class="state" id="testState">—</span></div>
         <p class="hint">Add the photos to check. Click one to see its result, or press Run line to inspect them in sequence like a production line.</p>
         <div class="thumbs" id="testList"></div>
         <div class="controls">
           <button class="btn primary" id="capTest" type="button" hidden>📷 Capture &amp; inspect</button>
-          <label class="btn small" id="nativeTest" hidden>📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
+          <label class="btn primary" id="nativeTest">📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
           <label class="btn small">+ Add images<input type="file" id="testFile" accept="image/*" multiple></label>
           <button class="btn small" id="testClear" type="button">Clear</button>
           <button class="btn small" id="sampleBtn" type="button">Load sample parts</button>
         </div>
       </section>
 
-      <div class="note"><b>Sample loaded:</b> machined flanges generated in the browser. 10 good parts teach the model; the inspection set mixes good parts with a missing bolt hole, a scratch, an edge chip and a stain. You can drag your own photos onto steps 1 and 3.<br><br><b>With the phone camera:</b> press Start camera, fix the phone (stand or tape) above the part, clear the samples, capture 5–20 good parts, press Learn OK, then press Trigger once (or Run line for one capture every 2.5 s) for each part to check. The faint ghost shows the learned part so you can place the next one in the same spot.<br><br><b>How this version works:</b> it compares each pixel to the average of the good parts, so parts must sit in the same position, as on a fixture. The Python version with PatchCore will tolerate more movement.</div>
+      <div class="note sensor-only"><b>Sample loaded:</b> machined flanges generated in the browser. 10 good parts teach the model; the inspection set mixes good parts with a missing bolt hole, a scratch, an edge chip and a stain. You can drag your own photos onto steps 1 and 3.<br><br><b>With the phone camera:</b> press Start camera, fix the phone (stand or tape) above the part, clear the samples, capture 5–20 good parts, press Learn OK, then press Trigger once (or Run line for one capture every 2.5 s) for each part to check. The faint ghost shows the learned part so you can place the next one in the same spot.<br><br><b>How this version works:</b> it compares each pixel to the average of the good parts, so parts must sit in the same position, as on a fixture. The Python version with PatchCore will tolerate more movement.</div>
     </aside>
   </div>
 </div>
@@ -314,7 +331,7 @@ function scoreTests(){
   for(const t of S.test){if(S.model){const r=inspect(S.model,t.gray);t.score=r.score;t.map=r.map}else{t.score=null;t.map=null}}
 }
 function setThr(v,render=true){
-  S.thr=Math.round(v*10)/10;
+  S.thr=Math.round(v*10)/10;pubState();
   const sl=$('thr');if(+sl.max<S.thr*2)sl.max=Math.ceil(S.thr*2);
   sl.value=S.thr;$('thrOut').textContent=S.thr.toFixed(1);
   if(render)renderAll();
@@ -325,7 +342,7 @@ function trigger(){
   if(!S.model||!S.test.length)return;
   const t=S.test[S.cursor%S.test.length];S.cursor++;
   S.sel=t;isNG(t)?S.c.ng++:S.c.ok++;
-  renderAll();
+  renderAll();pubShot(t);
 }
 function stopRun(){if(S.timer){clearInterval(S.timer);S.timer=null}$('runBtn').textContent='▶ Run line';$('modeTag').textContent='SETUP';$('modeTag').classList.remove('run')}
 function toggleRun(){
@@ -390,6 +407,7 @@ function thumbList(el,items,kind){
   }
 }
 function renderAll(){
+  if(L.role==='mon'){renderMon();return}
   thumbList($('learnList'),S.learn,'learn');thumbList($('testList'),S.test,'test');
   const ls=$('learnState');
   if(S.model&&S.model.n===S.learn.length){ls.className='state good';ls.textContent=`Learned · ${S.model.n} images`}
@@ -407,19 +425,19 @@ function renderAll(){
 }
 
 /* ---------- wiring ---------- */
-$('learnBtn').onclick=()=>{learn();if(camOn()&&S.model){S.hold=false;camMsg(`Learned ${S.model.n} good parts. Now place a part and press Trigger once.`)}renderAll()};
-$('learnShot').onchange=async e=>{await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
-$('testShot').onchange=async e=>{await addFiles(e.target.files,S.test);e.target.value='';scoreTests();const t=S.test[S.test.length-1];if(t){S.sel=t;if(S.model)isNG(t)?S.c.ng++:S.c.ok++}renderAll()};
+$('learnBtn').onclick=()=>{learn();pubState();if(camOn()&&S.model){S.hold=false;camMsg(`Learned ${S.model.n} good parts. Now place a part and press Trigger once.`)}renderAll()};
+$('learnShot').onchange=async e=>{clearSample();await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
+$('testShot').onchange=async e=>{if(!S.model||S.sample){e.target.value='';camMsg('Learn the good parts first (step 1).',true);$('camMsg').scrollIntoView({block:'center'});return}await addFiles(e.target.files,S.test);e.target.value='';scoreTests();const t=S.test[S.test.length-1];if(t){S.sel=t;if(S.model)isNG(t)?S.c.ng++:S.c.ok++}S.hold=true;renderAll();S.hold=false;if(t&&S.model)pubShot(t)};
 $('learnFile').onchange=async e=>{await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
 $('testFile').onchange=async e=>{const n=S.test.length;await addFiles(e.target.files,S.test);e.target.value='';scoreTests();if(S.test[n])S.sel=S.test[n];renderAll()};
 $('learnClear').onclick=()=>{stopRun();S.learn=[];S.model=null;if(S.sel&&!S.test.includes(S.sel))S.sel=null;scoreTests();renderAll()};
 $('testClear').onclick=()=>{stopRun();S.test=[];S.cursor=0;if(S.sel&&!S.learn.includes(S.sel))S.sel=null;renderAll()};
 $('sampleBtn').onclick=loadSample;
-$('thr').oninput=e=>setThr(+e.target.value);
-$('autoThr').onclick=()=>setThr(S.suggest);
+$('thr').oninput=e=>{if(L.role==='mon'){$('thrOut').textContent=(+e.target.value).toFixed(1);sendCmd({thr:+e.target.value});return}setThr(+e.target.value)};
+$('autoThr').onclick=()=>{if(L.role==='mon'){if(L.last&&L.last.autoThr)sendCmd({thr:L.last.autoThr});return}setThr(S.suggest)};
 $('runBtn').onclick=toggleRun;
 $('stepBtn').onclick=trigger;
-$('resetBtn').onclick=()=>{S.c={ok:0,ng:0};S.cursor=0;renderAll()};
+$('resetBtn').onclick=()=>{if(L.role==='mon'){sendCmd({reset:Date.now()});return}S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()};
 $('heatT').onchange=e=>{S.heat=e.target.checked;drawView()};
 [['learnStep',()=>S.learn,true],['testStep',()=>S.test,false]].forEach(([id,get,isLearn])=>{
   const el=$(id);
@@ -441,7 +459,7 @@ function clearSample(){if(!S.sample)return;S.sample=false;stopRun();S.learn=[];S
 async function startCam(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     camMsg('Live camera needs a secure page (https://). Use the "Phone photo" buttons instead: they open the phone camera app.',true);
-    $('nativeLearn').hidden=$('nativeTest').hidden=false;return}
+    return}
   try{
     stopCam(false);
     C.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:C.facing},width:{ideal:1920},height:{ideal:1080}}});
@@ -458,7 +476,6 @@ async function startCam(){
   }catch(e){
     C.stream=null;
     camMsg(e&&e.name==='NotAllowedError'?'Camera permission refused. Allow the camera in the browser settings, or use "Phone photo".':'Could not open the camera ('+(e&&e.name||e)+'). Use "Phone photo" instead.',true);
-    $('nativeLearn').hidden=$('nativeTest').hidden=false;
   }
 }
 function stopCam(render=true){
@@ -497,7 +514,7 @@ function captureTest(){
   const r=inspect(S.model,t.gray);t.score=r.score;t.map=r.map;
   S.sel=t;const ng=isNG(t);ng?S.c.ng++:S.c.ok++;
   if(ng&&navigator.vibrate)navigator.vibrate(200);
-  S.hold=true;renderAll();drawView();flash();
+  S.hold=true;renderAll();drawView();flash();pubShot(t);
   clearTimeout(C.ht);C.ht=setTimeout(()=>{S.hold=false;renderAll()},S.timer?1800:2500);
 }
 function flash(){const sc=document.querySelector('.screen');sc.animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
@@ -532,7 +549,96 @@ $('lockBtn').onclick=lockCam;
 $('liveBtn').onclick=()=>{S.hold=false;renderAll()};
 $('capLearn').onclick=captureLearn;
 $('capTest').onclick=captureTest;
+
+/* ---------- phone sensor -> PC monitor link (claude.ai shared data) ---------- */
+const L={role:'sen',db:null,last:null,log:[],loaded:Date.now(),busy:false,next:null,view:null,tick:null};
+function linkStat(t,cls){const e=$('linkStat');e.textContent=t;e.className='link'+(cls?' '+cls:'')}
+function jpeg(canvas,size,q){const c=document.createElement('canvas');c.width=c.height=size;c.getContext('2d').drawImage(canvas,0,0,size,size);return c.toDataURL('image/jpeg',q)}
+function stateFields(){return{thr:S.thr,ok:S.c.ok,ng:S.c.ng,learned:S.model?S.model.n:0,autoThr:S.model?S.suggest:null,sensorTs:Date.now()}}
+async function write(path,data){
+  if(!L.db)return;
+  // one write at a time; keep only the newest pending one
+  if(L.busy){L.next=[path,data];return}
+  L.busy=true;
+  try{await L.db.doc(path).set(data);linkStat('sent '+new Date().toLocaleTimeString(),'on')}
+  catch(e){linkStat('send failed: '+(e&&e.code||e),'err')}
+  L.busy=false;
+  if(L.next){const n=L.next;L.next=null;write(...n)}
+}
+let lastShot={};
+function pubState(){if(L.role!=='sen'||!L.db||S.sample)return;write('live/last',{...lastShot,...stateFields()})}
+function pubShot(t){
+  if(L.role!=='sen'||!L.db||S.sample||t.score==null)return;
+  drawView();
+  const ng=isNG(t), ts=Date.now();
+  lastShot={name:t.name,ts,verdict:ng?'NG':'OK',score:Math.round(t.score*10)/10,img:jpeg($('view'),480,.72)};
+  write('live/last',{...lastShot,...stateFields()});
+  L.log.unshift({name:t.name,ts,verdict:lastShot.verdict,score:lastShot.score,thumb:jpeg($('view'),120,.6)});
+  L.log=L.log.slice(0,16);
+  setTimeout(()=>L.db.doc('live/log').set({items:L.log}).catch(()=>{}),300);
+}
+function sendCmd(c){if(L.db)L.db.doc('live/cmd').set({...c,ts:Date.now()}).then(()=>linkStat('command sent','on'),e=>linkStat('send failed: '+(e&&e.code||e),'err'))}
+function onCmd(snap){
+  const c=snap.exists&&snap.data();if(!c||L.role!=='sen'||!(c.ts>L.loaded))return;
+  L.loaded=c.ts;
+  if(typeof c.thr==='number'&&isFinite(c.thr))setThr(Math.min(100,Math.max(.1,c.thr)));
+  if(c.reset){S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()}
+}
+function ago(ts){const s=Math.max(0,Math.round((Date.now()-ts)/1000));return s<60?s+' s ago':Math.round(s/60)+' min ago'}
+function renderMon(){
+  const d=L.view||L.last, v=$('verdict'), cv=$('view'), x=cv.getContext('2d');
+  $('srcStat').textContent='Phone sensor (remote)';
+  const st=$('monState');
+  if(!L.db){st.className='state warn';st.textContent='No link';$('monHint').textContent='The live link only works when this page is opened from its claude.ai link, signed in.'}
+  else if(!L.last){st.className='state';st.textContent='Waiting…'}
+  else{st.className='state good';st.textContent='Last image '+ago(L.last.ts||L.last.sensorTs)}
+  const m=L.last||{};
+  $('modelStat').textContent=m.learned?`${m.learned} good parts · auto thr ${(m.autoThr||0).toFixed(1)}`:'Not learned (on phone)';
+  const ok=m.ok||0,ng=m.ng||0,tot=ok+ng;
+  $('cTotal').textContent=tot;$('cOk').textContent=ok;$('cNg').textContent=ng;$('cRate').textContent=(tot?ng/tot*100:0).toFixed(1)+'%';
+  if(typeof m.thr==='number'&&document.activeElement!==$('thr')){const sl=$('thr');if(+sl.max<m.thr*2)sl.max=Math.ceil(m.thr*2);sl.value=m.thr;$('thrOut').textContent=m.thr.toFixed(1)}
+  const ml=$('monList');ml.innerHTML='';
+  if(!L.log.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent='No inspections received yet.';ml.appendChild(e)}
+  for(const it of L.log){
+    const b=document.createElement('button');b.type='button';b.className='thumb'+(L.view===it?' sel':'');b.title=it.name;
+    const im=document.createElement('img');im.src=it.thumb;im.alt=it.name;b.appendChild(im);
+    const c=document.createElement('span');c.className='chip '+(it.verdict==='NG'?'ng':'ok');c.textContent=it.verdict+' '+(+it.score).toFixed(1);b.appendChild(c);
+    b.onclick=()=>{L.view=L.view===it?null:it;renderMon()};ml.appendChild(b);
+  }
+  x.fillStyle='#05080a';x.fillRect(0,0,D,D);
+  const src=d&&(d.img||d.thumb);
+  if(!src){v.className='verdict idle';v.textContent='WAITING FOR SENSOR';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';$('fill').style.width='0';setLamps(null);return}
+  const im=new Image();im.onload=()=>{if((L.view||L.last)===d)x.drawImage(im,0,0,D,D)};im.src=src;
+  const isNg=d.verdict==='NG', thr=m.thr||S.thr;
+  v.className='verdict '+(isNg?'ng':'ok');v.textContent=d.verdict;
+  $('imgName').textContent=(L.view?'history · ':'')+d.name+' · '+new Date(d.ts).toLocaleTimeString();
+  $('roScore').textContent=`Score ${(+d.score).toFixed(1)}`;$('roThr').textContent=`Threshold ${thr.toFixed(1)}`;
+  const max=Math.max(thr*2,d.score*1.05);
+  $('fill').style.width=(Math.min(1,d.score/max)*100)+'%';$('fill').className='fill'+(isNg?' ng':'');
+  $('tick').style.left=`calc(${thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
+  setLamps(L.view?null:isNg);
+}
+function setRole(r){
+  L.role=r;try{localStorage.setItem('vs1-role',r)}catch(e){}
+  $('roleSen').setAttribute('aria-pressed',r==='sen');$('roleMon').setAttribute('aria-pressed',r==='mon');
+  document.body.classList.toggle('role-mon',r==='mon');
+  clearInterval(L.tick);
+  if(r==='mon'){stopRun();if(camOn())stopCam(false);S.hold=false;$('modeTag').textContent='MONITOR';L.tick=setInterval(()=>{if(L.last)renderMon()},5000)}
+  else{$('modeTag').textContent='SETUP';$('srcStat').textContent=camOn()?$('srcStat').textContent:'Image files'}
+  renderAll();
+}
+$('roleSen').onclick=()=>setRole('sen');
+$('roleMon').onclick=()=>setRole('mon');
+(async()=>{
+  const db=window.claude&&window.claude.use?await window.claude.use('db').catch(()=>null):null;
+  if(!db){linkStat('off (open from the claude.ai link)','err');if(L.role==='mon')renderMon();return}
+  L.db=db;linkStat('connected','on');
+  db.doc('live/last').onSnapshot(s=>{L.last=s.exists?s.data():null;if(L.role==='mon')renderMon()},e=>linkStat('error: '+e.code,'err'));
+  db.doc('live/log').onSnapshot(s=>{const d=s.exists&&s.data();const items=d&&Array.isArray(d.items)?d.items:[];if(L.role==='mon'||!L.log.length)L.log=items;if(L.role==='mon'){if(L.view&&!items.some(i=>i.ts===L.view.ts))L.view=null;renderMon()}});
+  db.doc('live/cmd').onSnapshot(onCmd);
+})();
 loadSample();
-if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)$('nativeLearn').hidden=$('nativeTest').hidden=false;
+{let r=null;try{r=localStorage.getItem('vs1-role')}catch(e){}
+ if(r!=='sen'&&r!=='mon')r=matchMedia('(pointer:coarse)').matches?'sen':'mon';setRole(r)}
 })();
 </script>
