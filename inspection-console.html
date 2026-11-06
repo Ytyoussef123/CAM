@@ -160,6 +160,17 @@ input.pname{flex:1;min-width:10ch}
 .okng button.on.k{background:var(--ok);color:#fff} .okng button.on.g{background:var(--ng);color:#fff}
 .thumb .lab{position:absolute;right:3px;top:3px;font-family:var(--f-mono);font-size:10px;color:#fff;background:rgba(0,0,0,.6);padding:1px 3px;border-radius:3px}
 .big{font-size:17px;padding:11px 20px}
+.zrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.zrow input[type=range]{flex:1;min-width:90px;accent-color:var(--accent)}
+.zrow output{font-family:var(--f-mono);font-size:14px;min-width:4.5ch}
+.area select{font:inherit;font-size:13px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--fg)}
+.area .opts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.shape{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.shape button{border:0;background:var(--panel);padding:2px 10px;font-size:15px}
+.shape button.on{background:var(--accent);color:var(--accent-fg)}
+.vz{display:inline-flex;align-items:center;gap:4px}
+.vz output{font-family:var(--f-mono);font-size:13px;min-width:6ch;text-align:center;color:var(--muted)}
+.screen canvas{touch-action:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -198,6 +209,7 @@ input.pname{flex:1;min-width:10ch}
 
       <div class="controls ctl-only">
         <button class="btn" id="liveBtn" type="button">Live view</button>
+        <span class="vz" aria-label="Screen zoom"><button class="btn small" id="vzOut" type="button" aria-label="Zoom out">−</button><output id="vzVal">×1.0</output><button class="btn small" id="vzIn" type="button" aria-label="Zoom in">+</button><button class="btn small" id="vzFit" type="button">Fit</button></span>
         <button class="btn" id="resetBtn" type="button">Reset counters</button>
         <label class="toggle"><input type="checkbox" id="heatT" checked> Defect heat map</label>
       </div>
@@ -242,8 +254,11 @@ input.pname{flex:1;min-width:10ch}
 
       <section class="step ctl-only" id="refStep">
         <div class="stephead"><span class="stepnum">1</span><h2>Reference image</h2><span class="state" id="refState">—</span></div>
-        <p class="hint">Put one <b>good</b> part in its exact position, then take the reference from the live view.</p>
+        <p class="hint">Put one <b>good</b> part in its exact position. Use the camera zoom to frame it, then take the reference from the live view. The zoom is saved in the program.</p>
         <div class="refbox" id="refBox"></div>
+        <div class="zrow"><span class="lbl">Camera zoom</span><input type="range" id="zoomIn" min="1" max="4" step="0.1" value="1" aria-label="Camera zoom"><output id="zoomOut">×1.0</output></div>
+        <div class="zrow" id="panRow"><span class="lbl">Position ↔</span><input type="range" id="panX" min="-1" max="1" step="0.02" value="0" aria-label="Horizontal position"><span class="lbl">↕</span><input type="range" id="panY" min="-1" max="1" step="0.02" value="0" aria-label="Vertical position"></div>
+        <div class="row" id="zoomLock" hidden><span class="hint" id="zoomLockTxt"></span><button class="btn small" id="zoomChange" type="button">Change zoom</button></div>
         <div class="row">
           <button class="btn primary big" id="refBtn" type="button">📷 Take reference</button>
           <button class="btn primary big" id="refOk" type="button" hidden>✔ Valid</button>
@@ -253,10 +268,12 @@ input.pname{flex:1;min-width:10ch}
 
       <section class="step ctl-only" id="areaStep">
         <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
-        <p class="hint"><b>+ Add area</b>, then on the image: drag inside a box to move it, drag a corner to resize it (or drag on an empty spot to draw a new one). Set each area's threshold, then validate the program.</p>
+        <p class="hint">Add a rectangle or a circle, then on the image: ✋ drag inside to move it, drag a corner to resize it. Each area is analysed on its own crop of the full-resolution picture (<b>detail</b>: Auto zooms small areas more). Set the thresholds, then validate.</p>
         <div class="areas" id="areaList"></div>
         <div class="row">
-          <button class="btn" id="addArea" type="button">+ Add area</button>
+          <button class="btn" id="editBtn" type="button">✎ Edit areas</button>
+          <button class="btn" id="addRect" type="button">+ ▭ Rectangle</button>
+          <button class="btn" id="addCirc" type="button">+ ◯ Circle</button>
           <button class="btn primary big" id="validBtn" type="button">✔ Validate program</button>
         </div>
       </section>
@@ -281,54 +298,96 @@ input.pname{flex:1;min-width:10ch}
 
 <script>
 (function(){
-const W=96, D=640, FLOOR=6, DEF_THR=5;
+const D=640, BASE=96, MAXG=192, FULLMAX=1600, FLOOR=6, DEF_THR=5;
 const $=id=>document.getElementById(id);
 const OKC='#1FA45A',NGC='#E0352B',EDC='#41B8CD',SELC='#F5C542';
 function store(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);return true}catch(e){return false}}
 function stored(k){try{return localStorage.getItem(k)}catch(e){return null}}
+const canvas=(w,h=w)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const sizeOf=s=>[s.videoWidth||s.naturalWidth||s.width,s.videoHeight||s.naturalHeight||s.height];
 
-/* ---------- image processing ---------- */
-function blur(a,r){
-  const tmp=new Float32Array(a.length), out=new Float32Array(a.length);
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const xx=x+k;if(xx>=0&&xx<W){s+=a[y*W+xx];n++}}tmp[y*W+x]=s/n}
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const yy=y+k;if(yy>=0&&yy<W){s+=tmp[yy*W+x];n++}}out[y*W+x]=s/n}
+/* ---------- camera zoom: which square of the camera image is used (saved in the program) ---------- */
+function camCrop(sw,sh,cam){
+  const s0=Math.min(sw,sh),z=Math.max(1,(cam&&cam.zoom)||1),s=s0/z;
+  const cx=sw/2+((cam&&cam.ox)||0)*(s0-s)/2, cy=sh/2+((cam&&cam.oy)||0)*(s0-s)/2;
+  return[cx-s/2,cy-s/2,s];
+}
+const curCam=()=>P?P.cam:{zoom:1,ox:0,oy:0};
+function makeFrame(src,max=FULLMAX){ // full-resolution square picture after camera zoom
+  const[sw,sh]=sizeOf(src),[x,y,s]=camCrop(sw,sh,curCam()),n=Math.max(16,Math.round(Math.min(s,max)));
+  const c=canvas(n);c.getContext('2d').drawImage(src,x,y,s,s,0,0,n,n);return{full:c,size:n};
+}
+function drawSrc(x,src){const[sw,sh]=sizeOf(src),[sx,sy,s]=camCrop(sw,sh,curCam());x.drawImage(src,sx,sy,s,s,0,0,D,D)}
+function thumbOf(c,n=120,q=.7){const t=canvas(n);t.getContext('2d').drawImage(c,0,0,n,n);return t.toDataURL('image/jpeg',q)}
+const toBlob=c=>new Promise(ok=>c.toBlob(ok,'image/jpeg',.9));
+
+/* ---------- per-area analysis at its own resolution ("zoom per area") ---------- */
+function blurWH(a,w,h,r){
+  const tmp=new Float32Array(a.length),out=new Float32Array(a.length);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const xx=x+k;if(xx>=0&&xx<w){s+=a[y*w+xx];n++}}tmp[y*w+x]=s/n}
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const yy=y+k;if(yy>=0&&yy<h){s+=tmp[yy*w+x];n++}}out[y*w+x]=s/n}
   return out;
 }
-const smC=document.createElement('canvas');smC.width=smC.height=W;
-const smX=smC.getContext('2d',{willReadFrequently:true});
-function grayOf(c){smX.drawImage(c,0,0,W,W);const px=smX.getImageData(0,0,W,W).data,g=new Float32Array(W*W);for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];return blur(g,1)}
-function square(src){
-  const c=document.createElement('canvas');c.width=c.height=D;
-  const sw=src.videoWidth||src.naturalWidth||src.width, sh=src.videoHeight||src.naturalHeight||src.height, s=Math.min(sw,sh);
-  c.getContext('2d').drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);return c;
+// analysis grid of an area: whole image = 96 points; Auto gives the area's long side ~96 points, capped by the real pixels
+function grid(a){
+  const F=P&&P.ref?P.ref.size:FULLMAX,w=a.x1-a.x0,h=a.y1-a.y0;
+  const k0=a.detail&&a.detail!=='auto'?+a.detail:Math.max(1,1/Math.max(w,h));
+  let gw=w*BASE*k0,gh=h*BASE*k0;
+  const cap=Math.min(1,(w*F)/gw,(h*F)/gh,MAXG/Math.max(gw,gh));
+  gw=Math.max(8,Math.round(gw*cap));gh=Math.max(8,Math.round(gh*cap));
+  return{gw,gh,k:k0*cap};
 }
-function thumbOf(c,n=120,q=.7){const t=document.createElement('canvas');t.width=t.height=n;t.getContext('2d').drawImage(c,0,0,n,n);return t.toDataURL('image/jpeg',q)}
-const g2b=g=>{const u=new Uint8Array(g.length);for(let i=0;i<g.length;i++)u[i]=Math.max(0,Math.min(255,Math.round(g[i])));let s='';for(let i=0;i<u.length;i+=4096)s+=String.fromCharCode.apply(null,u.subarray(i,i+4096));return btoa(s)};
-const b2g=b=>{const s=atob(b),g=new Float32Array(s.length);for(let i=0;i<s.length;i++)g[i]=s.charCodeAt(i);return g};
-function box(a){return[Math.max(0,Math.floor(a.x0*W)),Math.max(0,Math.floor(a.y0*W)),Math.min(W,Math.ceil(a.x1*W)),Math.min(W,Math.ceil(a.y1*W))]}
-
-/* ---------- program ----------
-   P = {id,name,ref:{img,gray},areas:[{id,name,x0,y0,x1,y1,thr,manual}],samples:[{id,gray,thumb,labels:{areaId:'ok'|'ng'}}],valid} */
-let P=null;
-function goods(a){const g=[P.ref.gray];for(const s of P.samples)if(s.labels[a.id]==='ok')g.push(s.gray);return g}
-function areaModel(a,list){
-  const[x0,y0,x1,y1]=box(a),n=list.length,mean=new Float32Array(W*W),sd=new Float32Array(W*W).fill(FLOOR);
-  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;let m=0;for(const g of list)m+=g[i];m/=n;mean[i]=m;
-    if(n>1){let v=0;for(const g of list){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(n-1)),FLOOR)}}
+const gKey=a=>{const g=grid(a);return`${a.id}|${a.x0.toFixed(4)},${a.y0.toFixed(4)},${a.x1.toFixed(4)},${a.y1.toFixed(4)}|${g.gw}x${g.gh}`};
+const gC=canvas(8),gX=gC.getContext('2d',{willReadFrequently:true});
+function areaGray(src,size,a){ // crop the area from a full picture and resample it to its grid
+  const{gw,gh}=grid(a);gC.width=gw;gC.height=gh;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
+  gX.drawImage(src,a.x0*size,a.y0*size,(a.x1-a.x0)*size,(a.y1-a.y0)*size,0,0,gw,gh);
+  const px=gX.getImageData(0,0,gw,gh).data,g=new Float32Array(gw*gh);
+  for(let i=0;i<gw*gh;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
+  return blurWH(g,gw,gh,1);
+}
+const maskCache={};
+function maskOf(a,gw,gh){ // circle / ellipse: only pixels inside count
+  if(a.shape!=='ellipse')return null;const k=gw+'x'+gh;if(maskCache[k])return maskCache[k];
+  const m=new Uint8Array(gw*gh);for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const u=(x+.5)/gw-.5,v=(y+.5)/gh-.5;m[y*gw+x]=u*u+v*v<=.25?1:0}
+  return maskCache[k]=m;
+}
+function areaModel(list,n){
+  const k=list.length,mean=new Float32Array(n),sd=new Float32Array(n).fill(FLOOR);
+  for(let i=0;i<n;i++){let m=0;for(const g of list)m+=g[i];m/=k;mean[i]=m;
+    if(k>1){let v=0;for(const g of list){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(k-1)),FLOOR)}}
   return{mean,sd};
 }
 function areaMap(a,m,g){
-  const[x0,y0,x1,y1]=box(a),map=new Float32Array(W*W);
-  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;map[i]=Math.abs(g[i]-m.mean[i])/m.sd[i]}
-  const b=blur(map,1);let mx=0;for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const v=b[y*W+x];if(v>mx)mx=v}
-  return{map:b,score:mx};
+  const{gw,gh}=grid(a),n=gw*gh,d=new Float32Array(n);
+  for(let i=0;i<n;i++)d[i]=Math.abs(g[i]-m.mean[i])/m.sd[i];
+  const b=blurWH(d,gw,gh,1),mk=maskOf(a,gw,gh);let mx=0;
+  for(let i=0;i<n;i++)if((!mk||mk[i])&&b[i]>mx)mx=b[i];
+  return{map:b,score:mx,gw,gh};
 }
-// learn one area: model from its good examples, threshold between the OK and NG examples
+
+/* ---------- program ----------
+   P = {id,name,valid,cam:{zoom,ox,oy},ref:{full,size,blob,thumb,cache},areas:[{id,name,shape,x0,y0,x1,y1,thr,manual,detail}],
+        samples:[{id,blob,thumb,labels:{areaId:'ok'|'ng'},cache}]}  */
+let P=null, progs=[];
+function refGray(a){const k=gKey(a);return P.ref.cache[k]||(P.ref.cache[k]=areaGray(P.ref.full,P.ref.size,a))}
+const sGray=(s,a)=>s.cache[gKey(a)];
+let learning=null;
+async function ensureGrays(){ // learned pictures are re-cut when areas move or change size
+  for(const s of P.samples){
+    const miss=P.areas.filter(a=>!s.cache[gKey(a)]);if(!miss.length)continue;
+    let bmp=null;try{bmp=await createImageBitmap(s.blob)}catch(e){continue}
+    for(const a of miss)s.cache[gKey(a)]=areaGray(bmp,bmp.width,a);
+    bmp.close&&bmp.close();
+  }
+}
 function learnArea(a){
-  const gl=goods(a);a._m=areaModel(a,gl);
+  const{gw,gh}=grid(a),n=gw*gh;
+  const gl=[refGray(a)];for(const s of P.samples)if(s.labels[a.id]==='ok'&&sGray(s,a))gl.push(sGray(s,a));
+  a._m=areaModel(gl,n);a._k=gKey(a);
   let maxOk=null;
-  if(gl.length>=2){maxOk=0;for(let k=0;k<gl.length;k++){const m=areaModel(a,gl.filter((_,j)=>j!==k));maxOk=Math.max(maxOk,areaMap(a,m,gl[k]).score)}}
-  const ngs=P.samples.filter(s=>s.labels[a.id]==='ng').map(s=>areaMap(a,a._m,s.gray).score);
+  if(gl.length>=2){maxOk=0;for(let k=0;k<gl.length;k++){const m=areaModel(gl.filter((_,j)=>j!==k),n);maxOk=Math.max(maxOk,areaMap(a,m,gl[k]).score)}}
+  const ngs=P.samples.filter(s=>s.labels[a.id]==='ng'&&sGray(s,a)).map(s=>areaMap(a,a._m,sGray(s,a)).score);
   const minNg=ngs.length?Math.min(...ngs):null;
   let thr;
   if(minNg!=null&&maxOk!=null)thr=minNg>maxOk?Math.min(Math.max((maxOk+minNg)/2,maxOk+2),minNg*.9):minNg*.95; // between OK and NG examples
@@ -339,36 +398,48 @@ function learnArea(a){
   a.stats={nOk:gl.length,nNg:ngs.length,maxOk,minNg,overlap:minNg!=null&&maxOk!=null&&minNg<=maxOk};
   if(!a.manual)a.thr=a.auto;
 }
-function learnAll(){if(P&&P.ref)P.areas.forEach(learnArea)}
-function inspect(g){
-  const res=P.areas.map(a=>{if(!a._m)learnArea(a);const r=areaMap(a,a._m,g);return{id:a.id,name:a.name,score:r.score,thr:a.thr,ng:r.score>a.thr,map:r.map}});
+function learnAll(){ // async because learned pictures may need to be decoded again
+  if(!P||!P.ref)return Promise.resolve();
+  const run=(async()=>{await ensureGrays();if(!P||!P.ref)return;P.areas.forEach(learnArea);if(U.last)U.last.r=inspect(U.last.frame)})();
+  learning=run;run.then(()=>{if(learning===run)learning=null;render()});render();return run;
+}
+function inspect(f){
+  const res=P.areas.map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);const g=areaGray(f.full,f.size,a),r=areaMap(a,a._m,g);
+    return{id:a.id,name:a.name,score:r.score,thr:a.thr,ng:r.score>a.thr,map:r.map,gw:r.gw,gh:r.gh,gray:g,key:a._k}});
   let worst=res[0];for(const r of res)if(r.score/r.thr>worst.score/worst.thr)worst=r;
   return{res,ng:res.some(r=>r.ng),worst};
 }
-// storage: list of programs + one key per program
-function progIndex(){try{return JSON.parse(stored('vs1-progs')||'[]')}catch(e){return[]}}
+
+/* ---------- storage (IndexedDB: holds the full-resolution pictures) ---------- */
+let DBH=null;
+function idb(){return new Promise((ok,bad)=>{try{const r=indexedDB.open('vs1',1);r.onupgradeneeded=()=>r.result.createObjectStore('progs',{keyPath:'id'});r.onsuccess=()=>ok(r.result);r.onerror=()=>bad(r.error)}catch(e){bad(e)}})}
+function tx(mode,fn){return new Promise((ok,bad)=>{if(!DBH)return bad(new Error('no db'));const t=DBH.transaction('progs',mode),st=t.objectStore('progs');const r=fn(st);t.oncomplete=()=>ok(r&&r.result);t.onerror=()=>bad(t.error)})}
 let saveT=null;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{
+function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
   if(!P)return;
-  const data={id:P.id,name:P.name,valid:P.valid,ref:P.ref&&{img:P.ref.img,gray:g2b(P.ref.gray)},
-    areas:P.areas.map(a=>({id:a.id,name:a.name,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,manual:a.manual})),
-    samples:P.samples.map(s=>({id:s.id,thumb:s.thumb,labels:s.labels,gray:g2b(s.gray)}))};
-  const ok=store('vs1-prog-'+P.id,JSON.stringify(data));
-  const idx=progIndex().filter(p=>p.id!==P.id);idx.push({id:P.id,name:P.name});idx.sort((a,b)=>a.id-b.id);store('vs1-progs',JSON.stringify(idx));store('vs1-cur',String(P.id));
-  if(!ok)flashMsg('Could not save (browser storage full or blocked). The program stays open until you reload.');
+  const rec={id:P.id,name:P.name,valid:P.valid,cam:{...P.cam},
+    areas:P.areas.map(a=>({id:a.id,name:a.name,shape:a.shape,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,manual:a.manual,detail:a.detail})),
+    ref:P.ref&&P.ref.blob?{blob:P.ref.blob,thumb:P.ref.thumb}:null,
+    samples:P.samples.filter(s=>s.blob).map(s=>({id:s.id,blob:s.blob,thumb:s.thumb,labels:s.labels}))};
+  const i=progs.findIndex(p=>p.id===P.id);if(i<0)progs.push(rec);else progs[i]=rec;
+  store('vs1-cur',String(P.id));
+  try{await tx('readwrite',st=>st.put(rec))}catch(e){flashMsg('Could not save the program in this browser (storage blocked). It stays open until you reload.')}
   renderProgSel();
 },300)}
-function loadProg(id){
-  let d=null;try{d=JSON.parse(stored('vs1-prog-'+id)||'null')}catch(e){}
-  if(!d)return false;
-  P={id:d.id,name:d.name,valid:!!d.valid,ref:null,areas:d.areas||[],samples:(d.samples||[]).map(s=>({...s,gray:b2g(s.gray)}))};
-  if(d.ref){P.ref={img:d.ref.img,gray:b2g(d.ref.gray),disp:null};const im=new Image();im.onload=()=>{P.ref.disp=square(im);render()};im.src=d.ref.img}
-  learnAll();U.cand=null;U.last=null;U.mode='live';store('vs1-cur',String(id));return true;
+async function loadProg(id){
+  const d=progs.find(p=>p.id===id);if(!d)return false;
+  stopRun();
+  P={id:d.id,name:d.name,valid:!!d.valid,cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
+    areas:(d.areas||[]).map(a=>({shape:'rect',detail:'auto',...a})),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;resetView();
+  if(d.ref&&d.ref.blob){try{const bmp=await createImageBitmap(d.ref.blob);const c=canvas(bmp.width);c.getContext('2d').drawImage(bmp,0,0);
+    P.ref={full:c,size:bmp.width,blob:d.ref.blob,thumb:d.ref.thumb,cache:{}}}catch(e){P.ref=null;P.valid=false}}
+  store('vs1-cur',String(id));sendCam();await learnAll();render();return true;
 }
-function newProg(name){
-  const idx=progIndex(),id=idx.reduce((m,p)=>Math.max(m,p.id),0)+1;
-  P={id,name:name||`Program ${String(id).padStart(2,'0')}`,valid:false,ref:null,areas:[],samples:[]};
-  U.cand=null;U.last=null;U.mode='live';U.selArea=null;save();
+function newProg(){
+  const id=progs.reduce((m,p)=>Math.max(m,p.id),0)+1;
+  P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;resetView();sendCam();save();
 }
 
 /* ---------- UI state ---------- */
@@ -376,16 +447,24 @@ const U={mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},ti
 let msgT=null;
 function flashMsg(t){U.msg=t;clearTimeout(msgT);msgT=setTimeout(()=>{U.msg='';render()},6000);render()}
 
+/* ---------- screen zoom (display only) ---------- */
+const V={z:1,cx:.5,cy:.5};
+function clampView(){V.z=Math.min(8,Math.max(1,V.z));const h=.5/V.z;V.cx=Math.min(1-h,Math.max(h,V.cx));V.cy=Math.min(1-h,Math.max(h,V.cy))}
+function resetView(){V.z=1;V.cx=V.cy=.5}
+function zoomAt(f,sx=.5,sy=.5){const[ix,iy]=toImg(sx,sy);V.z*=f;clampView();V.cx=ix-(sx-.5)/V.z;V.cy=iy-(sy-.5)/V.z;clampView();$('vzVal').textContent='×'+V.z.toFixed(1);drawScreen()}
+const toImg=(sx,sy)=>[V.cx+(sx-.5)/V.z,V.cy+(sy-.5)/V.z];
+function applyView(x){x.setTransform(V.z,0,0,V.z,D*(.5-V.cx*V.z),D*(.5-V.cy*V.z))}
+
 /* ---------- image sources: phone (peer link), demo, files ---------- */
 const SRC={kind:stored('vs1-src')||'demo',demo:null,demoT:null,demoSeed:1};
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function grey(v){v=Math.max(0,Math.min(255,Math.round(v)));return`rgb(${v},${v},${v+4})`}
-function samplePart(seed,defect){
-  const r=rng(seed), c=document.createElement('canvas');c.width=c.height=D;const x=c.getContext('2d');
-  x.fillStyle='#3a4146';x.fillRect(0,0,D,D);
-  x.strokeStyle='rgba(255,255,255,.04)';x.lineWidth=2;
-  for(let i=0;i<D;i+=24){x.beginPath();x.moveTo(i,0);x.lineTo(i,D);x.stroke()}
-  const k=D/320, cx=D/2+(r()-.5)*1.6*k, cy=D/2+(r()-.5)*1.6*k, rot=(r()-.5)*.012, b=(r()-.5)*14;
+function samplePart(seed,defect,S=1280){
+  const r=rng(seed),c=canvas(S),x=c.getContext('2d');
+  x.fillStyle='#3a4146';x.fillRect(0,0,S,S);
+  const k=S/320;x.strokeStyle='rgba(255,255,255,.04)';x.lineWidth=k;
+  for(let i=0;i<S;i+=12*k){x.beginPath();x.moveTo(i,0);x.lineTo(i,S);x.stroke()}
+  const cx=S/2+(r()-.5)*1.6*k, cy=S/2+(r()-.5)*1.6*k, rot=(r()-.5)*.012, b=(r()-.5)*14;
   const g=x.createRadialGradient(cx-30*k,cy-30*k,10*k,cx,cy,120*k);g.addColorStop(0,grey(205+b));g.addColorStop(1,grey(150+b));
   x.beginPath();x.arc(cx,cy,110*k,0,Math.PI*2);x.fillStyle=g;x.fill();
   x.beginPath();x.arc(cx,cy,62*k,0,Math.PI*2);x.strokeStyle=grey(118+b);x.lineWidth=3*k;x.stroke();
@@ -395,104 +474,98 @@ function samplePart(seed,defect){
     const a=rot+h*Math.PI/2+Math.PI/4;
     x.beginPath();x.arc(cx+86*k*Math.cos(a),cy+86*k*Math.sin(a),11*k,0,Math.PI*2);x.fillStyle='#171b1e';x.fill();
   }
-  if(defect==='scratch'){x.lineCap='round';x.strokeStyle='rgba(45,40,38,.9)';x.lineWidth=7*k;x.beginPath();x.moveTo(cx-34*k,cy+66*k);x.lineTo(cx+38*k,cy+84*k);x.stroke()}
-  if(defect==='chip'){const a=rot+2.1;x.beginPath();x.moveTo(cx+114*k*Math.cos(a-.14),cy+114*k*Math.sin(a-.14));x.lineTo(cx+92*k*Math.cos(a),cy+92*k*Math.sin(a));x.lineTo(cx+114*k*Math.cos(a+.14),cy+114*k*Math.sin(a+.14));x.closePath();x.fillStyle='#3a4146';x.fill()}
-  if(defect==='stain'){const sx=cx+42*k,sy=cy-58*k,sg=x.createRadialGradient(sx,sy,2,sx,sy,22*k);sg.addColorStop(0,'rgba(80,48,18,.9)');sg.addColorStop(1,'rgba(92,58,24,0)');x.fillStyle=sg;x.beginPath();x.arc(sx,sy,22*k,0,Math.PI*2);x.fill()}
-  const id=x.getImageData(0,0,D,D),d=id.data;
+  if(defect==='scratch'){x.lineCap='round';x.strokeStyle='rgba(45,40,38,.9)';x.lineWidth=3*k;x.beginPath();x.moveTo(cx-34*k,cy+66*k);x.lineTo(cx+38*k,cy+84*k);x.stroke()}
+  if(defect==='chip'){const a=rot+2.1;x.beginPath();x.moveTo(cx+114*k*Math.cos(a-.12),cy+114*k*Math.sin(a-.12));x.lineTo(cx+100*k*Math.cos(a),cy+100*k*Math.sin(a));x.lineTo(cx+114*k*Math.cos(a+.12),cy+114*k*Math.sin(a+.12));x.closePath();x.fillStyle='#3a4146';x.fill()}
+  if(defect==='stain'){const sx=cx+42*k,sy=cy-58*k,sg=x.createRadialGradient(sx,sy,1,sx,sy,12*k);sg.addColorStop(0,'rgba(80,48,18,.9)');sg.addColorStop(1,'rgba(92,58,24,0)');x.fillStyle=sg;x.beginPath();x.arc(sx,sy,12*k,0,Math.PI*2);x.fill()}
+  const id=x.getImageData(0,0,S,S),d=id.data;
   for(let i=0;i<d.length;i+=4){const n=(r()-.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
   x.putImageData(id,0,0);return c;
 }
-function demoNext(){const r=Math.random(),d=r<.7?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d)}
+function demoNext(){const r=Math.random(),d=r<.65?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d)}
 function setSrc(k){
   SRC.kind=k;store('vs1-src',k);clearInterval(SRC.demoT);
   if(k==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
   if(k==='phone'&&!L.conn){const c=stored('vs1-pair');if(c){$('pairIn').value=c;connectPhone()}}
   render();
 }
-function liveFrame(){ // what the live view shows right now (canvas/video) or null
+function liveSrc(){
   if(SRC.kind==='demo')return SRC.demo;
   if(SRC.kind==='phone'&&L.video&&L.video.videoWidth&&L.camOn)return L.video;
   return null;
 }
-function grab(){ // take one picture from the source
-  if(SRC.kind==='demo')return Promise.resolve(square(SRC.demo));
-  if(SRC.kind==='file')return new Promise(ok=>{const f=$('fileIn');f.value='';f.onchange=async()=>{const file=f.files[0];if(!file)return ok(null);try{ok(square(await createImageBitmap(file)))}catch(e){ok(null)}};f.click()});
+function grab(){ // one full-resolution picture from the source, with the program's camera zoom
+  if(SRC.kind==='demo')return Promise.resolve(makeFrame(SRC.demo));
+  if(SRC.kind==='file')return new Promise(ok=>{const f=$('fileIn');f.value='';f.onchange=async()=>{const file=f.files[0];if(!file)return ok(null);try{ok(makeFrame(await createImageBitmap(file)))}catch(e){ok(null)}};f.click()});
   if(!(L.conn&&L.conn.open&&L.camOn)){flashMsg('No live image: connect the phone (Image source) and start its camera.');return Promise.resolve(null)}
-  // ask the phone for a full-resolution still; fall back to the video frame
-  return new Promise(ok=>{
+  return new Promise(ok=>{ // the phone sends its full camera frame; fall back to the video frame
     const id=Math.random().toString(36).slice(2);
-    const t=setTimeout(()=>{delete L.wait[id];ok(L.video&&L.video.videoWidth?square(L.video):null)},3000);
-    L.wait[id]=img=>{clearTimeout(t);const im=new Image();im.onload=()=>ok(square(im));im.onerror=()=>ok(null);im.src=img};
+    const t=setTimeout(()=>{delete L.wait[id];ok(L.video&&L.video.videoWidth?makeFrame(L.video):null)},4000);
+    L.wait[id]=img=>{clearTimeout(t);const im=new Image();im.onload=()=>ok(makeFrame(im));im.onerror=()=>ok(null);im.src=img};
     L.conn.send({type:'snap',id});
   });
 }
 
 /* ---------- actions ---------- */
-async function takeRef(){
-  stopRun();const c=await grab();if(!c)return;
-  U.cand={disp:c,gray:grayOf(c)};U.mode='cand';flash();render();
+async function takeRef(){stopRun();const f=await grab();if(!f)return;U.cand=f;U.mode='cand';resetView();flash();render()}
+async function refValid(){
+  const f=U.cand;if(!f)return;U.cand=null;
+  P.ref={full:f.full,size:f.size,thumb:thumbOf(f.full),blob:await toBlob(f.full),cache:{}};
+  const had=P.areas.length;P.samples=[];P.valid=false;
+  if(!had)addArea('rect',false);
+  U.mode='edit';save();learnAll();
+  flashMsg(had?'New reference saved. Areas kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1, add rectangles or circles.');
 }
-function refValid(){
-  const c=U.cand;if(!c)return;U.cand=null;
-  const hadAreas=P.areas.length;
-  P.ref={img:c.disp.toDataURL('image/jpeg',.85),gray:c.gray,disp:c.disp};P.samples=[];P.valid=false;
-  if(!hadAreas)addArea(false);
-  learnAll();U.mode='edit';save();
-  flashMsg(hadAreas?'New reference saved. Areas kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1 on the image, add more areas if needed.');
+function addArea(shape,r=true){
+  const id=P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1,o=(P.areas.length%4)*.04,s=shape==='ellipse'?.2:.3;
+  const a={id,name:`Area ${id}`,shape,x0:.5-s/2+o,y0:.5-s/2+o,x1:.5+s/2+o,y1:.5+s/2+o,thr:DEF_THR,manual:false,detail:'auto'};
+  P.areas.push(a);U.selArea=a.id;P.valid=false;U.mode='edit';if(r){save();learnAll()}
 }
-function addArea(r=true){
-  const id=P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1, o=(P.areas.length%4)*.04;
-  const a={id,name:`Area ${id}`,x0:.35+o,y0:.35+o,x1:.65+o,y1:.65+o,thr:DEF_THR,manual:false};
-  P.areas.push(a);U.selArea=a.id;P.valid=false;learnArea(a);U.mode='edit';if(r){save();render()}
-}
-function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];P.valid=false;save();render()}
-function validate(){
-  if(!P.ref||!P.areas.length)return;
-  P.valid=true;U.mode='live';U.selArea=null;learnAll();save();
-  flashMsg('Program validated. Step 3: put a part and press Trigger.');
-}
+function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];P.valid=false;save();learnAll()}
+async function validate(){if(!P.ref||!P.areas.length)return;await learnAll();P.valid=true;U.mode='live';U.selArea=null;save();flashMsg('Program validated. Step 3: put a part and press Trigger.')}
 async function trigger(){
   if(!P||!P.valid)return;
-  const c=await grab();if(!c)return;
-  const g=grayOf(c),r=inspect(g);
-  r.ng?U.c.ng++:U.c.ok++;
-  U.last={disp:c,gray:g,r,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
-  U.mode='result';U.view=null;flash();
-  if(r.ng&&navigator.vibrate)navigator.vibrate(150);
-  render();
+  const f=await grab();if(!f)return;if(learning)await learning;
+  const r=inspect(f);r.ng?U.c.ng++:U.c.ok++;
+  U.last={frame:f,r,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
+  U.mode='result';U.view=null;flash();if(r.ng&&navigator.vibrate)navigator.vibrate(150);render();
 }
-function learnLast(){
-  const l=U.last;if(!l||l.learned)return;
+async function learnLast(){
+  const l=U.last;if(!l||l.learned)return;l.learned=true;render();
   const before=Object.fromEntries(P.areas.map(a=>[a.id,a.thr]));
-  P.samples.push({id:Date.now(),gray:l.gray,thumb:thumbOf(l.disp),labels:{...l.labels}});
-  l.learned=true;learnAll();
-  l.r=inspect(l.gray);save();
+  const cache={};for(const r of l.r.res)cache[r.key]=r.gray;
+  P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache});
+  await learnAll();save();
   const ch=P.areas.filter(a=>Math.abs(a.thr-before[a.id])>=.05).map(a=>`${a.name}: ${before[a.id].toFixed(1)} → ${a.thr.toFixed(1)}`);
   flashMsg('Learned.'+(ch.length?' New thresholds: '+ch.join(', '):' Thresholds unchanged.'));
 }
-function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;learnAll();save();flashMsg('Image removed from learning.')}
+function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
 function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
 function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,3000);trigger()}
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
+function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
 
 /* ---------- drawing ---------- */
+function areaPath(x,a){const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;x.beginPath();
+  if(a.shape==='ellipse')x.ellipse(X+w/2,Y+h/2,Math.max(1,w/2),Math.max(1,h/2),0,0,Math.PI*2);else x.rect(X,Y,w,h)}
 function strokeArea(x,a,color,label,handles){
-  const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;
-  x.lineWidth=3;x.strokeStyle=color;x.setLineDash(color===EDC?[10,6]:[]);x.strokeRect(X,Y,w,h);x.setLineDash([]);
-  if(handles){x.fillStyle=color;for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])x.fillRect(hx-9,hy-9,18,18)}
-  if(label){x.font='600 26px "Barlow Condensed",Arial,sans-serif';const tw=x.measureText(label).width+12,ly=Y>34?Y-32:Y+3;
-    x.fillStyle=color;x.fillRect(X,ly,tw,30);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(label,X+6,ly+23)}
+  const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D,z=V.z;
+  x.lineWidth=3/z;x.strokeStyle=color;x.setLineDash(color===EDC?[10/z,6/z]:[]);areaPath(x,a);x.stroke();x.setLineDash([]);
+  if(handles){if(a.shape==='ellipse'){x.lineWidth=1/z;x.setLineDash([4/z,4/z]);x.strokeRect(X,Y,w,h);x.setLineDash([])}
+    const hs=18/z;x.fillStyle=color;for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])x.fillRect(hx-hs/2,hy-hs/2,hs,hs)}
+  if(label){const fs=26/z;x.font=`600 ${fs}px "Barlow Condensed",Arial,sans-serif`;const tw=x.measureText(label).width+12/z,ly=Y>fs*1.3?Y-fs*1.23:Y+3/z;
+    x.fillStyle=color;x.fillRect(X,ly,tw,fs*1.15);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(label,X+6/z,ly+fs*.88)}
 }
 function drawAreas(x,res,edit){
   P.areas.forEach(a=>{const r=res&&res.find(z=>z.id===a.id),sel=edit&&U.selArea===a.id;
-    strokeArea(x,a,sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''),sel)});
+    strokeArea(x,a,sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`:''),sel)});
 }
 function heat(x,res){
-  const hm=document.createElement('canvas');hm.width=hm.height=W;const hx=hm.getContext('2d'),id=hx.createImageData(W,W);
-  for(const r of res){const a=P.areas.find(z=>z.id===r.id);if(!a)continue;const[x0,y0,x1,y1]=box(a);
-    for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++){const i=y*W+xx,q0=r.map[i]/r.thr;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
-      id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}}
-  hx.putImageData(id,0,0);x.imageSmoothingEnabled=true;x.drawImage(hm,0,0,D,D);
+  for(const r of res){const a=P.areas.find(z=>z.id===r.id);if(!a||!r.map)continue;
+    const hm=canvas(r.gw,r.gh),hx=hm.getContext('2d'),id=hx.createImageData(r.gw,r.gh);
+    for(let i=0;i<r.gw*r.gh;i++){const q0=r.map[i]/r.thr;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
+      id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}
+    hx.putImageData(id,0,0);x.save();areaPath(x,a);x.clip();x.imageSmoothingEnabled=true;
+    x.drawImage(hm,a.x0*D,a.y0*D,(a.x1-a.x0)*D,(a.y1-a.y0)*D);x.restore()}
 }
 function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
 function readout(r,live){
@@ -509,93 +582,112 @@ function readout(r,live){
 function idle(t,name,a,b){const v=$('verdict');v.className='verdict idle';v.textContent=t;$('imgName').textContent=name||'—';$('roScore').textContent=a||'—';$('roThr').textContent=b||'—';readout(null)}
 function drawScreen(ts){
   const cv=$('view'),x=cv.getContext('2d');
-  cv.classList.toggle('edit',U.mode==='edit'&&L.role==='ctl');
-  x.fillStyle='#05080a';x.fillRect(0,0,D,D);
+  x.setTransform(1,0,0,1,0,0);x.fillStyle='#05080a';x.fillRect(0,0,D,D);
   if(L.role==='cam'){
     if(C.stream&&C.video.videoWidth){const v=C.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-      const vd=$('verdict');vd.className='verdict live';vd.textContent=L.conns.length?'LIVE · PC connected':'LIVE';$('imgName').textContent=`${C.video.videoWidth}×${C.video.videoHeight}`;$('roScore').textContent=C.locked?'Exposure locked':'Auto exposure';$('roThr').textContent='code '+(L.code||'—')}
+      const z=L.pcCam&&L.pcCam.zoom>1?L.pcCam:null;
+      if(z){const[cx0,cy0,cs]=camCrop(s,s,z);x.strokeStyle='#F5C542';x.lineWidth=3;x.setLineDash([12,8]);x.strokeRect(cx0/s*D,cy0/s*D,cs/s*D,cs/s*D);x.setLineDash([])}
+      const vd=$('verdict');vd.className='verdict live';vd.textContent=L.conns.length?'LIVE · PC connected':'LIVE';
+      $('imgName').textContent=`${sw}×${sh}`;$('roScore').textContent=z?`PC zoom ×${z.zoom.toFixed(1)} (yellow box)`:(C.locked?'Exposure locked':'Auto exposure');$('roThr').textContent='code '+(L.code||'—')}
     else idle('CAMERA OFF','—','Press Start camera','');
     return;
   }
-  if(!P){idle('NO PROGRAM');return}
-  if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.disp,0,0);idle('REFERENCE?','candidate','Is this image good?','Valid or retake');return}
-  if(U.mode==='edit'&&P.ref&&P.ref.disp){x.drawImage(P.ref.disp,0,0);drawAreas(x,null,true);
-    if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
-    idle('EDIT AREAS','reference',`${P.areas.length} area${P.areas.length===1?'':'s'}`,'Drag box / corners');return}
-  if(U.mode==='sample'&&U.view){const im=U.view._img;if(im&&im.complete)x.drawImage(im,0,0,D,D);else{const i=new Image();i.onload=()=>render();i.src=U.view.thumb;U.view._img=i}
-    drawAreas(x,null,false);const lb=P.areas.map(a=>`${a.name} ${U.view.labels[a.id]==='ng'?'NG':U.view.labels[a.id]==='ok'?'OK':'—'}`).join(' · ');
-    idle('LEARNED IMAGE','learned (low-res preview)',lb,'');return}
-  if(U.mode==='result'&&U.last){x.drawImage(U.last.disp,0,0);if(U.heat)heat(x,U.last.r.res);drawAreas(x,U.last.r.res,false);
-    $('imgName').textContent='triggered '+new Date(U.last.ts).toLocaleTimeString()+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
-  // live
-  const f=liveFrame();
-  if(!f){idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
-  const sw=f.videoWidth||f.width,sh=f.videoHeight||f.height,s=Math.min(sw,sh);x.drawImage(f,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  if(P.valid&&P.ref){if(!ts||ts-U.lastLive>300){U.lastLive=ts||0;U.live=inspect(grayOf(cv))}drawAreas(x,U.live.res,false);$('imgName').textContent='LIVE';readout(U.live,true)}
-  else{if(P.ref)drawAreas(x,null,false);idle('LIVE','LIVE',P.ref?'Program not validated':'No reference yet','')}
+  applyView(x);
+  const fin=()=>x.setTransform(1,0,0,1,0,0);
+  if(!P){fin();idle('NO PROGRAM');return}
+  if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.full,0,0,D,D);fin();idle('REFERENCE?','candidate · '+U.cand.size+' px','Is this image good?','Valid or retake');return}
+  if(U.mode==='edit'&&P.ref){x.drawImage(P.ref.full,0,0,D,D);drawAreas(x,null,true);
+    if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{shape:'rect',x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
+    fin();idle('EDIT AREAS','reference · '+P.ref.size+' px',`${P.areas.length} area${P.areas.length===1?'':'s'}`,'Drag box / corners');return}
+  if(U.mode==='sample'&&U.view){const s=U.view;
+    if(s._img&&s._img.complete&&s._img.naturalWidth)x.drawImage(s._img,0,0,D,D);
+    else if(!s._img){s._img=new Image();s._img.onload=()=>drawScreen();s._img.src=URL.createObjectURL(s.blob)}
+    drawAreas(x,null,false);fin();
+    idle('LEARNED IMAGE','learned picture',P.areas.map(a=>`${a.name} ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'—'}`).join(' · '),'');return}
+  if(U.mode==='result'&&U.last){x.drawImage(U.last.frame.full,0,0,D,D);if(U.heat)heat(x,U.last.r.res);drawAreas(x,U.last.r.res,false);fin();
+    $('imgName').textContent='triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
+  const src=liveSrc();
+  if(!src){fin();idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
+  drawSrc(x,src);
+  if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>350){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900))}drawAreas(x,U.live.res,false);fin();$('imgName').textContent='LIVE';readout(U.live,true)}
+  else{if(P.ref)drawAreas(x,null,false);fin();idle('LIVE',`LIVE · camera zoom ×${P.cam.zoom.toFixed(1)}`,P.ref?'Program not validated':'No reference yet','')}
 }
-function loop(ts){requestAnimationFrame(loop);
-  const live=(L.role==='cam')||(U.mode==='live'&&liveFrame());if(live)drawScreen(ts)}
+function loop(ts){requestAnimationFrame(loop);if(L.role==='cam'||(U.mode==='live'&&liveSrc()))drawScreen(ts)}
 
 /* ---------- panel rendering ---------- */
 function areaRow(a,r){
   const row=document.createElement('div');row.className='area'+(U.selArea===a.id&&U.mode==='edit'?' sel':'');
-  const sw=document.createElement('span');sw.className='sw';
+  const sw=document.createElement('span');sw.className='sw';if(a.shape==='ellipse')sw.style.borderRadius='50%';
   const nm=document.createElement('input');nm.type='text';nm.value=a.name;nm.maxLength=24;nm.setAttribute('aria-label','Area name');
-  nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'&&!P.valid)U.mode='edit';drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||`Area ${a.id}`;save();render()};
+  nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'){stopRun();U.mode='edit';render()}else drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||`Area ${a.id}`;save();render()};
   const val=document.createElement('span');val.className='val'+(r?(r.ng?' ng':' ok'):'');val.textContent=r?`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`:'';
   const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.title='Delete area';x.onclick=()=>delArea(a);
   row.append(sw,nm,val,x);
+  // shape + detail (zoom per area)
+  const op=document.createElement('div');op.className='opts';
+  const sh=document.createElement('span');sh.className='shape';
+  for(const[k,t,ti]of[['rect','▭','Rectangle'],['ellipse','◯','Circle / ellipse']]){const b=document.createElement('button');b.type='button';b.textContent=t;b.title=ti;b.className=a.shape===k?'on':'';
+    b.onclick=()=>{a.shape=k;P.valid=false;U.selArea=a.id;if(P.ref)U.mode='edit';save();learnAll()};sh.appendChild(b)}
+  const dl=document.createElement('span');dl.className='lbl';dl.textContent='Detail';
+  const ds=document.createElement('select');ds.setAttribute('aria-label',a.name+' detail');
+  for(const[k,t]of[['auto','Auto'],['1','×1'],['2','×2'],['4','×4'],['8','×8']]){const o=document.createElement('option');o.value=k;o.textContent=t;if(String(a.detail||'auto')===k)o.selected=true;ds.appendChild(o)}
+  ds.onchange=()=>{a.detail=ds.value;P.valid=false;save();learnAll()};
+  const g=grid(a),gi=document.createElement('span');gi.className='val';gi.textContent=`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`;
+  op.append(sh,dl,ds,gi);row.append(op);
   const sl=document.createElement('div');sl.className='slider';
   const lb=document.createElement('span');lb.className='lbl';lb.textContent='Threshold';
   const inp=document.createElement('input');inp.type='range';inp.min=.5;inp.max=Math.max(20,Math.ceil(a.thr*2));inp.step=.1;inp.value=a.thr;inp.setAttribute('aria-label',a.name+' threshold');
   const out=document.createElement('output');out.textContent=(+a.thr).toFixed(1);
-  inp.oninput=()=>{a.thr=+inp.value;a.manual=true;out.textContent=a.thr.toFixed(1);if(U.last)U.last.r=inspect(U.last.gray);drawScreen();save()};
+  inp.oninput=()=>{a.thr=+inp.value;a.manual=true;out.textContent=a.thr.toFixed(1);if(U.last)U.last.r=inspect(U.last.frame);drawScreen();save()};
   inp.onchange=()=>render();
   const au=document.createElement('button');au.type='button';au.className='btn small';au.textContent=a.manual?'Auto':'Auto ✓';au.title='Use the learned threshold';
-  au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.gray);save();render()};
+  au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
   sl.append(lb,inp,out,au);row.append(sl);
   const st=a.stats;if(st){const s=document.createElement('div');s.className='stats'+(st.overlap?' warn':'');
-    s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area':'');row.append(s)}
+    s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
   return row;
 }
 function renderProgSel(){
-  const sel=$('progSel'),idx=progIndex();sel.innerHTML='';
-  for(const p of idx){const o=document.createElement('option');o.value=p.id;o.textContent=`P${String(p.id).padStart(2,'0')} · ${p.name}`;if(P&&P.id===p.id)o.selected=true;sel.appendChild(o)}
-  if(!idx.length){const o=document.createElement('option');o.textContent='No program';sel.appendChild(o)}
+  const sel=$('progSel');sel.innerHTML='';
+  for(const p of[...progs].sort((a,b)=>a.id-b.id)){const o=document.createElement('option');o.value=p.id;o.textContent=`P${String(p.id).padStart(2,'0')} · ${p.name}`;if(P&&P.id===p.id)o.selected=true;sel.appendChild(o)}
+  if(!progs.length){const o=document.createElement('option');o.textContent='No program';sel.appendChild(o)}
 }
 function render(){
   document.body.classList.toggle('role-cam',L.role==='cam');
   $('roleCtl').setAttribute('aria-pressed',L.role==='ctl');$('roleCam').setAttribute('aria-pressed',L.role==='cam');
   if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('modeTag').textContent='CAMERA';drawScreen();return}
-  // source
   for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
   $('phoneRow').hidden=SRC.kind!=='phone';
   const ss=$('srcState'),sh=$('srcHint');
   if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
-  else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera: a new part arrives every 2.5 s, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
+  else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
   else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Take reference asks you for an image file.'}
+  if(U.msg)sh.textContent=U.msg;
   $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind];
   // program
   $('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
   $('progStat').textContent=P?`P${String(P.id).padStart(2,'0')} · ${P.name}`:'—';
-  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=P?(P.valid?'Validated':'Not validated'):'—';
-  // 1 reference
+  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=learning?'Learning…':P?(P.valid?'Validated':'Not validated'):'—';
+  // 1 reference + camera zoom
   $('refStep').classList.toggle('locked',!P);
   const rb=$('refBox');rb.innerHTML='';
-  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.img;im.alt='Reference';const s=document.createElement('span');s.className='hint';s.textContent='Reference saved';rb.append(im,s)}
+  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.thumb;im.alt='Reference';const s=document.createElement('span');s.className='hint';s.textContent=`Reference saved · ${P.ref.size} px`;rb.append(im,s)}
   const cand=U.mode==='cand'&&U.cand;
   $('refBtn').hidden=!!cand;$('refOk').hidden=$('refNo').hidden=!cand;$('refBtn').textContent=P&&P.ref?'📷 Retake reference':'📷 Take reference';
   $('refState').className='state'+(P&&P.ref?' good':' warn');$('refState').textContent=cand?'Check it':P&&P.ref?'Saved':'Needed';
+  const cam=P?P.cam:{zoom:1,ox:0,oy:0},locked=!!(P&&P.ref);
+  $('zoomIn').value=cam.zoom;$('zoomOut').textContent='×'+(+cam.zoom).toFixed(1);$('panX').value=cam.ox;$('panY').value=cam.oy;
+  $('zoomIn').disabled=$('panX').disabled=$('panY').disabled=locked;$('panRow').hidden=cam.zoom<=1.01;
+  $('zoomLock').hidden=!locked;$('zoomLockTxt').textContent=`Zoom ×${(+cam.zoom).toFixed(1)} is locked by the reference.`;
   // 2 areas
   $('areaStep').classList.toggle('locked',!(P&&P.ref));
   const al=$('areaList');al.innerHTML='';
   const lr=U.mode==='result'&&U.last?U.last.r:null;
   if(P)P.areas.forEach(a=>al.appendChild(areaRow(a,lr&&lr.res.find(z=>z.id===a.id))));
-  if(P&&!P.areas.length){const e=document.createElement('div');e.className='empty';e.textContent='No control area. Press + Add area.';al.appendChild(e)}
+  if(P&&!P.areas.length){const e=document.createElement('div');e.className='empty';e.textContent='No control area. Add a rectangle or a circle.';al.appendChild(e)}
   $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} area${P.areas.length===1?'':'s'}`:'—';
-  $('validBtn').disabled=!(P&&P.ref&&P.areas.length);$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
+  $('validBtn').disabled=!(P&&P.ref&&P.areas.length);$('editBtn').hidden=!(P&&P.ref)||U.mode==='edit';$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
   // 3 run & teach
   $('runStep').classList.toggle('locked',!(P&&P.valid));
   $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
@@ -620,41 +712,62 @@ function render(){
     b.title='Click to view, click again to remove';sl.appendChild(b)}
   $('runState').className='state';$('runState').textContent=P?`${P.samples.length} learned`:'—';
   const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
-  $('liveBtn').disabled=U.mode==='live';
-  const m=$('srcHint');if(U.msg){m.textContent=U.msg}
+  $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
 }
 
-/* ---------- area editing on the image ---------- */
-function ptr(e){const r=$('view').getBoundingClientRect();return[Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]}
-$('view').addEventListener('pointerdown',e=>{
-  if(U.mode!=='edit'||L.role!=='ctl'||!P)return;
-  e.preventDefault();$('view').setPointerCapture(e.pointerId);
-  const[px,py]=ptr(e),tol=.035;
-  let d=null;
+/* ---------- pointer: move / resize areas, pan the zoomed screen, hand cursors ---------- */
+function ptr(e){const r=$('view').getBoundingClientRect();return toImg(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height)))}
+const inside=(a,px,py)=>a.shape==='ellipse'?((px-(a.x0+a.x1)/2)/((a.x1-a.x0)/2))**2+((py-(a.y0+a.y1)/2)/((a.y1-a.y0)/2))**2<=1:px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1;
+function hit(px,py){
+  if(U.mode!=='edit'||L.role!=='ctl'||!P)return null;const tol=.03/V.z;
   for(const a of[...P.areas].reverse()){
     const cs=[['x0','y0'],['x1','y0'],['x0','y1'],['x1','y1']].find(([cx,cy])=>Math.abs(px-a[cx])<tol&&Math.abs(py-a[cy])<tol);
-    if(cs){d={mode:'corner',a,cx:cs[0],cy:cs[1]};break}
-    if(px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1){d={mode:'move',a,sx:px,sy:py,o:{...a}};break}
+    if(cs)return{mode:'corner',a,cx:cs[0],cy:cs[1]};
   }
-  U.drag=d||{mode:'new',sx:px,sy:py,cx:px,cy:py};
-  if(d){U.selArea=d.a.id;render()}
+  for(const a of[...P.areas].reverse())if(inside(a,px,py))return{mode:'move',a};
+  return null;
+}
+function cursorFor(px,py){
+  const h=hit(px,py);
+  if(h&&h.mode==='corner')return(h.cx==='x0')===(h.cy==='y0')?'nwse-resize':'nesw-resize';
+  if(h)return'grab';
+  if(V.z>1.01)return'grab';
+  return U.mode==='edit'?'crosshair':'default';
+}
+const cv=$('view');
+cv.addEventListener('pointerdown',e=>{
+  if(L.role!=='ctl'||!P)return;
+  const[px,py]=ptr(e),h=hit(px,py);
+  if(!h&&V.z<=1.01&&U.mode!=='edit')return;
+  e.preventDefault();cv.setPointerCapture(e.pointerId);
+  if(h){U.drag={...h,sx:px,sy:py,o:{...h.a}};U.selArea=h.a.id;cv.style.cursor=h.mode==='move'?'grabbing':cv.style.cursor;render();return}
+  if(V.z>1.01){const r=cv.getBoundingClientRect();U.drag={mode:'pan',ex:e.clientX,ey:e.clientY,cx:V.cx,cy:V.cy,w:r.width};cv.style.cursor='grabbing';return}
+  U.drag={mode:'new',sx:px,sy:py,cx:px,cy:py};
 });
-$('view').addEventListener('pointermove',e=>{
-  const d=U.drag;if(!d)return;const[px,py]=ptr(e);
+cv.addEventListener('pointermove',e=>{
+  const d=U.drag;
+  if(!d){if(L.role==='ctl'&&P){const[px,py]=ptr(e);cv.style.cursor=cursorFor(px,py)}return}
+  if(d.mode==='pan'){V.cx=d.cx-(e.clientX-d.ex)/d.w/V.z;V.cy=d.cy-(e.clientY-d.ey)/d.w/V.z;clampView();drawScreen();return}
+  const[px,py]=ptr(e);
   if(d.mode==='new'){d.cx=px;d.cy=py}
-  else if(d.mode==='move'){const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0,nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));d.a.x0=nx;d.a.y0=ny;d.a.x1=nx+w;d.a.y1=ny+h}
-  else{const a=d.a;a[d.cx]=px;a[d.cy]=py}
+  else if(d.mode==='move'){const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0,nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));Object.assign(d.a,{x0:nx,y0:ny,x1:nx+w,y1:ny+h})}
+  else{d.a[d.cx]=px;d.a[d.cy]=py}
   drawScreen();
 });
-function endDrag(){
+function endDrag(e){
   const d=U.drag;if(!d)return;U.drag=null;
+  if(e&&e.clientX!=null){const[px,py]=ptr(e);cv.style.cursor=cursorFor(px,py)}
+  if(d.mode==='pan')return;
   if(d.mode==='new'){const a={x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)};
-    if(a.x1-a.x0>.03&&a.y1-a.y0>.03){const id=P.areas.reduce((m,z)=>Math.max(m,z.id),0)+1;P.areas.push({id,name:`Area ${id}`,...a,thr:DEF_THR,manual:false});U.selArea=id}}
-  else{const a=d.a;if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.03)a.x1=Math.min(1,a.x0+.03);if(a.y1-a.y0<.03)a.y1=Math.min(1,a.y0+.03)}
-  P.valid=false;learnAll();save();render();
+    if(a.x1-a.x0>.02&&a.y1-a.y0>.02){const id=P.areas.reduce((m,z)=>Math.max(m,z.id),0)+1;P.areas.push({id,name:`Area ${id}`,shape:'rect',...a,thr:DEF_THR,manual:false,detail:'auto'});U.selArea=id}else{render();return}}
+  else{const a=d.a;if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.02)a.x1=Math.min(1,a.x0+.02);if(a.y1-a.y0<.02)a.y1=Math.min(1,a.y0+.02);
+    if(d.o.x0===a.x0&&d.o.y0===a.y0&&d.o.x1===a.x1&&d.o.y1===a.y1){render();return}}
+  P.valid=false;save();learnAll();
 }
-$('view').addEventListener('pointerup',endDrag);$('view').addEventListener('pointercancel',endDrag);
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('wheel',e=>{if(L.role!=='ctl')return;e.preventDefault();const r=cv.getBoundingClientRect();zoomAt(Math.pow(1.0015,-e.deltaY),(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)},{passive:false});
+cv.addEventListener('dblclick',()=>{if(L.role==='ctl'){resetView();render()}});
 
 /* ---------- phone camera (Camera role) ---------- */
 const C={stream:null,video:null,facing:'environment',locked:false};
@@ -680,18 +793,19 @@ async function lockCam(){
   if(!Object.keys(adv).length){camMsg('This phone browser cannot lock exposure. Keep the light constant.',true);return}
   try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure'}catch(e){camMsg('Lock failed: '+e.name,true)}
 }
-function snap(){ // full-resolution still, square, 640 px
-  if(!C.stream||!C.video.videoWidth)return null;return square(C.video).toDataURL('image/jpeg',.88);
+function snap(){ // full camera frame at native resolution; the PC applies the program's zoom
+  if(!C.stream||!C.video.videoWidth)return null;const v=C.video,c=canvas(v.videoWidth,v.videoHeight);c.getContext('2d').drawImage(v,0,0);return c.toDataURL('image/jpeg',.9);
 }
 
 /* ---------- link (PeerJS): phone = camera, PC = controller ---------- */
-const L={role:stored('vs1-role2')||(matchMedia('(pointer:coarse)').matches?'cam':'ctl'),kind:null,peer:null,conns:[],conn:null,calls:[],video:null,camOn:false,wait:{},code:null};
+const L={role:stored('vs1-role2')||(matchMedia('(pointer:coarse)').matches?'cam':'ctl'),kind:null,peer:null,conns:[],conn:null,calls:[],video:null,camOn:false,wait:{},code:null,pcCam:null};
 function linkStat(t,cls){const e=$('linkStat');e.textContent=t;e.className='link'+(cls?' '+cls:'')}
 const Q=new URLSearchParams(location.search);
 function peerOpts(){const h=Q.get('peer');if(!h)return{};const[host,port]=h.split(':');return{host,port:+port||443,path:'/',secure:(+port||443)===443}}
 function loadPeerJs(){return new Promise((ok,bad)=>{if(window.Peer)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';s.onload=ok;s.onerror=bad;document.head.appendChild(s)})}
 function newCode(){const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
 function sendStatus(){for(const c of L.conns)if(c.open)try{c.send({type:'status',cam:!!C.stream})}catch(e){}}
+function sendCam(){if(L.conn&&L.conn.open&&P)try{L.conn.send({type:'cam',cam:P.cam})}catch(e){}}
 function callPCs(){for(const c of L.calls)try{c.close()}catch(e){}L.calls=[];if(!L.peer||!C.stream)return;for(const c of L.conns)if(c.open)L.calls.push(L.peer.call(c.peer,C.stream))}
 function startCamPeer(){
   if(L.peer){L.peer.destroy();L.peer=null}
@@ -704,8 +818,9 @@ function startCamPeer(){
   p.on('connection',c=>{
     c.on('open',()=>{L.conns.push(c);$('camState').className='state good';$('camState').textContent='PC connected';linkStat('PC connected','on');
       c.send({type:'status',cam:!!C.stream});if(C.stream)L.calls.push(p.call(c.peer,C.stream));render()});
-    c.on('data',m=>{if(m&&m.type==='snap'){const img=snap();c.send({type:'snap',id:m.id,img});
-      document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}});
+    c.on('data',m=>{if(!m)return;
+      if(m.type==='snap'){c.send({type:'snap',id:m.id,img:snap()});document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
+      if(m.type==='cam'&&m.cam&&typeof m.cam.zoom==='number')L.pcCam={zoom:Math.min(4,Math.max(1,m.cam.zoom)),ox:+m.cam.ox||0,oy:+m.cam.oy||0}});
     c.on('close',()=>{L.conns=L.conns.filter(x=>x!==c);if(!L.conns.length){$('camState').className='state';$('camState').textContent='Waiting for PC';linkStat('ready · code '+code,'on')}render()});
   });
 }
@@ -718,7 +833,7 @@ function connectPhone(){
   const p=new Peer(peerOpts());L.peer=p;
   p.on('open',()=>{
     const c=p.connect('vs1-'+code,{reliable:true});L.conn=c;
-    c.on('open',()=>{linkStat('phone '+code+' connected','on');render()});
+    c.on('open',()=>{linkStat('phone '+code+' connected','on');sendCam();render()});
     c.on('data',m=>{if(!m)return;if(m.type==='status'){L.camOn=!!m.cam;render()}
       if(m.type==='snap'){const f=L.wait[m.id];delete L.wait[m.id];if(f){if(m.img)f(m.img);else f(null)}}});
     c.on('close',()=>{L.camOn=false;linkStat('phone disconnected','err');if(L.video)L.video.srcObject=null;render()});
@@ -739,26 +854,33 @@ $('roleCtl').onclick=()=>setRole('ctl');$('roleCam').onclick=()=>setRole('cam');
 $('srcPhone').onclick=()=>setSrc('phone');$('srcDemo').onclick=()=>setSrc('demo');$('srcFile').onclick=()=>setSrc('file');
 $('pairBtn').onclick=connectPhone;$('pairIn').onkeydown=e=>{if(e.key==='Enter')connectPhone()};
 $('newBtn').onclick=()=>{stopRun();newProg();render()};
-$('delBtn').onclick=()=>{if(!P||!confirm(`Delete program "${P.name}"?`))return;store('vs1-prog-'+P.id,null);store('vs1-progs',JSON.stringify(progIndex().filter(p=>p.id!==P.id)));P=null;
-  const idx=progIndex();if(idx.length)loadProg(idx[idx.length-1].id);else newProg();render()};
-$('progSel').onchange=e=>{stopRun();if(loadProg(+e.target.value))render()};
+$('delBtn').onclick=async()=>{if(!P||!confirm(`Delete program "${P.name}"?`))return;const id=P.id;progs=progs.filter(p=>p.id!==id);try{await tx('readwrite',st=>st.delete(id))}catch(e){}
+  P=null;if(progs.length)await loadProg(progs[progs.length-1].id);else newProg();render()};
+$('progSel').onchange=e=>loadProg(+e.target.value);
 $('progName').onchange=e=>{if(!P)return;P.name=e.target.value.trim()||P.name;save();render()};
 $('refBtn').onclick=takeRef;$('refOk').onclick=refValid;$('refNo').onclick=takeRef;
-$('addArea').onclick=()=>addArea(true);$('validBtn').onclick=validate;
+$('zoomIn').oninput=e=>setCam('zoom',+e.target.value);$('panX').oninput=e=>setCam('ox',+e.target.value);$('panY').oninput=e=>setCam('oy',+e.target.value);
+$('zoomChange').onclick=()=>{if(!confirm('Changing the camera zoom needs a new reference. The reference and the learned images will be cleared (areas are kept). Continue?'))return;
+  P.ref=null;P.samples=[];P.valid=false;U.mode='live';U.last=null;save();render()};
+$('editBtn').onclick=()=>{stopRun();U.mode='edit';render()};
+$('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
 $('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;
 $('liveBtn').onclick=()=>{U.mode='live';U.view=null;render()};
 $('resetBtn').onclick=()=>{U.c={ok:0,ng:0};render()};
 $('heatT').onchange=e=>{U.heat=e.target.checked;drawScreen()};
+$('vzIn').onclick=()=>zoomAt(1.5);$('vzOut').onclick=()=>zoomAt(1/1.5);$('vzFit').onclick=()=>{resetView();render()};
 $('camBtn').onclick=()=>C.stream?stopCam():startCam();
 $('flipBtn').onclick=()=>{C.facing=C.facing==='environment'?'user':'environment';startCam()};
 $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-{const idx=progIndex(),cur=+stored('vs1-cur');if(!(cur&&loadProg(cur))&&!(idx.length&&loadProg(idx[idx.length-1].id)))newProg()}
-if(SRC.kind==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
-render();requestAnimationFrame(loop);
 (async()=>{
+  try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
+  const cur=+stored('vs1-cur');
+  if(!(cur&&await loadProg(cur))&&!(progs.length&&await loadProg(progs[progs.length-1].id)))newProg();
+  if(SRC.kind==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
+  render();requestAnimationFrame(loop);
   // inside claude.ai the camera and the peer link are not available: demo camera and files still work
   const inClaude=!!(window.claude&&window.claude.use)||window.self!==window.top;
   if(!inClaude){try{await loadPeerJs();L.kind='peer'}catch(e){L.kind='none';linkStat('link unavailable (no internet?)','err')}}
