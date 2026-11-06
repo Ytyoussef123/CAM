@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>VS-1 Inspection Console</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -102,13 +105,20 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 
 .note{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--muted)}
 .note b{color:var(--fg)}
+/* camera */
+.cambar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px}
+.cambar .msg{font-size:13px;color:var(--muted);flex-basis:100%}
+.cambar .msg.err{color:var(--ng)}
+.btn.big{padding:12px 18px;font-size:17px}
+[hidden]{display:none!important}
+.verdict.live{background:var(--accent);color:var(--accent-fg);font-size:22px;padding:8px 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
   <header class="bar">
     <div class="brand">VS-1<small>Vision Sensor</small></div>
-    <div class="stat"><span class="lbl">Source</span><b>Image files · no camera</b></div>
+    <div class="stat"><span class="lbl">Source</span><b id="srcStat">Image files</b></div>
     <div class="stat"><span class="lbl">Model</span><b id="modelStat">—</b></div>
     <div class="stat"><span class="lbl">Method</span><b>Pixel deviation</b></div>
     <span class="spacer"></span>
@@ -127,6 +137,15 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
       <div class="scorebar">
         <div class="track" aria-hidden="true"><div class="fill" id="fill" style="width:0"></div><div class="tick" id="tick" style="left:50%"></div></div>
         <div class="scorerow"><span>0</span><span id="scaleMax">—</span></div>
+      </div>
+
+      <div class="cambar">
+        <button class="btn primary" id="camBtn" type="button">📷 Start camera</button>
+        <button class="btn" id="flipBtn" type="button" hidden>Switch camera</button>
+        <button class="btn" id="lockBtn" type="button" hidden>Lock exposure</button>
+        <button class="btn" id="liveBtn" type="button" hidden>Back to live</button>
+        <label class="toggle" id="ghostL" hidden><input type="checkbox" id="ghostT" checked> Alignment ghost</label>
+        <span class="msg" id="camMsg">Use the phone's camera as the sensor: keep the phone fixed, put the part under it, capture.</span>
       </div>
 
       <div class="controls">
@@ -155,6 +174,8 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
         <div class="thumbs" id="learnList"></div>
         <div class="controls">
           <button class="btn primary" id="learnBtn" type="button">Learn OK</button>
+          <button class="btn primary" id="capLearn" type="button" hidden>📷 Capture good part</button>
+          <label class="btn small" id="nativeLearn" hidden>📷 Phone photo<input type="file" id="learnShot" accept="image/*" capture="environment"></label>
           <label class="btn small">+ Add images<input type="file" id="learnFile" accept="image/*" multiple></label>
           <button class="btn small" id="learnClear" type="button">Clear</button>
         </div>
@@ -175,13 +196,15 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
         <p class="hint">Add the photos to check. Click one to see its result, or press Run line to inspect them in sequence like a production line.</p>
         <div class="thumbs" id="testList"></div>
         <div class="controls">
+          <button class="btn primary" id="capTest" type="button" hidden>📷 Capture &amp; inspect</button>
+          <label class="btn small" id="nativeTest" hidden>📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
           <label class="btn small">+ Add images<input type="file" id="testFile" accept="image/*" multiple></label>
           <button class="btn small" id="testClear" type="button">Clear</button>
           <button class="btn small" id="sampleBtn" type="button">Load sample parts</button>
         </div>
       </section>
 
-      <div class="note"><b>Sample loaded:</b> machined flanges generated in the browser. 10 good parts teach the model; the inspection set mixes good parts with a missing bolt hole, a scratch, an edge chip and a stain. You can drag your own photos onto steps 1 and 3.<br><br><b>How this version works:</b> it compares each pixel to the average of the good parts, so parts must sit in the same position, as on a fixture. The Python version with PatchCore will tolerate more movement.</div>
+      <div class="note"><b>Sample loaded:</b> machined flanges generated in the browser. 10 good parts teach the model; the inspection set mixes good parts with a missing bolt hole, a scratch, an edge chip and a stain. You can drag your own photos onto steps 1 and 3.<br><br><b>With the phone camera:</b> press Start camera, fix the phone (stand or tape) above the part, clear the samples, capture 5–20 good parts, press Learn OK, then press Trigger once (or Run line for one capture every 2.5 s) for each part to check. The faint ghost shows the learned part so you can place the next one in the same spot.<br><br><b>How this version works:</b> it compares each pixel to the average of the good parts, so parts must sit in the same position, as on a fixture. The Python version with PatchCore will tolerate more movement.</div>
     </aside>
   </div>
 </div>
@@ -203,15 +226,19 @@ function blur(a,r){
 function toItem(src,name){
   const disp=document.createElement('canvas');disp.width=disp.height=D;
   const c=disp.getContext('2d');
-  const sw=src.naturalWidth||src.width, sh=src.naturalHeight||src.height, s=Math.min(sw,sh);
+  const sw=src.videoWidth||src.naturalWidth||src.width, sh=src.videoHeight||src.naturalHeight||src.height, s=Math.min(sw,sh);
   c.drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  const sm=document.createElement('canvas');sm.width=sm.height=W;
-  const sc=sm.getContext('2d');sc.drawImage(disp,0,0,W,W);
-  const px=sc.getImageData(0,0,W,W).data;
-  let g=new Float32Array(W*W);
-  for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
   const th=document.createElement('canvas');th.width=th.height=160;th.getContext('2d').drawImage(disp,0,0,160,160);
-  return {id:++uid,name,disp,thumb:th.toDataURL('image/jpeg',.8),gray:blur(g,1),score:null,map:null};
+  return {id:++uid,name,disp,thumb:th.toDataURL('image/jpeg',.8),gray:grayOf(disp),score:null,map:null};
+}
+const smC=document.createElement('canvas');smC.width=smC.height=W;
+const smX=smC.getContext('2d',{willReadFrequently:true});
+function grayOf(disp){
+  smX.drawImage(disp,0,0,W,W);
+  const px=smX.getImageData(0,0,W,W).data;
+  const g=new Float32Array(W*W);
+  for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
+  return blur(g,1);
 }
 function buildModel(items){
   const n=items.length; if(n<2)return null;
@@ -265,7 +292,7 @@ function samplePart(seed,defect){
   return c;
 }
 function loadSample(){
-  stopRun();
+  stopRun();S.sample=true;
   S.learn=[];S.test=[];
   for(let i=0;i<10;i++)S.learn.push(toItem(samplePart(11+i*7),`good_${String(i+1).padStart(2,'0')}.png`));
   const plan=[null,'missing',null,'scratch','chip',null,'stain',null];
@@ -294,6 +321,7 @@ function setThr(v,render=true){
 }
 const isNG=t=>t.score!=null&&t.score>S.thr;
 function trigger(){
+  if(camOn()){captureTest();return}
   if(!S.model||!S.test.length)return;
   const t=S.test[S.cursor%S.test.length];S.cursor++;
   S.sel=t;isNG(t)?S.c.ng++:S.c.ok++;
@@ -302,8 +330,8 @@ function trigger(){
 function stopRun(){if(S.timer){clearInterval(S.timer);S.timer=null}$('runBtn').textContent='▶ Run line';$('modeTag').textContent='SETUP';$('modeTag').classList.remove('run')}
 function toggleRun(){
   if(S.timer){stopRun();return}
-  if(!S.model||!S.test.length)return;
-  S.timer=setInterval(trigger,900);trigger();
+  if(!S.model||!(S.test.length||camOn()))return;
+  S.timer=setInterval(trigger,camOn()?2500:900);trigger();
   $('runBtn').textContent='■ Stop';$('modeTag').textContent='RUN';$('modeTag').classList.add('run');
 }
 async function addFiles(files,list){
@@ -357,7 +385,7 @@ function thumbList(el,items,kind){
     if(kind==='test'){const c=document.createElement('span');
       if(t.score==null){c.className='chip';c.textContent='—'}else{const ng=isNG(t);c.className='chip '+(ng?'ng':'ok');c.textContent=(ng?'NG ':'OK ')+t.score.toFixed(1)}
       b.appendChild(c)}
-    b.onclick=()=>{S.sel=t;renderAll()};
+    b.onclick=()=>{S.sel=t;holdResult();renderAll()};
     el.appendChild(b);
   }
 }
@@ -371,12 +399,17 @@ function renderAll(){
   const scored=S.test.filter(t=>t.score!=null),ng=scored.filter(isNG).length;
   const ts=$('testState');ts.className='state'+(scored.length?(ng?' warn':' good'):'');ts.textContent=scored.length?`${scored.length-ng} OK · ${ng} NG`:'—';
   const tot=S.c.ok+S.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=S.c.ok;$('cNg').textContent=S.c.ng;$('cRate').textContent=(tot?S.c.ng/tot*100:0).toFixed(1)+'%';
-  $('runBtn').disabled=$('stepBtn').disabled=!(S.model&&S.test.length);
+  $('runBtn').disabled=$('stepBtn').disabled=!(S.model&&(S.test.length||camOn()));
+  $('stepBtn').textContent=camOn()?'📷 Trigger once':'Trigger once';
+  $('liveBtn').hidden=!camOn()||!S.hold;
+  if(camOn()&&!S.hold)return;
   drawView();
 }
 
 /* ---------- wiring ---------- */
-$('learnBtn').onclick=()=>{learn();renderAll()};
+$('learnBtn').onclick=()=>{learn();if(camOn()&&S.model){S.hold=false;camMsg(`Learned ${S.model.n} good parts. Now place a part and press Trigger once.`)}renderAll()};
+$('learnShot').onchange=async e=>{await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
+$('testShot').onchange=async e=>{await addFiles(e.target.files,S.test);e.target.value='';scoreTests();const t=S.test[S.test.length-1];if(t){S.sel=t;if(S.model)isNG(t)?S.c.ng++:S.c.ok++}renderAll()};
 $('learnFile').onchange=async e=>{await addFiles(e.target.files,S.learn);e.target.value='';S.model=null;scoreTests();renderAll()};
 $('testFile').onchange=async e=>{const n=S.test.length;await addFiles(e.target.files,S.test);e.target.value='';scoreTests();if(S.test[n])S.sel=S.test[n];renderAll()};
 $('learnClear').onclick=()=>{stopRun();S.learn=[];S.model=null;if(S.sel&&!S.test.includes(S.sel))S.sel=null;scoreTests();renderAll()};
@@ -394,6 +427,112 @@ $('heatT').onchange=e=>{S.heat=e.target.checked;drawView()};
   el.addEventListener('dragleave',()=>el.classList.remove('drag'));
   el.addEventListener('drop',async e=>{e.preventDefault();el.classList.remove('drag');await addFiles(e.dataTransfer.files,get());if(isLearn)S.model=null;scoreTests();renderAll()});
 });
+
+/* ---------- phone / webcam camera ---------- */
+const C={stream:null,video:null,facing:'environment',locked:false,lastLive:0};
+S.hold=false;S.sample=true;
+const camOn=()=>!!C.stream;
+function camMsg(t,err){const m=$('camMsg');m.textContent=t;m.classList.toggle('err',!!err)}
+function grab(){
+  const v=C.video, c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);return c;
+}
+function clearSample(){if(!S.sample)return;S.sample=false;stopRun();S.learn=[];S.test=[];S.model=null;S.sel=null;S.cursor=0;S.c={ok:0,ng:0}}
+async function startCam(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    camMsg('Live camera needs a secure page (https://). Use the "Phone photo" buttons instead: they open the phone camera app.',true);
+    $('nativeLearn').hidden=$('nativeTest').hidden=false;return}
+  try{
+    stopCam(false);
+    C.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:C.facing},width:{ideal:1920},height:{ideal:1080}}});
+    if(!C.video){C.video=document.createElement('video');C.video.playsInline=true;C.video.muted=true;C.video.setAttribute('playsinline','')}
+    C.video.srcObject=C.stream;await C.video.play();
+    C.locked=false;clearSample();S.hold=false;
+    const tr=C.stream.getVideoTracks()[0], st=tr.getSettings?tr.getSettings():{};
+    $('srcStat').textContent=`Camera ${st.width||C.video.videoWidth}×${st.height||C.video.videoHeight}`;
+    $('camBtn').textContent='■ Stop camera';$('camBtn').classList.remove('primary');
+    $('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=false;$('lockBtn').textContent='Lock exposure';
+    $('capLearn').hidden=$('capTest').hidden=false;
+    camMsg(S.model?'Camera on. Place a part and press Trigger once.':'Camera on. Step 1: place a good part and press "Capture good part". Repeat 5–20 times, then Learn OK.');
+    renderAll();requestAnimationFrame(liveLoop);
+  }catch(e){
+    C.stream=null;
+    camMsg(e&&e.name==='NotAllowedError'?'Camera permission refused. Allow the camera in the browser settings, or use "Phone photo".':'Could not open the camera ('+(e&&e.name||e)+'). Use "Phone photo" instead.',true);
+    $('nativeLearn').hidden=$('nativeTest').hidden=false;
+  }
+}
+function stopCam(render=true){
+  if(C.stream)C.stream.getTracks().forEach(t=>t.stop());
+  C.stream=null;if(!render)return;
+  stopRun();S.hold=false;
+  $('srcStat').textContent='Image files';$('camBtn').textContent='📷 Start camera';$('camBtn').classList.add('primary');
+  $('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=$('capLearn').hidden=$('capTest').hidden=true;
+  camMsg('Camera stopped.');renderAll();
+}
+async function lockCam(){
+  const tr=C.stream&&C.stream.getVideoTracks()[0];if(!tr)return;
+  const caps=tr.getCapabilities?tr.getCapabilities():{}, adv={};
+  const mode=C.locked?'continuous':'manual';
+  for(const k of ['exposureMode','whiteBalanceMode','focusMode'])if(caps[k]&&caps[k].includes(mode))adv[k]=mode;
+  if(!Object.keys(adv).length){camMsg('This browser cannot lock exposure. Keep the light constant (no window light, lamp fixed).',true);return}
+  try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure';camMsg(C.locked?'Exposure, focus and white balance locked: light changes now show up as differences.':'Automatic exposure again.')}
+  catch(e){camMsg('Lock failed: '+e.name,true)}
+}
+function holdResult(){if(camOn()){S.hold=true}}
+function capture(kind){
+  if(!camOn()||!C.video.videoWidth)return null;
+  const list=kind==='learn'?S.learn:S.test, n=list.length+1;
+  const it=toItem(grab(),kind==='learn'?`cam_good_${String(n).padStart(2,'0')}.jpg`:`cam_part_${String(n).padStart(4,'0')}.jpg`);
+  list.push(it);return it;
+}
+function captureLearn(){
+  clearSample();const it=capture('learn');if(!it)return;
+  S.model=null;scoreTests();
+  camMsg(`${S.learn.length} good part${S.learn.length>1?'s':''} captured.`+(S.learn.length>=5?' Press Learn OK when you have enough.':' Move the part out and back in, then capture again.'));
+  flash();renderAll();
+}
+function captureTest(){
+  if(!S.model){camMsg('Learn the good parts first (step 1).',true);return}
+  clearSample();const t=capture('test');if(!t)return;
+  const r=inspect(S.model,t.gray);t.score=r.score;t.map=r.map;
+  S.sel=t;const ng=isNG(t);ng?S.c.ng++:S.c.ok++;
+  if(ng&&navigator.vibrate)navigator.vibrate(200);
+  S.hold=true;renderAll();drawView();flash();
+  clearTimeout(C.ht);C.ht=setTimeout(()=>{S.hold=false;renderAll()},S.timer?1800:2500);
+}
+function flash(){const sc=document.querySelector('.screen');sc.animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
+function ghostOf(m){
+  if(m.ghost)return m.ghost;
+  const c=document.createElement('canvas');c.width=c.height=W;const x=c.getContext('2d'),id=x.createImageData(W,W);
+  for(let i=0;i<W*W;i++){const v=m.mean[i];id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}
+  x.putImageData(id,0,0);return m.ghost=c;
+}
+function liveLoop(ts){
+  if(!camOn())return;
+  requestAnimationFrame(liveLoop);
+  if(S.hold||!C.video.videoWidth)return;
+  const cv=$('view'),x=cv.getContext('2d'),v=C.video;
+  const sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
+  x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
+  const liveGray=S.model&&ts-C.lastLive>250?grayOf(cv):null;
+  if(S.model&&$('ghostT').checked){x.globalAlpha=.3;x.imageSmoothingEnabled=true;x.drawImage(ghostOf(S.model),0,0,D,D);x.globalAlpha=1}
+  x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1;x.beginPath();x.moveTo(D/2,0);x.lineTo(D/2,D);x.moveTo(0,D/2);x.lineTo(D,D/2);x.stroke();
+  const vd=$('verdict');vd.className='verdict live';
+  $('imgName').textContent=C.locked?'LIVE · exposure locked':'LIVE';
+  if(liveGray){
+    C.lastLive=ts;const r=inspect(S.model,liveGray);const ng=r.score>S.thr;
+    vd.textContent=`LIVE · ${ng?'NG':'OK'}`;
+    $('roScore').textContent=`Live score ${r.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${S.thr.toFixed(1)}`;
+  }else if(!S.model){vd.textContent='LIVE';$('roScore').textContent='Not learned';$('roThr').textContent=`Good parts ${S.learn.length}`}
+  $('fill').style.width='0';setLamps(null);
+}
+$('camBtn').onclick=()=>camOn()?stopCam():startCam();
+$('flipBtn').onclick=()=>{C.facing=C.facing==='environment'?'user':'environment';startCam()};
+$('lockBtn').onclick=lockCam;
+$('liveBtn').onclick=()=>{S.hold=false;renderAll()};
+$('capLearn').onclick=captureLearn;
+$('capTest').onclick=captureTest;
 loadSample();
+if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)$('nativeLearn').hidden=$('nativeTest').hidden=false;
 })();
 </script>
