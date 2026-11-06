@@ -142,7 +142,12 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 .area .slider,.area .stats{grid-column:1/-1}
 .area .stats{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .area .stats.warn{color:var(--ng)}
-.area .x{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 8px}
+.area .tools{display:inline-flex;gap:4px}
+.area .ed.on{background:var(--accent);color:var(--accent-fg)}
+.area .num{width:7ch;font-family:var(--f-mono);font-size:13px;padding:2px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--fg)}
+.area.dim{opacity:.5}
+.area .kind{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.area .x,.area .ed{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 8px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .code{font-family:var(--f-mono);font-size:30px;font-weight:500;letter-spacing:.14em;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 14px}
 .codein{font-family:var(--f-mono);font-size:18px;letter-spacing:.1em;width:9ch;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);text-transform:lowercase}
@@ -268,12 +273,15 @@ input.pname{flex:1;min-width:10ch}
 
       <section class="step ctl-only" id="areaStep">
         <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
-        <p class="hint">Add a rectangle or a circle, then on the image: ✋ drag inside to move it, drag a corner to resize it. Each area is analysed on its own crop of the full-resolution picture (<b>detail</b>: Auto zooms small areas more). Set the thresholds, then validate.</p>
+        <p class="hint"><b>▭ / ◯</b> check an area against the good parts. <b>📏 Measure</b>: draw a line across a gap, the two edges are found and the distance checked. <b>⌖ Position reference</b>: a distinctive part of the piece that is searched in every picture so all other tools follow the part if it moves. On the image: ✋ drag to move, drag a corner or an end to resize. <b>✎</b> edits one tool alone, zoomed.</p>
         <div class="areas" id="areaList"></div>
         <div class="row">
-          <button class="btn" id="editBtn" type="button">✎ Edit areas</button>
+          <button class="btn" id="editBtn" type="button">✎ Edit tools</button>
           <button class="btn" id="addRect" type="button">+ ▭ Rectangle</button>
           <button class="btn" id="addCirc" type="button">+ ◯ Circle</button>
+          <button class="btn" id="addMeas" type="button">+ 📏 Measure</button>
+          <button class="btn" id="addRef" type="button">+ ⌖ Position reference</button>
+          <button class="btn" id="doneBtn" type="button" hidden>✓ Done</button>
           <button class="btn primary big" id="validBtn" type="button">✔ Validate program</button>
         </div>
       </section>
@@ -321,6 +329,13 @@ function drawSrc(x,src){const[sw,sh]=sizeOf(src),[sx,sy,s]=camCrop(sw,sh,curCam(
 function thumbOf(c,n=120,q=.7){const t=canvas(n);t.getContext('2d').drawImage(c,0,0,n,n);return t.toDataURL('image/jpeg',q)}
 const toBlob=c=>new Promise(ok=>c.toBlob(ok,'image/jpeg',.9));
 
+/* ---------- tools: check areas (▭ ◯), measures (📏), position reference (⌖) ---------- */
+const isCheck=a=>!a.type||a.type==='check';
+const checks=()=>P?P.areas.filter(isCheck):[];
+const measures=()=>P?P.areas.filter(a=>a.type==='measure'):[];
+const refTool=()=>P?P.areas.find(a=>a.type==='ref'):null;
+const shift=(a,o)=>o&&(o.dx||o.dy)?{...a,x0:a.x0+o.dx,x1:a.x1+o.dx,y0:a.y0+o.dy,y1:a.y1+o.dy}:a;
+
 /* ---------- per-area analysis at its own resolution ("zoom per area") ---------- */
 function blurWH(a,w,h,r){
   const tmp=new Float32Array(a.length),out=new Float32Array(a.length);
@@ -337,14 +352,15 @@ function grid(a){
   gw=Math.max(8,Math.round(gw*cap));gh=Math.max(8,Math.round(gh*cap));
   return{gw,gh,k:k0*cap};
 }
-const gKey=a=>{const g=grid(a);return`${a.id}|${a.x0.toFixed(4)},${a.y0.toFixed(4)},${a.x1.toFixed(4)},${a.y1.toFixed(4)}|${g.gw}x${g.gh}`};
+function refKey(){const r=refTool();return r?`${r.x0.toFixed(4)},${r.y0.toFixed(4)},${r.x1.toFixed(4)},${r.y1.toFixed(4)},${r.range}`:'none'}
+const gKey=a=>{const g=grid(a);return`${a.id}|${a.x0.toFixed(4)},${a.y0.toFixed(4)},${a.x1.toFixed(4)},${a.y1.toFixed(4)}|${g.gw}x${g.gh}|${refKey()}`};
 const gC=canvas(8),gX=gC.getContext('2d',{willReadFrequently:true});
-function areaGray(src,size,a){ // crop the area from a full picture and resample it to its grid
-  const{gw,gh}=grid(a);gC.width=gw;gC.height=gh;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
-  gX.drawImage(src,a.x0*size,a.y0*size,(a.x1-a.x0)*size,(a.y1-a.y0)*size,0,0,gw,gh);
-  const px=gX.getImageData(0,0,gw,gh).data,g=new Float32Array(gw*gh);
-  for(let i=0;i<gw*gh;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
-  return blurWH(g,gw,gh,1);
+function toGray(px,n){const g=new Float32Array(n);for(let i=0;i<n;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];return g}
+function areaGray(src,size,a,o){ // crop the area (moved by the position offset) and resample it to its grid
+  const{gw,gh}=grid(a),b=shift(a,o);gC.width=gw;gC.height=gh;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
+  gX.fillStyle='#000';gX.fillRect(0,0,gw,gh);
+  gX.drawImage(src,b.x0*size,b.y0*size,(b.x1-b.x0)*size,(b.y1-b.y0)*size,0,0,gw,gh);
+  return blurWH(toGray(gX.getImageData(0,0,gw,gh).data,gw*gh),gw,gh,1);
 }
 const maskCache={};
 function maskOf(a,gw,gh){ // circle / ellipse: only pixels inside count
@@ -366,18 +382,88 @@ function areaMap(a,m,g){
   return{map:b,score:mx,gw,gh};
 }
 
+/* ---------- position reference: find the reference pattern (normalized cross-correlation) ---------- */
+function grayRect(src,size,x0,y0,x1,y1,G){
+  const w=Math.max(4,Math.round((x1-x0)*G)),h=Math.max(4,Math.round((y1-y0)*G));
+  gC.width=w;gC.height=h;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
+  gX.drawImage(src,x0*size,y0*size,(x1-x0)*size,(y1-y0)*size,0,0,w,h);
+  return{g:toGray(gX.getImageData(0,0,w,h).data,w*h),w,h,kx:w/(x1-x0),ky:h/(y1-y0)};
+}
+function tStats(t){let m=0;for(const v of t.g)m+=v;m/=t.g.length;const z=new Float32Array(t.g.length);let s=0;for(let i=0;i<z.length;i++){z[i]=t.g[i]-m;s+=z[i]*z[i]}return{z,norm:Math.sqrt(s)||1}}
+function ncc(T,Ts,I){
+  let best={s:-2,x:0,y:0};const tw=T.w,th=T.h,n=tw*th;
+  for(let y=0;y+th<=I.h;y++)for(let x=0;x+tw<=I.w;x++){
+    let sum=0,sq=0,cr=0;
+    for(let j=0;j<th;j++){const ro=(y+j)*I.w+x,to=j*tw;for(let i=0;i<tw;i++){const v=I.g[ro+i];sum+=v;sq+=v*v;cr+=v*Ts.z[to+i]}}
+    const vI=sq-sum*sum/n;if(vI<=1e-6)continue;
+    const s=cr/(Math.sqrt(vI)*Ts.norm);if(s>best.s)best={s,x,y};
+  }
+  return best;
+}
+function findPos(src,size){
+  const r=refTool();if(!r||!P.ref)return{dx:0,dy:0,score:1,found:true,none:true};
+  const w=r.x1-r.x0,h=r.y1-r.y0,R=(r.range||20)/100,key=refKey();
+  const tc=P.ref.tm&&P.ref.tm.key===key?P.ref.tm:(P.ref.tm={key});
+  const G1=Math.min(40/Math.max(w,h),size);
+  if(!tc.c){const t=grayRect(P.ref.full,P.ref.size,r.x0,r.y0,r.x1,r.y1,G1);tc.c={t,s:tStats(t)}}
+  const sx0=Math.max(0,r.x0-R),sy0=Math.max(0,r.y0-R),sx1=Math.min(1,r.x1+R),sy1=Math.min(1,r.y1+R);
+  const I=grayRect(src,size,sx0,sy0,sx1,sy1,G1),b=ncc(tc.c.t,tc.c.s,I);
+  if(b.s<=-2)return{dx:0,dy:0,score:0,found:false};
+  let nx=sx0+b.x/I.kx,ny=sy0+b.y/I.ky,score=b.s;
+  const G2=Math.min(G1*4,P.ref.size,size);
+  if(G2>G1*1.5){ // refine at higher resolution around the coarse match
+    if(!tc.f||tc.fG!==G2){const t=grayRect(P.ref.full,P.ref.size,r.x0,r.y0,r.x1,r.y1,G2);tc.f={t,s:tStats(t)};tc.fG=G2}
+    const m=2.5/G1,fx0=Math.max(0,nx-m),fy0=Math.max(0,ny-m),fx1=Math.min(1,nx+w+m),fy1=Math.min(1,ny+h+m);
+    const I2=grayRect(src,size,fx0,fy0,fx1,fy1,G2),b2=ncc(tc.f.t,tc.f.s,I2);
+    if(b2.s>-2){nx=fx0+b2.x/I2.kx;ny=fy0+b2.y/I2.ky;score=b2.s}
+  }
+  score=Math.max(0,score);
+  return{dx:nx-r.x0,dy:ny-r.y0,score,found:score>=(r.minScore||60)/100};
+}
+
+/* ---------- measure: find two edges along a line and their distance ---------- */
+const fmtLen=px=>px==null||!isFinite(px)?'—':P&&P.scale?(px*P.scale).toFixed(3)+' mm':px.toFixed(1)+' px';
+const unit=()=>P&&P.scale?'mm':'px';
+function measureTool(src,size,m,o){
+  const a=shift(m,o),x0=a.x0*size,y0=a.y0*size,x1=a.x1*size,y1=a.y1*size,L=Math.hypot(x1-x0,y1-y0);
+  const none={found:false,ok:false,value:null};if(L<6)return none;
+  const ux=(x1-x0)/L,uy=(y1-y0)/L,nx=-uy,ny=ux,band=Math.max(1,(m.band||.02)*size/2);
+  const bx0=Math.max(0,Math.floor(Math.min(x0,x1)-band-2)),by0=Math.max(0,Math.floor(Math.min(y0,y1)-band-2));
+  const bx1=Math.min(size,Math.ceil(Math.max(x0,x1)+band+2)),by1=Math.min(size,Math.ceil(Math.max(y0,y1)+band+2)),cw=bx1-bx0,ch=by1-by0;
+  if(cw<3||ch<3)return none;
+  gC.width=cw;gC.height=ch;gX.drawImage(src,bx0,by0,cw,ch,0,0,cw,ch);const g=toGray(gX.getImageData(0,0,cw,ch).data,cw*ch);
+  const at=(X,Y)=>{X-=bx0;Y-=by0;if(X<0||Y<0||X>=cw-1||Y>=ch-1)return null;const xi=X|0,yi=Y|0,fx=X-xi,fy=Y-yi,i=yi*cw+xi;
+    return g[i]*(1-fx)*(1-fy)+g[i+1]*fx*(1-fy)+g[i+cw]*(1-fx)*fy+g[i+cw+1]*fx*fy};
+  const N=Math.round(L),nb=Math.max(1,Math.round(band)),p=new Float32Array(N+1);
+  for(let i=0;i<=N;i++){let s=0,c=0;const cx=x0+ux*i,cy=y0+uy*i;for(let k=-nb;k<=nb;k++){const v=at(cx+nx*k,cy+ny*k);if(v!=null){s+=v;c++}}p[i]=c?s/c:(i?p[i-1]:0)}
+  const sm=new Float32Array(N+1);for(let i=0;i<=N;i++){let s=0,c=0;for(let k=-2;k<=2;k++){const j=i+k;if(j>=0&&j<=N){s+=p[j];c++}}sm[i]=s/c}
+  const W=3,d=new Float32Array(N+1);for(let i=W;i<=N-W;i++)d[i]=sm[i+W]-sm[i-W];
+  const thr=m.contrast||25,peaks=[];
+  for(let i=W+1;i<N-W;i++){const v=Math.abs(d[i]);if(v>=thr&&v>=Math.abs(d[i-1])&&v>Math.abs(d[i+1])){
+    const l=Math.abs(d[i-1]),r=Math.abs(d[i+1]),den=l-2*v+r,off=den?(l-r)/(2*den):0;peaks.push({i:i+Math.max(-.5,Math.min(.5,off)),v})}}
+  if(peaks.length<2)return{...none,edges:peaks.length};
+  let e1,e2;
+  if(m.edges==='strong'){const s=[...peaks].sort((A,B)=>B.v-A.v).slice(0,2).sort((A,B)=>A.i-B.i);e1=s[0];e2=s[1]}
+  else{e1=peaks[0];e2=peaks[peaks.length-1]}
+  const value=(e2.i-e1.i)*(P.ref?P.ref.size/size:1); // in reference pixels
+  const pt=t=>[(x0+ux*t)/size,(y0+uy*t)/size];
+  const ok=m.nom==null||Math.abs(value-m.nom)<=(m.tol!=null?m.tol:Math.max(2,m.nom*.05));
+  return{found:true,ok,value,e1:pt(e1.i),e2:pt(e2.i)};
+}
+
 /* ---------- program ----------
-   P = {id,name,valid,cam:{zoom,ox,oy},ref:{full,size,blob,thumb,cache},areas:[{id,name,shape,x0,y0,x1,y1,thr,manual,detail}],
-        samples:[{id,blob,thumb,labels:{areaId:'ok'|'ng'},cache}]}  */
+   P = {id,name,valid,scale,cam:{zoom,ox,oy},ref:{full,size,blob,thumb,cache},areas:[tools],samples:[{id,blob,thumb,labels,cache,off}]}  */
 let P=null, progs=[];
-function refGray(a){const k=gKey(a);return P.ref.cache[k]||(P.ref.cache[k]=areaGray(P.ref.full,P.ref.size,a))}
+function refGray(a){const k=gKey(a);return P.ref.cache[k]||(P.ref.cache[k]=areaGray(P.ref.full,P.ref.size,a,null))}
 const sGray=(s,a)=>s.cache[gKey(a)];
 let learning=null;
-async function ensureGrays(){ // learned pictures are re-cut when areas move or change size
+async function ensureGrays(){ // learned pictures are re-cut when tools move or change size
+  const rk=refKey();
   for(const s of P.samples){
-    const miss=P.areas.filter(a=>!s.cache[gKey(a)]);if(!miss.length)continue;
+    const miss=checks().filter(a=>!s.cache[gKey(a)]);if(!miss.length)continue;
     let bmp=null;try{bmp=await createImageBitmap(s.blob)}catch(e){continue}
-    for(const a of miss)s.cache[gKey(a)]=areaGray(bmp,bmp.width,a);
+    if(!s.off||s.off.key!==rk){const f=findPos(bmp,bmp.width);s.off={key:rk,dx:f.found?f.dx:0,dy:f.found?f.dy:0}}
+    for(const a of miss)s.cache[gKey(a)]=areaGray(bmp,bmp.width,a,s.off);
     bmp.close&&bmp.close();
   }
 }
@@ -400,14 +486,16 @@ function learnArea(a){
 }
 function learnAll(){ // async because learned pictures may need to be decoded again
   if(!P||!P.ref)return Promise.resolve();
-  const run=(async()=>{await ensureGrays();if(!P||!P.ref)return;P.areas.forEach(learnArea);if(U.last)U.last.r=inspect(U.last.frame)})();
+  const run=(async()=>{await ensureGrays();if(!P||!P.ref)return;checks().forEach(learnArea);if(U.last)U.last.r=inspect(U.last.frame)})();
   learning=run;run.then(()=>{if(learning===run)learning=null;render()});render();return run;
 }
 function inspect(f){
-  const res=P.areas.map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);const g=areaGray(f.full,f.size,a),r=areaMap(a,a._m,g);
+  const pos=findPos(f.full,f.size),o=pos.found?pos:{dx:0,dy:0};
+  const res=checks().map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);const g=areaGray(f.full,f.size,a,o),r=areaMap(a,a._m,g);
     return{id:a.id,name:a.name,score:r.score,thr:a.thr,ng:r.score>a.thr,map:r.map,gw:r.gw,gh:r.gh,gray:g,key:a._k}});
-  let worst=res[0];for(const r of res)if(r.score/r.thr>worst.score/worst.thr)worst=r;
-  return{res,ng:res.some(r=>r.ng),worst};
+  const meas=measures().map(m=>({id:m.id,name:m.name,...measureTool(f.full,f.size,m,o)}));
+  let worst=null;for(const r of res)if(!worst||r.score/r.thr>worst.score/worst.thr)worst=r;
+  return{res,meas,pos,off:o,worst,ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok)};
 }
 
 /* ---------- storage (IndexedDB: holds the full-resolution pictures) ---------- */
@@ -417,10 +505,10 @@ function tx(mode,fn){return new Promise((ok,bad)=>{if(!DBH)return bad(new Error(
 let saveT=null;
 function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
   if(!P)return;
-  const rec={id:P.id,name:P.name,valid:P.valid,cam:{...P.cam},
-    areas:P.areas.map(a=>({id:a.id,name:a.name,shape:a.shape,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,manual:a.manual,detail:a.detail})),
+  const rec={id:P.id,name:P.name,valid:P.valid,scale:P.scale||null,cam:{...P.cam},
+    areas:P.areas.map(a=>{const o={};for(const k in a)if(k[0]!=='_'&&k!=='stats'&&k!=='auto')o[k]=a[k];return o}),
     ref:P.ref&&P.ref.blob?{blob:P.ref.blob,thumb:P.ref.thumb}:null,
-    samples:P.samples.filter(s=>s.blob).map(s=>({id:s.id,blob:s.blob,thumb:s.thumb,labels:s.labels}))};
+    samples:P.samples.filter(s=>s.blob).map(s=>({id:s.id,blob:s.blob,thumb:s.thumb,labels:s.labels,off:s.off||null}))};
   const i=progs.findIndex(p=>p.id===P.id);if(i<0)progs.push(rec);else progs[i]=rec;
   store('vs1-cur',String(P.id));
   try{await tx('readwrite',st=>st.put(rec))}catch(e){flashMsg('Could not save the program in this browser (storage blocked). It stays open until you reload.')}
@@ -429,21 +517,21 @@ function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
 async function loadProg(id){
   const d=progs.find(p=>p.id===id);if(!d)return false;
   stopRun();
-  P={id:d.id,name:d.name,valid:!!d.valid,cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
-    areas:(d.areas||[]).map(a=>({shape:'rect',detail:'auto',...a})),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
-  U.cand=null;U.last=null;U.mode='live';U.selArea=null;resetView();
+  P={id:d.id,name:d.name,valid:!!d.valid,scale:d.scale||null,cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
+    areas:(d.areas||[]).map(a=>({type:'check',shape:'rect',detail:'auto',...a})),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;resetView();
   if(d.ref&&d.ref.blob){try{const bmp=await createImageBitmap(d.ref.blob);const c=canvas(bmp.width);c.getContext('2d').drawImage(bmp,0,0);
     P.ref={full:c,size:bmp.width,blob:d.ref.blob,thumb:d.ref.thumb,cache:{}}}catch(e){P.ref=null;P.valid=false}}
   store('vs1-cur',String(id));sendCam();await learnAll();render();return true;
 }
 function newProg(){
   const id=progs.reduce((m,p)=>Math.max(m,p.id),0)+1;
-  P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
-  U.cand=null;U.last=null;U.mode='live';U.selArea=null;resetView();sendCam();save();
+  P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,scale:null,cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;resetView();sendCam();save();
 }
 
 /* ---------- UI state ---------- */
-const U={mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
+const U={only:null,mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
 let msgT=null;
 function flashMsg(t){U.msg=t;clearTimeout(msgT);msgT=setTimeout(()=>{U.msg='';render()},6000);render()}
 
@@ -459,12 +547,12 @@ function applyView(x){x.setTransform(V.z,0,0,V.z,D*(.5-V.cx*V.z),D*(.5-V.cy*V.z)
 const SRC={kind:stored('vs1-src')||'demo',demo:null,demoT:null,demoSeed:1};
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function grey(v){v=Math.max(0,Math.min(255,Math.round(v)));return`rgb(${v},${v},${v+4})`}
-function samplePart(seed,defect,S=1280){
+function samplePart(seed,defect,S=1280,mx=0,my=0){
   const r=rng(seed),c=canvas(S),x=c.getContext('2d');
   x.fillStyle='#3a4146';x.fillRect(0,0,S,S);
   const k=S/320;x.strokeStyle='rgba(255,255,255,.04)';x.lineWidth=k;
   for(let i=0;i<S;i+=12*k){x.beginPath();x.moveTo(i,0);x.lineTo(i,S);x.stroke()}
-  const cx=S/2+(r()-.5)*1.6*k, cy=S/2+(r()-.5)*1.6*k, rot=(r()-.5)*.012, b=(r()-.5)*14;
+  const cx=S/2+(r()-.5)*1.6*k+mx*k, cy=S/2+(r()-.5)*1.6*k+my*k, rot=(r()-.5)*.012, b=(r()-.5)*14;
   const g=x.createRadialGradient(cx-30*k,cy-30*k,10*k,cx,cy,120*k);g.addColorStop(0,grey(205+b));g.addColorStop(1,grey(150+b));
   x.beginPath();x.arc(cx,cy,110*k,0,Math.PI*2);x.fillStyle=g;x.fill();
   x.beginPath();x.arc(cx,cy,62*k,0,Math.PI*2);x.strokeStyle=grey(118+b);x.lineWidth=3*k;x.stroke();
@@ -481,7 +569,7 @@ function samplePart(seed,defect,S=1280){
   for(let i=0;i<d.length;i+=4){const n=(r()-.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
   x.putImageData(id,0,0);return c;
 }
-function demoNext(){const r=Math.random(),d=r<.65?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d)}
+function demoNext(){const r=Math.random(),d=r<.65?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d,1280,(Math.random()-.5)*16,(Math.random()-.5)*16)}
 function setSrc(k){
   SRC.kind=k;store('vs1-src',k);clearInterval(SRC.demoT);
   if(k==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
@@ -506,22 +594,42 @@ function grab(){ // one full-resolution picture from the source, with the progra
 }
 
 /* ---------- actions ---------- */
-async function takeRef(){stopRun();const f=await grab();if(!f)return;U.cand=f;U.mode='cand';resetView();flash();render()}
+async function takeRef(){stopRun();const f=await grab();if(!f)return;U.cand=f;U.mode='cand';U.only=null;resetView();flash();render()}
 async function refValid(){
   const f=U.cand;if(!f)return;U.cand=null;
   P.ref={full:f.full,size:f.size,thumb:thumbOf(f.full),blob:await toBlob(f.full),cache:{}};
   const had=P.areas.length;P.samples=[];P.valid=false;
   if(!had)addArea('rect',false);
   U.mode='edit';save();learnAll();
-  flashMsg(had?'New reference saved. Areas kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1, add rectangles or circles.');
+  flashMsg(had?'New reference saved. Tools kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1, add more tools.');
 }
+const nextId=()=>P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1;
+function addTool(a){P.areas.push(a);U.selArea=a.id;P.valid=false;U.mode='edit';U.only=null;resetView()}
 function addArea(shape,r=true){
-  const id=P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1,o=(P.areas.length%4)*.04,s=shape==='ellipse'?.2:.3;
-  const a={id,name:`Area ${id}`,shape,x0:.5-s/2+o,y0:.5-s/2+o,x1:.5+s/2+o,y1:.5+s/2+o,thr:DEF_THR,manual:false,detail:'auto'};
-  P.areas.push(a);U.selArea=a.id;P.valid=false;U.mode='edit';if(r){save();learnAll()}
+  const id=nextId(),o=(P.areas.length%4)*.04,s=shape==='ellipse'?.2:.3;
+  addTool({id,type:'check',name:`Area ${id}`,shape,x0:.5-s/2+o,y0:.5-s/2+o,x1:.5+s/2+o,y1:.5+s/2+o,thr:DEF_THR,manual:false,detail:'auto'});
+  if(r){save();learnAll()}
 }
-function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];P.valid=false;save();learnAll()}
-async function validate(){if(!P.ref||!P.areas.length)return;await learnAll();P.valid=true;U.mode='live';U.selArea=null;save();flashMsg('Program validated. Step 3: put a part and press Trigger.')}
+function addMeasure(){const id=nextId(),o=(P.areas.length%4)*.04;
+  addTool({id,type:'measure',name:`Measure ${id}`,x0:.38,y0:.5+o,x1:.62,y1:.5+o,band:.03,contrast:25,edges:'outer',nom:null,tol:null});save();render()}
+function addRef(){const r=refTool();if(r){editOnly(r);return}
+  addTool({id:nextId(),type:'ref',name:'Position',x0:.4,y0:.4,x1:.6,y1:.6,range:20,minScore:60});save();learnAll()}
+function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];if(U.only===a.id)U.only=null;P.valid=false;save();learnAll()}
+function toolBox(a){return a.type==='measure'?{x0:Math.min(a.x0,a.x1),y0:Math.min(a.y0,a.y1),x1:Math.max(a.x0,a.x1),y1:Math.max(a.y0,a.y1)}:a}
+function editOnly(a){ // edit one tool alone, zoomed on it
+  if(U.only===a.id){U.only=null;resetView();render();return}
+  stopRun();U.only=a.id;U.selArea=a.id;U.mode='edit';
+  const b=toolBox(a),w=Math.max(.02,b.x1-b.x0),h=Math.max(.02,b.y1-b.y0);
+  V.z=Math.min(8,Math.max(1,.6/Math.max(w,h)));V.cx=(b.x0+b.x1)/2;V.cy=(b.y0+b.y1)/2;clampView();render();
+}
+function measRef(m){return P.ref?measureTool(P.ref.full,P.ref.size,m,null):null}
+function setNominal(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: no two edges found on the reference. Move the line across the gap, or lower the contrast.`);return}
+  m.nom=r.value;m.tol=Math.max(2,r.value*.05);save();render();flashMsg(`${m.name}: nominal ${fmtLen(m.nom)} ± ${fmtLen(m.tol)}`)}
+function calibrate(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: no edges found on the reference, cannot calibrate.`);return}
+  const v=prompt(`${m.name} measures ${r.value.toFixed(1)} px on the reference.\nReal length in mm?`,'');if(v==null)return;
+  const mm=parseFloat(String(v).replace(',','.'));if(!(mm>0)){flashMsg('Calibration cancelled: type a length in mm.');return}
+  P.scale=mm/r.value;save();render();flashMsg(`Calibrated: 1 px = ${(P.scale*1000).toFixed(1)} µm. All measures now in mm.`)}
+async function validate(){if(!P.ref||!(checks().length||measures().length))return;await learnAll();P.valid=true;U.mode='live';U.selArea=null;U.only=null;resetView();save();flashMsg('Program validated. Step 3: put a part and press Trigger.')}
 async function trigger(){
   if(!P||!P.valid)return;
   const f=await grab();if(!f)return;if(learning)await learning;
@@ -531,11 +639,11 @@ async function trigger(){
 }
 async function learnLast(){
   const l=U.last;if(!l||l.learned)return;l.learned=true;render();
-  const before=Object.fromEntries(P.areas.map(a=>[a.id,a.thr]));
+  const before=Object.fromEntries(checks().map(a=>[a.id,a.thr]));
   const cache={};for(const r of l.r.res)cache[r.key]=r.gray;
-  P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache});
+  P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache,off:{key:refKey(),dx:l.r.off.dx,dy:l.r.off.dy}});
   await learnAll();save();
-  const ch=P.areas.filter(a=>Math.abs(a.thr-before[a.id])>=.05).map(a=>`${a.name}: ${before[a.id].toFixed(1)} → ${a.thr.toFixed(1)}`);
+  const ch=checks().filter(a=>Math.abs(a.thr-before[a.id])>=.05).map(a=>`${a.name}: ${before[a.id].toFixed(1)} → ${a.thr.toFixed(1)}`);
   flashMsg('Learned.'+(ch.length?' New thresholds: '+ch.join(', '):' Thresholds unchanged.'));
 }
 function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
@@ -545,22 +653,53 @@ function flash(){document.querySelector('.screen').animate([{filter:'brightness(
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
 
 /* ---------- drawing ---------- */
+const REFC='#A07CF5';
 function areaPath(x,a){const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;x.beginPath();
-  if(a.shape==='ellipse')x.ellipse(X+w/2,Y+h/2,Math.max(1,w/2),Math.max(1,h/2),0,0,Math.PI*2);else x.rect(X,Y,w,h)}
-function strokeArea(x,a,color,label,handles){
+  if(a.shape==='ellipse')x.ellipse(X+w/2,Y+h/2,Math.max(1,Math.abs(w)/2),Math.max(1,Math.abs(h)/2),0,0,Math.PI*2);else x.rect(X,Y,w,h)}
+function label(x,X,Y,color,text){const z=V.z,fs=26/z;x.font=`600 ${fs}px "Barlow Condensed",Arial,sans-serif`;const tw=x.measureText(text).width+12/z,ly=Y>fs*1.3?Y-fs*1.23:Y+3/z;
+  x.fillStyle=color;x.fillRect(X,ly,tw,fs*1.15);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(text,X+6/z,ly+fs*.88)}
+function handle(x,hx,hy,color){const hs=18/V.z;x.fillStyle=color;x.fillRect(hx-hs/2,hy-hs/2,hs,hs)}
+function strokeArea(x,a,color,text,handles,dash){
   const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D,z=V.z;
-  x.lineWidth=3/z;x.strokeStyle=color;x.setLineDash(color===EDC?[10/z,6/z]:[]);areaPath(x,a);x.stroke();x.setLineDash([]);
+  x.lineWidth=3/z;x.strokeStyle=color;x.setLineDash(dash||color===EDC?[10/z,6/z]:[]);areaPath(x,a);x.stroke();x.setLineDash([]);
   if(handles){if(a.shape==='ellipse'){x.lineWidth=1/z;x.setLineDash([4/z,4/z]);x.strokeRect(X,Y,w,h);x.setLineDash([])}
-    const hs=18/z;x.fillStyle=color;for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])x.fillRect(hx-hs/2,hy-hs/2,hs,hs)}
-  if(label){const fs=26/z;x.font=`600 ${fs}px "Barlow Condensed",Arial,sans-serif`;const tw=x.measureText(label).width+12/z,ly=Y>fs*1.3?Y-fs*1.23:Y+3/z;
-    x.fillStyle=color;x.fillRect(X,ly,tw,fs*1.15);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(label,X+6/z,ly+fs*.88)}
+    for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])handle(x,hx,hy,color)}
+  if(text)label(x,X,Y,color,text);
 }
-function drawAreas(x,res,edit){
-  P.areas.forEach(a=>{const r=res&&res.find(z=>z.id===a.id),sel=edit&&U.selArea===a.id;
-    strokeArea(x,a,sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`:''),sel)});
+function drawMeasure(x,m,o,r,sel,edit){
+  const a=shift(m,o),z=V.z,X0=a.x0*D,Y0=a.y0*D,X1=a.x1*D,Y1=a.y1*D,L=Math.hypot(X1-X0,Y1-Y0)||1,nx=-(Y1-Y0)/L,ny=(X1-X0)/L,bw=(m.band||.02)*D/2;
+  const color=sel?SELC:r?(r.ok?OKC:NGC):EDC;
+  x.strokeStyle=color;x.lineWidth=1/z;x.setLineDash([4/z,4/z]);x.beginPath();
+  x.moveTo(X0+nx*bw,Y0+ny*bw);x.lineTo(X1+nx*bw,Y1+ny*bw);x.lineTo(X1-nx*bw,Y1-ny*bw);x.lineTo(X0-nx*bw,Y0-ny*bw);x.closePath();x.stroke();x.setLineDash([]);
+  x.lineWidth=2/z;x.beginPath();x.moveTo(X0,Y0);x.lineTo(X1,Y1);x.stroke();
+  // arrow head shows the direction
+  const ah=14/z,ux=(X1-X0)/L,uy=(Y1-Y0)/L;x.beginPath();x.moveTo(X1,Y1);x.lineTo(X1-ux*ah+nx*ah*.5,Y1-uy*ah+ny*ah*.5);x.lineTo(X1-ux*ah-nx*ah*.5,Y1-uy*ah-ny*ah*.5);x.closePath();x.fillStyle=color;x.fill();
+  if(r&&r.found){const E1=[r.e1[0]*D,r.e1[1]*D],E2=[r.e2[0]*D,r.e2[1]*D],t=bw+10/z;x.lineWidth=4/z;x.strokeStyle=color;
+    for(const E of[E1,E2]){x.beginPath();x.moveTo(E[0]+nx*t,E[1]+ny*t);x.lineTo(E[0]-nx*t,E[1]-ny*t);x.stroke()}
+    x.lineWidth=3/z;x.beginPath();x.moveTo(E1[0]+nx*t*.7,E1[1]+ny*t*.7);x.lineTo(E2[0]+nx*t*.7,E2[1]+ny*t*.7);x.stroke()}
+  if(sel){handle(x,X0,Y0,color);handle(x,X1,Y1,color)}
+  const txt=m.name+(r?(r.found?' '+fmtLen(r.value):' no edges'):edit&&m.nom!=null?' '+fmtLen(m.nom):'');
+  label(x,Math.min(X0,X1),Math.min(Y0,Y1)-bw,color,txt);
 }
-function heat(x,res){
-  for(const r of res){const a=P.areas.find(z=>z.id===r.id);if(!a||!r.map)continue;
+function drawRef(x,a,pos,sel){
+  if(pos&&!pos.none){const f=pos.found?shift(a,pos):a;strokeArea(x,f,pos.found?REFC:NGC,`⌖ ${a.name} ${Math.round(pos.score*100)}%`,false,pos.found?null:[6,6])}
+  else strokeArea(x,a,sel?SELC:REFC,`⌖ ${a.name}`+(sel?` · search ±${a.range}%`:''),sel,[10/V.z,6/V.z]);
+  if(sel){const R=(a.range||20)/100;x.strokeStyle=REFC;x.lineWidth=1/V.z;x.setLineDash([3/V.z,5/V.z]);
+    x.strokeRect((a.x0-R)*D,(a.y0-R)*D,(a.x1-a.x0+2*R)*D,(a.y1-a.y0+2*R)*D);x.setLineDash([])}
+}
+function drawAreas(x,R,edit){
+  const o=R&&R.off;
+  for(const a of P.areas){
+    const sel=edit&&U.selArea===a.id;x.globalAlpha=edit&&U.only&&U.only!==a.id?.3:1;
+    if(a.type==='measure')drawMeasure(x,a,o,R&&R.meas.find(z=>z.id===a.id),sel,edit);
+    else if(a.type==='ref')drawRef(x,a,R&&R.pos,sel);
+    else{const r=R&&R.res.find(z=>z.id===a.id);
+      strokeArea(x,shift(a,o),sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`:''),sel)}
+  }
+  x.globalAlpha=1;
+}
+function heat(x,R){
+  for(const r of R.res){const a0=P.areas.find(z=>z.id===r.id);if(!a0||!r.map)continue;const a=shift(a0,R.off);
     const hm=canvas(r.gw,r.gh),hx=hm.getContext('2d'),id=hx.createImageData(r.gw,r.gh);
     for(let i=0;i<r.gw*r.gh;i++){const q0=r.map[i]/r.thr;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
       id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}
@@ -568,15 +707,19 @@ function heat(x,res){
     x.drawImage(hm,a.x0*D,a.y0*D,(a.x1-a.x0)*D,(a.y1-a.y0)*D);x.restore()}
 }
 function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
+function tolTxt(m){if(m.nom==null)return'no tolerance set';const t=m.tol!=null?m.tol:Math.max(2,m.nom*.05);return`${fmtLen(m.nom)} ± ${fmtLen(t)}`}
 function readout(r,live){
   const v=$('verdict');
   if(!r){$('fill').style.width='0';setLamps(null);return}
-  const w=r.worst;
   v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(live?'LIVE · ':'')+(r.ng?'NG':'OK');
-  $('roScore').textContent=`${w.name} · score ${w.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${w.thr.toFixed(1)}`;
-  const max=Math.max(w.thr*2,w.score*1.05);
-  $('fill').style.width=(Math.min(1,w.score/max)*100)+'%';$('fill').className='fill'+(r.ng?' ng':'');
-  $('tick').style.left=`calc(${w.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
+  let a='',b='',bar=null;const mf=r.meas.find(m=>!m.ok),w=r.worst;
+  if(!r.pos.found){a=`⌖ Reference not found · ${Math.round(r.pos.score*100)}%`;b=`min ${refTool().minScore}%`}
+  else if(w&&(w.ng||!mf)){a=`${w.name} · score ${w.score.toFixed(1)}`;b=`Threshold ${w.thr.toFixed(1)}`;bar=w}
+  else{const m=mf||r.meas[0];if(m){const t=measures().find(z=>z.id===m.id);a=`${m.name} · ${m.found?fmtLen(m.value):'no edges'}`;b=t?tolTxt(t):''}}
+  $('roScore').textContent=a;$('roThr').textContent=b;
+  if(bar){const max=Math.max(bar.thr*2,bar.score*1.05);$('fill').style.width=(Math.min(1,bar.score/max)*100)+'%';$('fill').className='fill'+(bar.ng?' ng':'');
+    $('tick').style.left=`calc(${bar.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1)}
+  else{$('fill').style.width=r.ng?'100%':'0';$('fill').className='fill'+(r.ng?' ng':'');$('scaleMax').textContent='—'}
   setLamps(live?null:r.ng);
 }
 function idle(t,name,a,b){const v=$('verdict');v.className='verdict idle';v.textContent=t;$('imgName').textContent=name||'—';$('roScore').textContent=a||'—';$('roThr').textContent=b||'—';readout(null)}
@@ -598,53 +741,88 @@ function drawScreen(ts){
   if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.full,0,0,D,D);fin();idle('REFERENCE?','candidate · '+U.cand.size+' px','Is this image good?','Valid or retake');return}
   if(U.mode==='edit'&&P.ref){x.drawImage(P.ref.full,0,0,D,D);drawAreas(x,null,true);
     if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{shape:'rect',x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
-    fin();idle('EDIT AREAS','reference · '+P.ref.size+' px',`${P.areas.length} area${P.areas.length===1?'':'s'}`,'Drag box / corners');return}
+    fin();const one=U.only&&P.areas.find(a=>a.id===U.only);
+    if(one&&one.type==='measure'){const r=measRef(one);idle('EDIT · '+one.name,'reference · '+P.ref.size+' px',r&&r.found?`On reference: ${fmtLen(r.value)}`:'No two edges found',tolTxt(one))}
+    else idle(one?'EDIT · '+one.name:'EDIT TOOLS','reference · '+P.ref.size+' px'+(V.z>1.01?` · view ×${V.z.toFixed(1)}`:''),`${P.areas.length} tool${P.areas.length===1?'':'s'}`,one?'Only this tool moves':'Drag tool / corners');
+    return}
   if(U.mode==='sample'&&U.view){const s=U.view;
     if(s._img&&s._img.complete&&s._img.naturalWidth)x.drawImage(s._img,0,0,D,D);
     else if(!s._img){s._img=new Image();s._img.onload=()=>drawScreen();s._img.src=URL.createObjectURL(s.blob)}
     drawAreas(x,null,false);fin();
-    idle('LEARNED IMAGE','learned picture',P.areas.map(a=>`${a.name} ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'—'}`).join(' · '),'');return}
-  if(U.mode==='result'&&U.last){x.drawImage(U.last.frame.full,0,0,D,D);if(U.heat)heat(x,U.last.r.res);drawAreas(x,U.last.r.res,false);fin();
+    idle('LEARNED IMAGE','learned picture',checks().map(a=>`${a.name} ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'—'}`).join(' · '),'');return}
+  if(U.mode==='result'&&U.last){x.drawImage(U.last.frame.full,0,0,D,D);if(U.heat)heat(x,U.last.r);drawAreas(x,U.last.r,false);fin();
     $('imgName').textContent='triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
   const src=liveSrc();
   if(!src){fin();idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
   drawSrc(x,src);
-  if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>350){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900))}drawAreas(x,U.live.res,false);fin();$('imgName').textContent='LIVE';readout(U.live,true)}
+  if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>400||!U.live){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900))}drawAreas(x,U.live,false);fin();$('imgName').textContent='LIVE';readout(U.live,true)}
   else{if(P.ref)drawAreas(x,null,false);fin();idle('LIVE',`LIVE · camera zoom ×${P.cam.zoom.toFixed(1)}`,P.ref?'Program not validated':'No reference yet','')}
 }
 function loop(ts){requestAnimationFrame(loop);if(L.role==='cam'||(U.mode==='live'&&liveSrc()))drawScreen(ts)}
 
 /* ---------- panel rendering ---------- */
-function areaRow(a,r){
-  const row=document.createElement('div');row.className='area'+(U.selArea===a.id&&U.mode==='edit'?' sel':'');
-  const sw=document.createElement('span');sw.className='sw';if(a.shape==='ellipse')sw.style.borderRadius='50%';
-  const nm=document.createElement('input');nm.type='text';nm.value=a.name;nm.maxLength=24;nm.setAttribute('aria-label','Area name');
-  nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'){stopRun();U.mode='edit';render()}else drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||`Area ${a.id}`;save();render()};
-  const val=document.createElement('span');val.className='val'+(r?(r.ng?' ng':' ok'):'');val.textContent=r?`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`:'';
-  const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.title='Delete area';x.onclick=()=>delArea(a);
-  row.append(sw,nm,val,x);
-  // shape + detail (zoom per area)
-  const op=document.createElement('div');op.className='opts';
-  const sh=document.createElement('span');sh.className='shape';
-  for(const[k,t,ti]of[['rect','▭','Rectangle'],['ellipse','◯','Circle / ellipse']]){const b=document.createElement('button');b.type='button';b.textContent=t;b.title=ti;b.className=a.shape===k?'on':'';
-    b.onclick=()=>{a.shape=k;P.valid=false;U.selArea=a.id;if(P.ref)U.mode='edit';save();learnAll()};sh.appendChild(b)}
-  const dl=document.createElement('span');dl.className='lbl';dl.textContent='Detail';
-  const ds=document.createElement('select');ds.setAttribute('aria-label',a.name+' detail');
-  for(const[k,t]of[['auto','Auto'],['1','×1'],['2','×2'],['4','×4'],['8','×8']]){const o=document.createElement('option');o.value=k;o.textContent=t;if(String(a.detail||'auto')===k)o.selected=true;ds.appendChild(o)}
-  ds.onchange=()=>{a.detail=ds.value;P.valid=false;save();learnAll()};
-  const g=grid(a),gi=document.createElement('span');gi.className='val';gi.textContent=`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`;
-  op.append(sh,dl,ds,gi);row.append(op);
-  const sl=document.createElement('div');sl.className='slider';
-  const lb=document.createElement('span');lb.className='lbl';lb.textContent='Threshold';
-  const inp=document.createElement('input');inp.type='range';inp.min=.5;inp.max=Math.max(20,Math.ceil(a.thr*2));inp.step=.1;inp.value=a.thr;inp.setAttribute('aria-label',a.name+' threshold');
-  const out=document.createElement('output');out.textContent=(+a.thr).toFixed(1);
-  inp.oninput=()=>{a.thr=+inp.value;a.manual=true;out.textContent=a.thr.toFixed(1);if(U.last)U.last.r=inspect(U.last.frame);drawScreen();save()};
-  inp.onchange=()=>render();
-  const au=document.createElement('button');au.type='button';au.className='btn small';au.textContent=a.manual?'Auto':'Auto ✓';au.title='Use the learned threshold';
-  au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
-  sl.append(lb,inp,out,au);row.append(sl);
-  const st=a.stats;if(st){const s=document.createElement('div');s.className='stats'+(st.overlap?' warn':'');
-    s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function sliderRow(label,min,max,step,val,fmt,onInput,extra){
+  const sl=el('div','slider'),lb=el('span','lbl',label),inp=document.createElement('input');inp.type='range';inp.min=min;inp.max=max;inp.step=step;inp.value=val;inp.setAttribute('aria-label',label);
+  const out=el('output',null,fmt(+val));inp.oninput=()=>{out.textContent=fmt(+inp.value);onInput(+inp.value)};inp.onchange=()=>render();
+  sl.append(lb,inp,out);if(extra)sl.append(extra);return sl;
+}
+function toolRow(a,res){
+  const kind=a.type||'check';
+  const row=el('div','area'+(U.selArea===a.id&&U.mode==='edit'?' sel':'')+(U.only&&U.only!==a.id&&U.mode==='edit'?' dim':''));
+  const sw=el('span','sw');if(a.shape==='ellipse')sw.style.borderRadius='50%';
+  if(kind==='measure'){sw.style.border='0';sw.textContent='📏'}else if(kind==='ref'){sw.style.borderColor=REFC;sw.textContent=''}
+  const nm=document.createElement('input');nm.type='text';nm.value=a.name;nm.maxLength=24;nm.setAttribute('aria-label','Tool name');
+  nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'){stopRun();U.mode='edit';render()}else drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||a.name;save();render()};
+  const val=el('span','val');
+  const tools=el('span','tools');
+  const ed=el('button','ed'+(U.only===a.id?' on':''),'✎');ed.type='button';ed.title=U.only===a.id?'Stop editing this tool':'Edit only this tool (zoomed)';ed.onclick=()=>editOnly(a);ed.disabled=!P.ref;
+  const x=el('button','x','✕');x.type='button';x.title='Delete';x.onclick=()=>delArea(a);
+  tools.append(ed,x);row.append(sw,nm,val,tools);
+  const op=el('div','opts');
+  if(kind==='check'){
+    const r=res&&res.res.find(z=>z.id===a.id);if(r){val.className='val '+(r.ng?'ng':'ok');val.textContent=`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`}
+    const sh=el('span','shape');
+    for(const[k,t,ti]of[['rect','▭','Rectangle'],['ellipse','◯','Circle / ellipse']]){const b=el('button',a.shape===k?'on':'',t);b.type='button';b.title=ti;
+      b.onclick=()=>{a.shape=k;P.valid=false;U.selArea=a.id;if(P.ref)U.mode='edit';save();learnAll()};sh.appendChild(b)}
+    const ds=document.createElement('select');ds.setAttribute('aria-label',a.name+' detail');
+    for(const[k,t]of[['auto','Auto'],['1','×1'],['2','×2'],['4','×4'],['8','×8']]){const o=document.createElement('option');o.value=k;o.textContent=t;if(String(a.detail||'auto')===k)o.selected=true;ds.appendChild(o)}
+    ds.onchange=()=>{a.detail=ds.value;P.valid=false;save();learnAll()};
+    const g=grid(a);op.append(sh,el('span','lbl','Detail'),ds,el('span','val',`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`));row.append(op);
+    const au=el('button','btn small',a.manual?'Auto':'Auto ✓');au.type='button';au.title='Use the learned threshold';
+    au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
+    row.append(sliderRow('Threshold',.5,Math.max(20,Math.ceil(a.thr*2)),.1,a.thr,v=>v.toFixed(1),v=>{a.thr=v;a.manual=true;if(U.last)U.last.r=inspect(U.last.frame);drawScreen();save()},au));
+    const st=a.stats;if(st){const s=el('div','stats'+(st.overlap?' warn':''));
+      s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
+  }
+  else if(kind==='measure'){
+    const r=res&&res.meas.find(z=>z.id===a.id);
+    if(r){val.className='val '+(r.ok?'ok':'ng');val.textContent=r.found?fmtLen(r.value):'no edges'}
+    else{const rr=measRef(a);val.textContent=rr&&rr.found?'ref '+fmtLen(rr.value):'ref: no edges'}
+    const es=document.createElement('select');es.setAttribute('aria-label','Edges');
+    for(const[k,t]of[['outer','First edge from each end'],['strong','Two strongest edges']]){const o=document.createElement('option');o.value=k;o.textContent=t;if((a.edges||'outer')===k)o.selected=true;es.appendChild(o)}
+    es.onchange=()=>{a.edges=es.value;save();render()};
+    const sn=el('button','btn small','Set from reference');sn.type='button';sn.onclick=()=>setNominal(a);
+    const cb=el('button','btn small',P.scale?'Recalibrate mm':'Calibrate mm');cb.type='button';cb.onclick=()=>calibrate(a);
+    op.append(el('span','lbl','Edges'),es,sn,cb);row.append(op);
+    row.append(sliderRow('Edge contrast',5,120,1,a.contrast||25,v=>String(v),v=>{a.contrast=v;drawScreen();save()}));
+    row.append(sliderRow('Line width',.005,.15,.005,a.band||.03,v=>(v*100).toFixed(1)+'%',v=>{a.band=v;drawScreen();save()}));
+    const tl=el('div','opts'),k=P.scale||1;
+    const ni=document.createElement('input');ni.type='number';ni.className='num';ni.step='any';ni.value=a.nom!=null?+(a.nom*k).toFixed(3):'';ni.setAttribute('aria-label','Nominal');
+    const ti=document.createElement('input');ti.type='number';ti.className='num';ti.step='any';ti.min=0;ti.value=a.nom!=null?+((a.tol!=null?a.tol:Math.max(2,a.nom*.05))*k).toFixed(3):'';ti.setAttribute('aria-label','Tolerance');
+    ni.onchange=()=>{const v=parseFloat(ni.value);a.nom=isFinite(v)?v/k:null;if(a.nom!=null&&a.tol==null)a.tol=Math.max(2,a.nom*.05);if(U.last)U.last.r=inspect(U.last.frame);save();render()};
+    ti.onchange=()=>{const v=parseFloat(ti.value);a.tol=isFinite(v)&&v>=0?v/k:null;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
+    tl.append(el('span','lbl','Nominal'),ni,el('span','lbl','±'),ti,el('span','val',unit()));row.append(tl);
+  }
+  else{ // position reference
+    const p=res&&res.pos;if(p&&!p.none){val.className='val '+(p.found?'ok':'ng');val.textContent=p.found?`found ${Math.round(p.score*100)}%`:`not found ${Math.round(p.score*100)}%`}
+    row.append(sliderRow('Search range ±',5,45,1,a.range||20,v=>v+'%',v=>{a.range=v;drawScreen()}));
+    row.append(sliderRow('Min match',30,95,1,a.minScore||60,v=>v+'%',v=>{a.minScore=v;save()}));
+    const info=el('div','stats');
+    info.textContent=p&&p.found&&!p.none?`Part moved by ${(p.dx*(P.ref?P.ref.size:0)).toFixed(1)} px, ${(p.dy*(P.ref?P.ref.size:0)).toFixed(1)} px → all tools follow`:'Draw it on a distinctive, sharp part of the piece (a hole, a corner, a logo). All other tools follow it.';
+    row.append(info);
+    row.querySelectorAll('input[type=range]')[0].onchange=()=>{save();learnAll()};
+  }
   return row;
 }
 function renderProgSel(){
@@ -661,7 +839,7 @@ function render(){
   const ss=$('srcState'),sh=$('srcHint');
   if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
-  else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
+  else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, slightly shifted, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
   else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Take reference asks you for an image file.'}
   if(U.msg)sh.textContent=U.msg;
   $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind];
@@ -672,7 +850,7 @@ function render(){
   // 1 reference + camera zoom
   $('refStep').classList.toggle('locked',!P);
   const rb=$('refBox');rb.innerHTML='';
-  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.thumb;im.alt='Reference';const s=document.createElement('span');s.className='hint';s.textContent=`Reference saved · ${P.ref.size} px`;rb.append(im,s)}
+  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.thumb;im.alt='Reference';rb.append(im,el('span','hint',`Reference saved · ${P.ref.size} px`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:'')))}
   const cand=U.mode==='cand'&&U.cand;
   $('refBtn').hidden=!!cand;$('refOk').hidden=$('refNo').hidden=!cand;$('refBtn').textContent=P&&P.ref?'📷 Retake reference':'📷 Take reference';
   $('refState').className='state'+(P&&P.ref?' good':' warn');$('refState').textContent=cand?'Check it':P&&P.ref?'Saved':'Needed';
@@ -680,34 +858,38 @@ function render(){
   $('zoomIn').value=cam.zoom;$('zoomOut').textContent='×'+(+cam.zoom).toFixed(1);$('panX').value=cam.ox;$('panY').value=cam.oy;
   $('zoomIn').disabled=$('panX').disabled=$('panY').disabled=locked;$('panRow').hidden=cam.zoom<=1.01;
   $('zoomLock').hidden=!locked;$('zoomLockTxt').textContent=`Zoom ×${(+cam.zoom).toFixed(1)} is locked by the reference.`;
-  // 2 areas
+  // 2 tools
   $('areaStep').classList.toggle('locked',!(P&&P.ref));
   const al=$('areaList');al.innerHTML='';
-  const lr=U.mode==='result'&&U.last?U.last.r:null;
-  if(P)P.areas.forEach(a=>al.appendChild(areaRow(a,lr&&lr.res.find(z=>z.id===a.id))));
-  if(P&&!P.areas.length){const e=document.createElement('div');e.className='empty';e.textContent='No control area. Add a rectangle or a circle.';al.appendChild(e)}
-  $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} area${P.areas.length===1?'':'s'}`:'—';
-  $('validBtn').disabled=!(P&&P.ref&&P.areas.length);$('editBtn').hidden=!(P&&P.ref)||U.mode==='edit';$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
+  const lr=(U.mode==='result'&&U.last?U.last.r:null)||(U.mode==='live'&&U.live)||null;
+  if(P){const order=[...P.areas].sort((a,b)=>(a.type==='ref'?-1:0)-(b.type==='ref'?-1:0));order.forEach(a=>al.appendChild(toolRow(a,lr)))}
+  if(P&&!P.areas.length)al.appendChild(el('div','empty','No tool yet. Add a rectangle, a circle, a measure or a position reference.'));
+  $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'}`:'—';
+  $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
+  $('editBtn').hidden=!(P&&P.ref)||U.mode==='edit';$('doneBtn').hidden=!U.only||U.mode!=='edit';
+  $('addRef').textContent=refTool()?'⌖ Edit position reference':'+ ⌖ Position reference';
   // 3 run & teach
   $('runStep').classList.toggle('locked',!(P&&P.valid));
   $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
   $('modeTag').textContent=U.timer?'RUN':P&&P.valid?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
   const te=$('teach');te.innerHTML='';
-  if(U.mode==='result'&&U.last&&P){te.hidden=false;
-    const h=document.createElement('span');h.className='lbl';h.textContent=U.last.learned?'Learned ✓ — trigger the next part':'Teach this image — is each area OK or NG?';te.appendChild(h);
-    for(const a of P.areas){const r=U.last.r.res.find(z=>z.id===a.id);const t=document.createElement('div');t.className='t';
-      const n=document.createElement('span');n.textContent=a.name;const sc=document.createElement('small');sc.textContent=r?`score ${r.score.toFixed(1)} · ${r.ng?'NG':'OK'}`:'';
-      const g=document.createElement('div');g.className='okng';
-      for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=document.createElement('button');b.type='button';b.textContent=lbl;b.className=cls+(U.last.labels[a.id]===v?' on':'');b.disabled=U.last.learned;
+  if(U.mode==='result'&&U.last&&P){te.hidden=false;const R=U.last.r;
+    te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':'Teach this image — is each area OK or NG?'));
+    if(!R.pos.none){const t=el('div','t');t.append(el('span',null,'⌖ '+(refTool()||{}).name),el('small',null,R.pos.found?`found · ${Math.round(R.pos.score*100)}%`:`NOT FOUND · ${Math.round(R.pos.score*100)}%`),el('span'));te.appendChild(t)}
+    for(const a of checks()){const r=R.res.find(z=>z.id===a.id);const t=el('div','t');
+      const g=el('div','okng');
+      for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=el('button',cls+(U.last.labels[a.id]===v?' on':''),lbl);b.type='button';b.disabled=U.last.learned;
         b.onclick=()=>{U.last.labels[a.id]=v;render()};g.appendChild(b)}
-      t.append(n,sc,g);te.appendChild(t)}
-    const lb=document.createElement('button');lb.type='button';lb.className='btn primary';lb.textContent=U.last.learned?'✓ Learned':'🎓 Learn this image';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb);
+      t.append(el('span',null,a.name),el('small',null,r?`score ${r.score.toFixed(1)} · ${r.ng?'NG':'OK'}`:''),g);te.appendChild(t)}
+    for(const m of measures()){const r=R.meas.find(z=>z.id===m.id);const t=el('div','t');
+      t.append(el('span',null,'📏 '+m.name),el('small',null,r?(r.found?`${fmtLen(r.value)} · ${r.ok?'OK':'NG'}`:'no edges · NG'):''),el('small',null,tolTxt(m)));te.appendChild(t)}
+    if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb)}
   }else te.hidden=true;
   const sl=$('sampleList');sl.innerHTML='';
-  if(!P||!P.samples.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent='Nothing learned yet: only the reference is used.';sl.appendChild(e)}
-  else for(const s of P.samples){const b=document.createElement('button');b.type='button';b.className='thumb'+(U.view===s&&U.mode==='sample'?' sel':'');
+  if(!P||!P.samples.length){const e=el('div','empty','Nothing learned yet: only the reference is used.');e.style.gridColumn='1/-1';sl.appendChild(e)}
+  else for(const s of P.samples){const b=el('button','thumb'+(U.view===s&&U.mode==='sample'?' sel':''));b.type='button';
     const im=document.createElement('img');im.src=s.thumb;im.alt='Learned image';b.appendChild(im);
-    const ngA=P.areas.filter(a=>s.labels[a.id]==='ng');const c=document.createElement('span');c.className='chip '+(ngA.length?'ng':'ok');c.textContent=ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK';b.appendChild(c);
+    const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK'));
     b.onclick=()=>{if(U.view===s&&U.mode==='sample'){if(confirm('Remove this image from learning?'))forget(s);return}U.view=s;U.mode='sample';render()};
     b.title='Click to view, click again to remove';sl.appendChild(b)}
   $('runState').className='state';$('runState').textContent=P?`${P.samples.length} learned`:'—';
@@ -716,32 +898,39 @@ function render(){
   drawScreen();
 }
 
-/* ---------- pointer: move / resize areas, pan the zoomed screen, hand cursors ---------- */
+/* ---------- pointer: move / resize tools, pan the zoomed screen, hand cursors ---------- */
 function ptr(e){const r=$('view').getBoundingClientRect();return toImg(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height)))}
 const inside=(a,px,py)=>a.shape==='ellipse'?((px-(a.x0+a.x1)/2)/((a.x1-a.x0)/2))**2+((py-(a.y0+a.y1)/2)/((a.y1-a.y0)/2))**2<=1:px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1;
+function segDist(a,px,py){const dx=a.x1-a.x0,dy=a.y1-a.y0,l2=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((px-a.x0)*dx+(py-a.y0)*dy)/l2));return Math.hypot(px-(a.x0+t*dx),py-(a.y0+t*dy))}
 function hit(px,py){
   if(U.mode!=='edit'||L.role!=='ctl'||!P)return null;const tol=.03/V.z;
-  for(const a of[...P.areas].reverse()){
+  const list=[...P.areas].reverse().filter(a=>!U.only||a.id===U.only);
+  for(const a of list){
+    if(a.type==='measure'){for(const k of[0,1])if(Math.hypot(px-a['x'+k],py-a['y'+k])<tol)return{mode:'end',a,k};continue}
     const cs=[['x0','y0'],['x1','y0'],['x0','y1'],['x1','y1']].find(([cx,cy])=>Math.abs(px-a[cx])<tol&&Math.abs(py-a[cy])<tol);
     if(cs)return{mode:'corner',a,cx:cs[0],cy:cs[1]};
   }
-  for(const a of[...P.areas].reverse())if(inside(a,px,py))return{mode:'move',a};
+  for(const a of list){
+    if(a.type==='measure'){if(segDist(a,px,py)<Math.max(tol*.6,(a.band||.02)/2))return{mode:'move',a};continue}
+    if(inside(a,px,py))return{mode:'move',a};
+  }
   return null;
 }
 function cursorFor(px,py){
   const h=hit(px,py);
   if(h&&h.mode==='corner')return(h.cx==='x0')===(h.cy==='y0')?'nwse-resize':'nesw-resize';
+  if(h&&h.mode==='end')return'move';
   if(h)return'grab';
   if(V.z>1.01)return'grab';
-  return U.mode==='edit'?'crosshair':'default';
+  return U.mode==='edit'&&!U.only?'crosshair':'default';
 }
 const cv=$('view');
 cv.addEventListener('pointerdown',e=>{
   if(L.role!=='ctl'||!P)return;
   const[px,py]=ptr(e),h=hit(px,py);
-  if(!h&&V.z<=1.01&&U.mode!=='edit')return;
+  if(!h&&V.z<=1.01&&(U.mode!=='edit'||U.only))return;
   e.preventDefault();cv.setPointerCapture(e.pointerId);
-  if(h){U.drag={...h,sx:px,sy:py,o:{...h.a}};U.selArea=h.a.id;cv.style.cursor=h.mode==='move'?'grabbing':cv.style.cursor;render();return}
+  if(h){U.drag={...h,sx:px,sy:py,o:{...h.a}};U.selArea=h.a.id;if(h.mode==='move')cv.style.cursor='grabbing';render();return}
   if(V.z>1.01){const r=cv.getBoundingClientRect();U.drag={mode:'pan',ex:e.clientX,ey:e.clientY,cx:V.cx,cy:V.cy,w:r.width};cv.style.cursor='grabbing';return}
   U.drag={mode:'new',sx:px,sy:py,cx:px,cy:py};
 });
@@ -749,10 +938,12 @@ cv.addEventListener('pointermove',e=>{
   const d=U.drag;
   if(!d){if(L.role==='ctl'&&P){const[px,py]=ptr(e);cv.style.cursor=cursorFor(px,py)}return}
   if(d.mode==='pan'){V.cx=d.cx-(e.clientX-d.ex)/d.w/V.z;V.cy=d.cy-(e.clientY-d.ey)/d.w/V.z;clampView();drawScreen();return}
-  const[px,py]=ptr(e);
+  const[px,py]=ptr(e),a=d.a;
   if(d.mode==='new'){d.cx=px;d.cy=py}
-  else if(d.mode==='move'){const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0,nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));Object.assign(d.a,{x0:nx,y0:ny,x1:nx+w,y1:ny+h})}
-  else{d.a[d.cx]=px;d.a[d.cy]=py}
+  else if(d.mode==='end'){a['x'+d.k]=px;a['y'+d.k]=py}
+  else if(d.mode==='move'){const b=toolBox(d.o),ddx=Math.min(1-b.x1,Math.max(-b.x0,px-d.sx)),ddy=Math.min(1-b.y1,Math.max(-b.y0,py-d.sy));
+    Object.assign(a,{x0:d.o.x0+ddx,y0:d.o.y0+ddy,x1:d.o.x1+ddx,y1:d.o.y1+ddy})}
+  else{a[d.cx]=px;a[d.cy]=py}
   drawScreen();
 });
 function endDrag(e){
@@ -760,10 +951,12 @@ function endDrag(e){
   if(e&&e.clientX!=null){const[px,py]=ptr(e);cv.style.cursor=cursorFor(px,py)}
   if(d.mode==='pan')return;
   if(d.mode==='new'){const a={x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)};
-    if(a.x1-a.x0>.02&&a.y1-a.y0>.02){const id=P.areas.reduce((m,z)=>Math.max(m,z.id),0)+1;P.areas.push({id,name:`Area ${id}`,shape:'rect',...a,thr:DEF_THR,manual:false,detail:'auto'});U.selArea=id}else{render();return}}
-  else{const a=d.a;if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.02)a.x1=Math.min(1,a.x0+.02);if(a.y1-a.y0<.02)a.y1=Math.min(1,a.y0+.02);
+    if(a.x1-a.x0>.02&&a.y1-a.y0>.02){const id=nextId();P.areas.push({id,type:'check',name:`Area ${id}`,shape:'rect',...a,thr:DEF_THR,manual:false,detail:'auto'});U.selArea=id}else{render();return}}
+  else{const a=d.a;
+    if(a.type!=='measure'){if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.02)a.x1=Math.min(1,a.x0+.02);if(a.y1-a.y0<.02)a.y1=Math.min(1,a.y0+.02)}
     if(d.o.x0===a.x0&&d.o.y0===a.y0&&d.o.x1===a.x1&&d.o.y1===a.y1){render();return}}
-  P.valid=false;save();learnAll();
+  P.valid=false;save();
+  if(d.a&&d.a.type==='measure')render();else learnAll();
 }
 cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
 cv.addEventListener('wheel',e=>{if(L.role!=='ctl')return;e.preventDefault();const r=cv.getBoundingClientRect();zoomAt(Math.pow(1.0015,-e.deltaY),(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height)},{passive:false});
@@ -862,7 +1055,9 @@ $('refBtn').onclick=takeRef;$('refOk').onclick=refValid;$('refNo').onclick=takeR
 $('zoomIn').oninput=e=>setCam('zoom',+e.target.value);$('panX').oninput=e=>setCam('ox',+e.target.value);$('panY').oninput=e=>setCam('oy',+e.target.value);
 $('zoomChange').onclick=()=>{if(!confirm('Changing the camera zoom needs a new reference. The reference and the learned images will be cleared (areas are kept). Continue?'))return;
   P.ref=null;P.samples=[];P.valid=false;U.mode='live';U.last=null;save();render()};
-$('editBtn').onclick=()=>{stopRun();U.mode='edit';render()};
+$('editBtn').onclick=()=>{stopRun();U.mode='edit';U.only=null;resetView();render()};
+$('doneBtn').onclick=()=>{U.only=null;resetView();render()};
+$('addMeas').onclick=addMeasure;$('addRef').onclick=addRef;
 $('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
 $('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;
 $('liveBtn').onclick=()=>{U.mode='live';U.view=null;render()};
@@ -875,6 +1070,7 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
+if(Q.has('debug'))window.__vs1={get P(){return P},measureTool,findPos,inspect,measRef}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');

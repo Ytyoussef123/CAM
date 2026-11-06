@@ -24,7 +24,14 @@ Program flow on the PC:
 1. **Reference image** — set the **camera zoom** (digital, ×1–×4, with position), then take it from the live view; accept it (Valid) or retake. The zoom is saved in the program.
 2. **Control areas** — rectangles or circles; move them (hand cursor), resize them by the corners, name them,
    set thresholds and the **detail** (zoom per area: each area is cut from the full-resolution picture and analysed
-   on its own grid, Auto gives small areas more zoom). Validate the program; ✎ Edit areas reopens editing.
+   on its own grid, Auto gives small areas more zoom). Validate the program; ✎ Edit tools reopens editing,
+   and the ✎ on a tool edits that tool alone, zoomed on it.
+   - **📏 Measure**: a line drawn across a gap; the two edges are found along it (first edge from each end,
+     or the two strongest) and the distance is checked against a nominal ± tolerance.
+     "Set from reference" takes the nominal from the reference; "Calibrate mm" converts pixels to mm.
+   - **⌖ Position reference**: a distinctive part of the piece, searched in every picture (template matching
+     within a search range). All other tools are moved by the offset found, so the part may shift.
+     Shifts only for now, not rotation. If it is not found (below the minimum match) the part is NG.
 3. **Run & teach** — Trigger takes a full-resolution picture from the phone and inspects it.
    Mark each area OK or NG and press Learn: each area learns from its OK examples and
    its threshold is placed between the OK and NG examples.
