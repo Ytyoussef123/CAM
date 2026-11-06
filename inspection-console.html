@@ -121,78 +121,88 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
 [hidden]{display:none!important}
 .verdict.live{background:var(--accent);color:var(--accent-fg);font-size:22px;padding:8px 12px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-/* program flow + link */
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+/* controller / camera layout */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
 .seg button{border:0;background:var(--panel-2);padding:6px 12px;font-weight:600;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
 .link{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .link.on{color:var(--ok)} .link.err{color:var(--ng)}
-.role-mon .sensor-only{display:none!important}
-.mon-only{display:none!important}
-.role-mon .mon-only:not([hidden]){display:flex!important}
+.role-cam .ctl-only{display:none!important}
+.cam-only{display:none!important}
+.role-cam .cam-only:not([hidden]){display:flex!important}
 .screen canvas.edit{cursor:crosshair;touch-action:none}
 .areas{display:flex;flex-direction:column;gap:8px}
 .area{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:6px 10px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.area.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .area .sw{width:14px;height:14px;border-radius:3px;border:2px solid var(--accent)}
-.area b{font-family:var(--f-display);font-size:17px;font-weight:600}
+.area input[type=text]{font-family:var(--f-display);font-size:17px;font-weight:600;border:1px solid transparent;background:transparent;color:var(--fg);padding:1px 4px;border-radius:4px;min-width:0;width:100%}
+.area input[type=text]:hover,.area input[type=text]:focus{border-color:var(--line);background:var(--panel)}
 .area .val{font-family:var(--f-mono);font-size:12px;color:var(--muted);white-space:nowrap}
 .area .val.ng{color:var(--ng)} .area .val.ok{color:var(--ok)}
-.area .slider{grid-column:1/-1}
+.area .slider,.area .stats{grid-column:1/-1}
+.area .stats{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.area .stats.warn{color:var(--ng)}
 .area .x{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 8px}
-.pair{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.code{font-family:var(--f-mono);font-size:26px;font-weight:500;letter-spacing:.12em;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 12px}
-.pair input[type=text]{font-family:var(--f-mono);font-size:18px;letter-spacing:.1em;width:9ch;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);text-transform:lowercase}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.code{font-family:var(--f-mono);font-size:30px;font-weight:500;letter-spacing:.14em;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:4px 14px}
+.codein{font-family:var(--f-mono);font-size:18px;letter-spacing:.1em;width:9ch;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);text-transform:lowercase}
+select.prog,input.pname{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);min-width:0}
+input.pname{flex:1;min-width:10ch}
 .refbox{display:flex;gap:12px;align-items:center}
 .refbox img{width:96px;height:96px;object-fit:cover;border-radius:6px;background:var(--screen);border:2px solid var(--accent)}
-.step.locked{opacity:.55}
+.step.locked{opacity:.5;pointer-events:none}
+.teach{display:flex;flex-direction:column;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px}
+.teach .t{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+.teach .t span{font-family:var(--f-display);font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.teach .t small{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.okng{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.okng button{border:0;padding:5px 12px;font-weight:700;background:var(--panel)}
+.okng button.on.k{background:var(--ok);color:#fff} .okng button.on.g{background:var(--ng);color:#fff}
+.thumb .lab{position:absolute;right:3px;top:3px;font-family:var(--f-mono);font-size:10px;color:#fff;background:rgba(0,0,0,.6);padding:1px 3px;border-radius:3px}
+.big{font-size:17px;padding:11px 20px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
   <header class="bar">
     <div class="brand">VS-1<small>Vision Sensor</small></div>
-    <div class="stat"><span class="lbl">Source</span><b id="srcStat">Image files</b></div>
-    <div class="stat"><span class="lbl">Program</span><b id="modelStat">—</b></div>
+    <div class="stat"><span class="lbl">Image source</span><b id="srcStat">—</b></div>
+    <div class="stat ctl-only"><span class="lbl">Program</span><b id="progStat">—</b></div>
     <span class="spacer"></span>
     <div class="stat"><span class="lbl">This device is</span>
-      <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleSen" aria-pressed="true">📱 Sensor</button><button type="button" id="roleMon" aria-pressed="false">🖥 Monitor</button></div></div>
-    <div class="stat"><span class="lbl">Link to PC</span><span class="link" id="linkStat">starting…</span></div>
+      <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleCtl" aria-pressed="true">🖥 PC · controller</button><button type="button" id="roleCam" aria-pressed="false">📱 Camera</button></div></div>
+    <div class="stat"><span class="lbl">Link</span><span class="link" id="linkStat">—</span></div>
     <span class="mode" id="modeTag">SETUP</span>
   </header>
 
   <div class="main">
-    <section class="viewer" aria-label="Inspection image">
+    <section class="viewer" aria-label="Image">
       <div class="screen">
         <canvas id="view" width="640" height="640"></canvas>
-        <div class="verdict idle" id="verdict">NO REFERENCE</div>
+        <div class="verdict idle" id="verdict">—</div>
         <div class="imgname" id="imgName">—</div>
-        <div class="readout"><span id="roScore">Score —</span><span id="roThr">Threshold —</span></div>
+        <div class="readout"><span id="roScore">—</span><span id="roThr">—</span></div>
       </div>
 
-      <div class="scorebar">
+      <div class="scorebar ctl-only">
         <div class="track" aria-hidden="true"><div class="fill" id="fill" style="width:0"></div><div class="tick" id="tick" style="left:50%"></div></div>
         <div class="scorerow"><span>0</span><span id="scaleMax">—</span></div>
       </div>
 
-      <div class="cambar sensor-only">
-        <button class="btn primary" id="camBtn" type="button">📷 Start live camera</button>
+      <div class="cambar cam-only">
+        <button class="btn primary" id="camBtn" type="button">📷 Start camera</button>
         <button class="btn" id="flipBtn" type="button" hidden>Switch camera</button>
         <button class="btn" id="lockBtn" type="button" hidden>Lock exposure</button>
-        <button class="btn" id="liveBtn" type="button" hidden>Back to live</button>
-        <label class="toggle" id="ghostL" hidden><input type="checkbox" id="ghostT" checked> Reference ghost</label>
-        <span class="msg" id="camMsg">Keep the phone fixed above the part. Start the live camera, or use the 📷 Phone photo buttons.</span>
+        <span class="msg" id="camMsg">This phone is only the camera: everything is done from the PC. Fix the phone above the part and start the camera.</span>
       </div>
 
-      <div class="controls">
-        <button class="btn primary sensor-only" id="runBtn" type="button">▶ Run line</button>
-        <button class="btn sensor-only" id="stepBtn" type="button">Trigger once</button>
-        <button class="btn primary mon-only" id="monTrig" type="button">📷 Trigger sensor</button>
-        <button class="btn mon-only" id="monLive" type="button">Show live</button>
+      <div class="controls ctl-only">
+        <button class="btn" id="liveBtn" type="button">Live view</button>
         <button class="btn" id="resetBtn" type="button">Reset counters</button>
-        <label class="toggle sensor-only"><input type="checkbox" id="heatT" checked> Defect heat map</label>
+        <label class="toggle"><input type="checkbox" id="heatT" checked> Defect heat map</label>
       </div>
 
-      <div class="line">
+      <div class="line ctl-only">
         <div class="count"><span class="lbl">Inspected</span><b id="cTotal">0</b></div>
         <div class="count"><span class="lbl">OK</span><b id="cOk">0</b></div>
         <div class="count"><span class="lbl">NG</span><b id="cNg">0</b></div>
@@ -205,82 +215,77 @@ button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px soli
     </section>
 
     <aside class="setup">
-      <section class="step" id="pairStep" hidden>
-        <div class="stephead"><span class="stepnum">⇄</span><h2 id="pairTitle">Link to PC</h2><span class="state" id="pairState">—</span></div>
-        <div class="pair sensor-only"><span class="hint">Type this code on the PC (Monitor):</span><span class="code" id="pairCode">······</span></div>
-        <div class="pair mon-only"><span class="hint">Sensor code (shown on the phone):</span><input type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Sensor code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
+      <!-- phone (camera) -->
+      <section class="step cam-only" id="camPair">
+        <div class="stephead"><span class="stepnum">⇄</span><h2>Link to the PC</h2><span class="state" id="camState">—</span></div>
+        <div class="row"><span class="hint">On the PC, choose <b>Phone camera</b> and type this code:</span><span class="code" id="pairCode">······</span></div>
+        <p class="hint" id="camHint">Keep this page open, the screen on, and the phone fixed. The PC takes the pictures.</p>
       </section>
 
-      <section class="step mon-only" id="monStep">
-        <div class="stephead"><span class="stepnum">PC</span><h2>Monitor</h2><span class="state" id="monState">—</span></div>
-        <p class="hint" id="monHint">This screen shows what the phone sensor sees. Open the same page on the phone and choose <b>Sensor</b>.</p>
-        <div class="thumbs" id="monList"></div>
+      <!-- PC (controller) -->
+      <section class="step ctl-only" id="srcStep">
+        <div class="stephead"><span class="stepnum">⇄</span><h2>Image source</h2><span class="state" id="srcState">—</span></div>
+        <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button></div>
+        <div class="row" id="phoneRow"><span class="hint">Code shown on the phone:</span><input class="codein" type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Phone code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
+        <p class="hint" id="srcHint"></p>
       </section>
 
-      <section class="step mon-only" id="monAreaStep">
-        <div class="stephead"><span class="stepnum">⚙</span><h2>Control areas on the sensor</h2></div>
-        <p class="hint">Changing a threshold here changes it on the phone.</p>
-        <div class="areas" id="monAreas"></div>
+      <section class="step ctl-only" id="progStep">
+        <div class="stephead"><span class="stepnum">P</span><h2>Program</h2><span class="state" id="progState">—</span></div>
+        <div class="row">
+          <select class="prog" id="progSel" aria-label="Program"></select>
+          <button class="btn primary" id="newBtn" type="button">+ New program</button>
+          <button class="btn small" id="delBtn" type="button">Delete</button>
+        </div>
+        <div class="row"><span class="lbl">Name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
       </section>
 
-      <section class="step sensor-only" id="refStep">
+      <section class="step ctl-only" id="refStep">
         <div class="stephead"><span class="stepnum">1</span><h2>Reference image</h2><span class="state" id="refState">—</span></div>
-        <p class="hint">Put one <b>good</b> part in its exact position and take the reference picture. Everything else is set on this image.</p>
+        <p class="hint">Put one <b>good</b> part in its exact position, then take the reference from the live view.</p>
         <div class="refbox" id="refBox"></div>
-        <div class="controls">
-          <button class="btn primary" id="refCap" type="button" hidden>📷 Capture reference</button>
-          <label class="btn primary">📷 Phone photo<input type="file" id="refShot" accept="image/*" capture="environment"></label>
-          <label class="btn small">+ Image file<input type="file" id="refFile" accept="image/*"></label>
-          <button class="btn small" id="sampleBtn" type="button">Load sample program</button>
+        <div class="row">
+          <button class="btn primary big" id="refBtn" type="button">📷 Take reference</button>
+          <button class="btn primary big" id="refOk" type="button" hidden>✔ Valid</button>
+          <button class="btn big" id="refNo" type="button" hidden>↺ Not valid · retake</button>
         </div>
       </section>
 
-      <section class="step sensor-only" id="areaStep">
+      <section class="step ctl-only" id="areaStep">
         <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
-        <p class="hint">Press <b>+ Draw area</b>, then drag a box on the image around what must be checked (a hole, a label, an edge…). Only these areas are inspected. Drag inside a box to move it.</p>
+        <p class="hint"><b>+ Add area</b>, then on the image: drag inside a box to move it, drag a corner to resize it (or drag on an empty spot to draw a new one). Set each area's threshold, then validate the program.</p>
         <div class="areas" id="areaList"></div>
-        <div class="controls">
-          <button class="btn primary" id="drawBtn" type="button">+ Draw area</button>
-          <button class="btn small" id="doneBtn" type="button" hidden>Done</button>
+        <div class="row">
+          <button class="btn" id="addArea" type="button">+ Add area</button>
+          <button class="btn primary big" id="validBtn" type="button">✔ Validate program</button>
         </div>
       </section>
 
-      <section class="step sensor-only" id="goodStep">
-        <div class="stephead"><span class="stepnum">3</span><h2>More good parts</h2><span class="state" id="goodState">—</span></div>
-        <p class="hint">Recommended: add 5–20 more photos of <b>good</b> parts (take each part out and put it back). The sensor learns normal variation and sets the thresholds by itself.</p>
-        <div class="thumbs" id="goodList"></div>
-        <div class="controls">
-          <button class="btn primary" id="goodCap" type="button" hidden>📷 Capture good part</button>
-          <label class="btn primary">📷 Phone photo<input type="file" id="goodShot" accept="image/*" capture="environment"></label>
-          <label class="btn small">+ Images<input type="file" id="goodFile" accept="image/*" multiple></label>
-          <button class="btn small" id="goodClear" type="button">Clear</button>
+      <section class="step ctl-only" id="runStep">
+        <div class="stephead"><span class="stepnum">3</span><h2>Run &amp; teach</h2><span class="state" id="runState">—</span></div>
+        <p class="hint">Put a part and press <b>Trigger</b>: the image is taken from the live view and inspected. Then tell the sensor, area by area, if it is <b>OK</b> or <b>NG</b> and press <b>Learn</b>: the thresholds adjust to your examples.</p>
+        <div class="row">
+          <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
+          <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
         </div>
+        <div class="teach" id="teach" hidden></div>
+        <span class="lbl">Learned images</span>
+        <div class="thumbs" id="sampleList"></div>
       </section>
 
-      <section class="step sensor-only" id="testStep">
-        <div class="stephead"><span class="stepnum">4</span><h2>Inspect parts</h2><span class="state" id="testState">—</span></div>
-        <p class="hint">Put a part in place and take a picture: the result appears at once (and on the PC). With the live camera, Run line takes one picture every 2.5 s.</p>
-        <div class="thumbs" id="testList"></div>
-        <div class="controls">
-          <button class="btn primary" id="testCap" type="button" hidden>📷 Capture &amp; inspect</button>
-          <label class="btn primary">📷 Phone photo<input type="file" id="testShot" accept="image/*" capture="environment"></label>
-          <label class="btn small">+ Images<input type="file" id="testFile" accept="image/*" multiple></label>
-          <button class="btn small" id="testClear" type="button">Clear</button>
-        </div>
-      </section>
-
-      <div class="note sensor-only"><b>How it works:</b> each picture is compared pixel by pixel with the reference and the good parts, <b>inside the control areas only</b>. An area whose score is above its threshold is NG, and one NG area makes the part NG. Parts must sit in the same place each time, as on a fixture: the faint reference ghost on the live image helps you place them.</div>
+      <div class="note ctl-only"><b>How it decides:</b> inside each control area the image is compared pixel by pixel with the good examples of that area. Each area has a threshold: above it the area is NG, and one NG area makes the part NG. When you teach OK and NG examples, the threshold is placed between the highest OK score and the lowest NG score. Parts must sit in the same place each time and the light must stay the same.</div>
     </aside>
   </div>
+  <input type="file" id="fileIn" accept="image/*" hidden>
 </div>
 
 <script>
 (function(){
 const W=96, D=640, FLOOR=6, DEF_THR=5;
-let uid=0, aid=0;
 const $=id=>document.getElementById(id);
-const S={ref:null,good:[],areas:[],whole:{id:0,name:'Whole image',x0:0,y0:0,x1:1,y1:1,thr:DEF_THR,manual:false},
-  model:null,test:[],sel:null,c:{ok:0,ng:0},heat:true,timer:null,cursor:0,sample:false,hold:false,edit:false,drag:null};
+const OKC='#1FA45A',NGC='#E0352B',EDC='#41B8CD',SELC='#F5C542';
+function store(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);return true}catch(e){return false}}
+function stored(k){try{return localStorage.getItem(k)}catch(e){return null}}
 
 /* ---------- image processing ---------- */
 function blur(a,r){
@@ -291,65 +296,88 @@ function blur(a,r){
 }
 const smC=document.createElement('canvas');smC.width=smC.height=W;
 const smX=smC.getContext('2d',{willReadFrequently:true});
-function grayOf(disp){
-  smX.drawImage(disp,0,0,W,W);
-  const px=smX.getImageData(0,0,W,W).data, g=new Float32Array(W*W);
-  for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];
-  return blur(g,1);
-}
-function toItem(src,name){
-  const disp=document.createElement('canvas');disp.width=disp.height=D;
-  const c=disp.getContext('2d');
+function grayOf(c){smX.drawImage(c,0,0,W,W);const px=smX.getImageData(0,0,W,W).data,g=new Float32Array(W*W);for(let i=0;i<W*W;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];return blur(g,1)}
+function square(src){
+  const c=document.createElement('canvas');c.width=c.height=D;
   const sw=src.videoWidth||src.naturalWidth||src.width, sh=src.videoHeight||src.naturalHeight||src.height, s=Math.min(sw,sh);
-  c.drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  const th=document.createElement('canvas');th.width=th.height=160;th.getContext('2d').drawImage(disp,0,0,160,160);
-  return {id:++uid,name,disp,thumb:th.toDataURL('image/jpeg',.8),gray:grayOf(disp),map:null};
+  c.getContext('2d').drawImage(src,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);return c;
 }
-function buildModel(items){
-  const n=items.length; if(!n)return null;
-  const mean=new Float32Array(W*W), sd=new Float32Array(W*W);
-  for(const it of items)for(let i=0;i<W*W;i++)mean[i]+=it.gray[i]/n;
-  if(n>1)for(const it of items)for(let i=0;i<W*W;i++){const d=it.gray[i]-mean[i];sd[i]+=d*d/(n-1)}
-  for(let i=0;i<W*W;i++)sd[i]=Math.max(Math.sqrt(sd[i]),FLOOR);
-  return {mean,sd,n};
-}
-function diffMap(m,gray){
-  const map=new Float32Array(W*W);
-  for(let i=0;i<W*W;i++)map[i]=Math.abs(gray[i]-m.mean[i])/m.sd[i];
-  return blur(map,1);
-}
-const areas=()=>S.areas.length?S.areas:[S.whole];
+function thumbOf(c,n=120,q=.7){const t=document.createElement('canvas');t.width=t.height=n;t.getContext('2d').drawImage(c,0,0,n,n);return t.toDataURL('image/jpeg',q)}
+const g2b=g=>{const u=new Uint8Array(g.length);for(let i=0;i<g.length;i++)u[i]=Math.max(0,Math.min(255,Math.round(g[i])));let s='';for(let i=0;i<u.length;i+=4096)s+=String.fromCharCode.apply(null,u.subarray(i,i+4096));return btoa(s)};
+const b2g=b=>{const s=atob(b),g=new Float32Array(s.length);for(let i=0;i<s.length;i++)g[i]=s.charCodeAt(i);return g};
 function box(a){return[Math.max(0,Math.floor(a.x0*W)),Math.max(0,Math.floor(a.y0*W)),Math.min(W,Math.ceil(a.x1*W)),Math.min(W,Math.ceil(a.y1*W))]}
-function areaScores(map){
-  return areas().map(a=>{const[x0,y0,x1,y1]=box(a);let mx=0;for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const v=map[y*W+x];if(v>mx)mx=v}return mx});
-}
-function evaluate(map){
-  const as=areas(), sc=areaScores(map);
-  let worst=0,ng=false;
-  const res=as.map((a,i)=>{const r={id:a.id,name:a.name,score:sc[i],thr:a.thr,ng:sc[i]>a.thr};if(r.ng)ng=true;if(sc[i]/a.thr>sc[worst]/as[worst].thr)worst=i;return r});
-  return {res,ng,worst:res[worst]};
-}
-const goodSet=()=>S.ref?[S.ref,...S.good]:[];
-function relearn(){
-  const g=goodSet();
-  S.model=buildModel(g);
-  if(!S.model){for(const t of S.test)t.map=null;return}
-  // automatic thresholds: leave-one-out over the good parts, per area
-  const as=areas();
-  if(g.length>=3){
-    const worst=as.map(()=>0);
-    for(let k=0;k<g.length;k++){
-      const m=buildModel(g.filter((_,j)=>j!==k)), sc=areaScores(diffMap(m,g[k].gray));
-      sc.forEach((v,i)=>{if(v>worst[i])worst[i]=v});
-    }
-    as.forEach((a,i)=>{a.auto=Math.max(1,Math.round(worst[i]*1.25*10)/10)});
-  }else as.forEach(a=>{a.auto=DEF_THR});
-  as.forEach(a=>{if(!a.manual)a.thr=a.auto});
-  for(const t of S.test)t.map=diffMap(S.model,t.gray);
-}
-const result=t=>t&&t.map&&S.model?evaluate(t.map):null;
 
-/* ---------- sample program ---------- */
+/* ---------- program ----------
+   P = {id,name,ref:{img,gray},areas:[{id,name,x0,y0,x1,y1,thr,manual}],samples:[{id,gray,thumb,labels:{areaId:'ok'|'ng'}}],valid} */
+let P=null;
+function goods(a){const g=[P.ref.gray];for(const s of P.samples)if(s.labels[a.id]==='ok')g.push(s.gray);return g}
+function areaModel(a,list){
+  const[x0,y0,x1,y1]=box(a),n=list.length,mean=new Float32Array(W*W),sd=new Float32Array(W*W).fill(FLOOR);
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;let m=0;for(const g of list)m+=g[i];m/=n;mean[i]=m;
+    if(n>1){let v=0;for(const g of list){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(n-1)),FLOOR)}}
+  return{mean,sd};
+}
+function areaMap(a,m,g){
+  const[x0,y0,x1,y1]=box(a),map=new Float32Array(W*W);
+  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const i=y*W+x;map[i]=Math.abs(g[i]-m.mean[i])/m.sd[i]}
+  const b=blur(map,1);let mx=0;for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){const v=b[y*W+x];if(v>mx)mx=v}
+  return{map:b,score:mx};
+}
+// learn one area: model from its good examples, threshold between the OK and NG examples
+function learnArea(a){
+  const gl=goods(a);a._m=areaModel(a,gl);
+  let maxOk=null;
+  if(gl.length>=2){maxOk=0;for(let k=0;k<gl.length;k++){const m=areaModel(a,gl.filter((_,j)=>j!==k));maxOk=Math.max(maxOk,areaMap(a,m,gl[k]).score)}}
+  const ngs=P.samples.filter(s=>s.labels[a.id]==='ng').map(s=>areaMap(a,a._m,s.gray).score);
+  const minNg=ngs.length?Math.min(...ngs):null;
+  let thr;
+  if(minNg!=null&&maxOk!=null)thr=minNg>maxOk?Math.min(Math.max((maxOk+minNg)/2,maxOk+2),minNg*.9):minNg*.95; // between OK and NG examples
+  else if(minNg!=null)thr=Math.min(DEF_THR,minNg*.6);
+  else if(maxOk!=null)thr=Math.max(maxOk*1.25,maxOk+2,3); // keep a margin over camera noise
+  else thr=DEF_THR;
+  a.auto=Math.max(1,Math.round(thr*10)/10);
+  a.stats={nOk:gl.length,nNg:ngs.length,maxOk,minNg,overlap:minNg!=null&&maxOk!=null&&minNg<=maxOk};
+  if(!a.manual)a.thr=a.auto;
+}
+function learnAll(){if(P&&P.ref)P.areas.forEach(learnArea)}
+function inspect(g){
+  const res=P.areas.map(a=>{if(!a._m)learnArea(a);const r=areaMap(a,a._m,g);return{id:a.id,name:a.name,score:r.score,thr:a.thr,ng:r.score>a.thr,map:r.map}});
+  let worst=res[0];for(const r of res)if(r.score/r.thr>worst.score/worst.thr)worst=r;
+  return{res,ng:res.some(r=>r.ng),worst};
+}
+// storage: list of programs + one key per program
+function progIndex(){try{return JSON.parse(stored('vs1-progs')||'[]')}catch(e){return[]}}
+let saveT=null;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{
+  if(!P)return;
+  const data={id:P.id,name:P.name,valid:P.valid,ref:P.ref&&{img:P.ref.img,gray:g2b(P.ref.gray)},
+    areas:P.areas.map(a=>({id:a.id,name:a.name,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,manual:a.manual})),
+    samples:P.samples.map(s=>({id:s.id,thumb:s.thumb,labels:s.labels,gray:g2b(s.gray)}))};
+  const ok=store('vs1-prog-'+P.id,JSON.stringify(data));
+  const idx=progIndex().filter(p=>p.id!==P.id);idx.push({id:P.id,name:P.name});idx.sort((a,b)=>a.id-b.id);store('vs1-progs',JSON.stringify(idx));store('vs1-cur',String(P.id));
+  if(!ok)flashMsg('Could not save (browser storage full or blocked). The program stays open until you reload.');
+  renderProgSel();
+},300)}
+function loadProg(id){
+  let d=null;try{d=JSON.parse(stored('vs1-prog-'+id)||'null')}catch(e){}
+  if(!d)return false;
+  P={id:d.id,name:d.name,valid:!!d.valid,ref:null,areas:d.areas||[],samples:(d.samples||[]).map(s=>({...s,gray:b2g(s.gray)}))};
+  if(d.ref){P.ref={img:d.ref.img,gray:b2g(d.ref.gray),disp:null};const im=new Image();im.onload=()=>{P.ref.disp=square(im);render()};im.src=d.ref.img}
+  learnAll();U.cand=null;U.last=null;U.mode='live';store('vs1-cur',String(id));return true;
+}
+function newProg(name){
+  const idx=progIndex(),id=idx.reduce((m,p)=>Math.max(m,p.id),0)+1;
+  P={id,name:name||`Program ${String(id).padStart(2,'0')}`,valid:false,ref:null,areas:[],samples:[]};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;save();
+}
+
+/* ---------- UI state ---------- */
+const U={mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
+let msgT=null;
+function flashMsg(t){U.msg=t;clearTimeout(msgT);msgT=setTimeout(()=>{U.msg='';render()},6000);render()}
+
+/* ---------- image sources: phone (peer link), demo, files ---------- */
+const SRC={kind:stored('vs1-src')||'demo',demo:null,demoT:null,demoSeed:1};
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function grey(v){v=Math.max(0,Math.min(255,Math.round(v)));return`rgb(${v},${v},${v+4})`}
 function samplePart(seed,defect){
@@ -372,486 +400,369 @@ function samplePart(seed,defect){
   if(defect==='stain'){const sx=cx+42*k,sy=cy-58*k,sg=x.createRadialGradient(sx,sy,2,sx,sy,22*k);sg.addColorStop(0,'rgba(80,48,18,.9)');sg.addColorStop(1,'rgba(92,58,24,0)');x.fillStyle=sg;x.beginPath();x.arc(sx,sy,22*k,0,Math.PI*2);x.fill()}
   const id=x.getImageData(0,0,D,D),d=id.data;
   for(let i=0;i<d.length;i+=4){const n=(r()-.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
-  x.putImageData(id,0,0);
-  return c;
+  x.putImageData(id,0,0);return c;
 }
-function loadSample(){
-  stopRun();S.sample=true;S.edit=false;
-  S.ref=toItem(samplePart(11),'reference.png');
-  S.good=[];for(let i=1;i<10;i++)S.good.push(toItem(samplePart(11+i*7),`good_${String(i+1).padStart(2,'0')}.png`));
-  aid=0;S.areas=[
-    {id:++aid,name:'Area 1 · bolt holes',x0:.18,y0:.18,x1:.82,y1:.45,thr:DEF_THR,manual:false},
-    {id:++aid,name:'Area 2 · lower rim',x0:.16,y0:.55,x1:.84,y1:.86,thr:DEF_THR,manual:false}];
-  S.test=[];
-  const plan=[null,'missing',null,'scratch','chip',null,'stain',null];
-  plan.forEach((d,i)=>S.test.push(toItem(samplePart(500+i*13,d),`part_${String(i+1).padStart(4,'0')}.png`)));
-  relearn();
-  S.sel=S.test[1];S.c={ok:0,ng:0};S.cursor=0;
-  renderAll();
+function demoNext(){const r=Math.random(),d=r<.7?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d)}
+function setSrc(k){
+  SRC.kind=k;store('vs1-src',k);clearInterval(SRC.demoT);
+  if(k==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
+  if(k==='phone'&&!L.conn){const c=stored('vs1-pair');if(c){$('pairIn').value=c;connectPhone()}}
+  render();
 }
-function clearSample(){if(!S.sample)return;S.sample=false;stopRun();S.ref=null;S.good=[];S.areas=[];S.whole.manual=false;S.test=[];S.model=null;S.sel=null;S.cursor=0;S.c={ok:0,ng:0}}
+function liveFrame(){ // what the live view shows right now (canvas/video) or null
+  if(SRC.kind==='demo')return SRC.demo;
+  if(SRC.kind==='phone'&&L.video&&L.video.videoWidth&&L.camOn)return L.video;
+  return null;
+}
+function grab(){ // take one picture from the source
+  if(SRC.kind==='demo')return Promise.resolve(square(SRC.demo));
+  if(SRC.kind==='file')return new Promise(ok=>{const f=$('fileIn');f.value='';f.onchange=async()=>{const file=f.files[0];if(!file)return ok(null);try{ok(square(await createImageBitmap(file)))}catch(e){ok(null)}};f.click()});
+  if(!(L.conn&&L.conn.open&&L.camOn)){flashMsg('No live image: connect the phone (Image source) and start its camera.');return Promise.resolve(null)}
+  // ask the phone for a full-resolution still; fall back to the video frame
+  return new Promise(ok=>{
+    const id=Math.random().toString(36).slice(2);
+    const t=setTimeout(()=>{delete L.wait[id];ok(L.video&&L.video.videoWidth?square(L.video):null)},3000);
+    L.wait[id]=img=>{clearTimeout(t);const im=new Image();im.onload=()=>ok(square(im));im.onerror=()=>ok(null);im.src=img};
+    L.conn.send({type:'snap',id});
+  });
+}
 
-/* ---------- program actions ---------- */
-function setRef(it){
-  clearSample();S.ref=it;S.sel=it;relearn();
-  if(!S.areas.length)S.edit=true;
-  setMsg(S.areas.length?'New reference saved. Control areas were kept.':'Reference saved. Step 2: press + Draw area and drag a box on the image.');
-  renderAll();pubState();
+/* ---------- actions ---------- */
+async function takeRef(){
+  stopRun();const c=await grab();if(!c)return;
+  U.cand={disp:c,gray:grayOf(c)};U.mode='cand';flash();render();
 }
-function addGood(items){
-  if(!S.ref){setMsg('Take the reference image first (step 1).',true);return}
-  S.good.push(...items);relearn();S.sel=items[items.length-1]||S.sel;renderAll();pubState();
+function refValid(){
+  const c=U.cand;if(!c)return;U.cand=null;
+  const hadAreas=P.areas.length;
+  P.ref={img:c.disp.toDataURL('image/jpeg',.85),gray:c.gray,disp:c.disp};P.samples=[];P.valid=false;
+  if(!hadAreas)addArea(false);
+  learnAll();U.mode='edit';save();
+  flashMsg(hadAreas?'New reference saved. Areas kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1 on the image, add more areas if needed.');
 }
-function addTests(items,count){
-  if(!S.model){setMsg('Take the reference image first (step 1).',true);return}
-  S.test.push(...items);for(const t of items)t.map=diffMap(S.model,t.gray);
-  const t=items[items.length-1];if(!t)return;
-  S.sel=t;S.edit=false;
-  if(count){const r=result(t);r.ng?S.c.ng++:S.c.ok++;if(r.ng&&navigator.vibrate)navigator.vibrate(200);S.hold=true;renderAll();S.hold=camOn();pubShot(t);holdThenLive()}
-  else renderAll();
+function addArea(r=true){
+  const id=P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1, o=(P.areas.length%4)*.04;
+  const a={id,name:`Area ${id}`,x0:.35+o,y0:.35+o,x1:.65+o,y1:.65+o,thr:DEF_THR,manual:false};
+  P.areas.push(a);U.selArea=a.id;P.valid=false;learnArea(a);U.mode='edit';if(r){save();render()}
 }
-function setThr(a,v){a.thr=Math.max(.1,Math.round(v*10)/10);a.manual=true;renderAll();pubState()}
-function autoThr(a){a.manual=false;a.thr=a.auto||DEF_THR;renderAll();pubState()}
-function removeArea(a){S.areas=S.areas.filter(x=>x!==a);relearn();renderAll();pubState()}
-function trigger(){
-  if(camOn()){captureTest();return}
-  if(!S.model||!S.test.length)return;
-  const t=S.test[S.cursor%S.test.length];S.cursor++;
-  S.sel=t;S.edit=false;const r=result(t);r.ng?S.c.ng++:S.c.ok++;
-  renderAll();pubShot(t);
+function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];P.valid=false;save();render()}
+function validate(){
+  if(!P.ref||!P.areas.length)return;
+  P.valid=true;U.mode='live';U.selArea=null;learnAll();save();
+  flashMsg('Program validated. Step 3: put a part and press Trigger.');
 }
-function stopRun(){if(S.timer){clearInterval(S.timer);S.timer=null}$('runBtn').textContent='▶ Run line';if(L.role==='sen'){$('modeTag').textContent='SETUP';$('modeTag').classList.remove('run')}}
-function toggleRun(){
-  if(S.timer){stopRun();return}
-  if(!S.model||!(S.test.length||camOn()))return;
-  S.edit=false;S.timer=setInterval(trigger,camOn()?2500:900);trigger();
-  $('runBtn').textContent='■ Stop';$('modeTag').textContent='RUN';$('modeTag').classList.add('run');
+async function trigger(){
+  if(!P||!P.valid)return;
+  const c=await grab();if(!c)return;
+  const g=grayOf(c),r=inspect(g);
+  r.ng?U.c.ng++:U.c.ok++;
+  U.last={disp:c,gray:g,r,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
+  U.mode='result';U.view=null;flash();
+  if(r.ng&&navigator.vibrate)navigator.vibrate(150);
+  render();
 }
-async function filesToItems(files){
-  const out=[];
-  for(const f of files){if(!f.type.startsWith('image/'))continue;try{const bmp=await createImageBitmap(f);out.push(toItem(bmp,f.name&&f.name!=='image.jpg'?f.name:`photo_${new Date().toLocaleTimeString().replace(/:/g,'')}.jpg`))}catch(e){}}
-  return out;
+function learnLast(){
+  const l=U.last;if(!l||l.learned)return;
+  const before=Object.fromEntries(P.areas.map(a=>[a.id,a.thr]));
+  P.samples.push({id:Date.now(),gray:l.gray,thumb:thumbOf(l.disp),labels:{...l.labels}});
+  l.learned=true;learnAll();
+  l.r=inspect(l.gray);save();
+  const ch=P.areas.filter(a=>Math.abs(a.thr-before[a.id])>=.05).map(a=>`${a.name}: ${before[a.id].toFixed(1)} → ${a.thr.toFixed(1)}`);
+  flashMsg('Learned.'+(ch.length?' New thresholds: '+ch.join(', '):' Thresholds unchanged.'));
 }
+function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;learnAll();save();flashMsg('Image removed from learning.')}
+function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
+function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,3000);trigger()}
+function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 
 /* ---------- drawing ---------- */
-function strokeArea(x,a,color,label){
+function strokeArea(x,a,color,label,handles){
   const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;
-  x.lineWidth=3;x.strokeStyle=color;x.setLineDash(color==='#41B8CD'?[10,6]:[]);x.strokeRect(X,Y,w,h);x.setLineDash([]);
-  if(label){x.font='600 26px "Barlow Condensed",Arial,sans-serif';const tw=x.measureText(label).width+12;const ly=Y>34?Y-32:Y+3;
-    x.fillStyle=color;x.fillRect(X,ly,tw,30);x.fillStyle=color==='#F5C542'?'#222':'#fff';x.fillText(label,X+6,ly+23)}
+  x.lineWidth=3;x.strokeStyle=color;x.setLineDash(color===EDC?[10,6]:[]);x.strokeRect(X,Y,w,h);x.setLineDash([]);
+  if(handles){x.fillStyle=color;for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])x.fillRect(hx-9,hy-9,18,18)}
+  if(label){x.font='600 26px "Barlow Condensed",Arial,sans-serif';const tw=x.measureText(label).width+12,ly=Y>34?Y-32:Y+3;
+    x.fillStyle=color;x.fillRect(X,ly,tw,30);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(label,X+6,ly+23)}
 }
-const OKC='#1FA45A',NGC='#E0352B',EDC='#41B8CD';
-function drawAreasRes(x,res){
-  areas().forEach((a,i)=>{const r=res&&res[i];if(!S.areas.length&&!r)return;
-    strokeArea(x,a,r?(r.ng?NGC:OKC):EDC,(S.areas.length?a.name.split(' · ')[0]:'')+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''))});
+function drawAreas(x,res,edit){
+  P.areas.forEach(a=>{const r=res&&res.find(z=>z.id===a.id),sel=edit&&U.selArea===a.id;
+    strokeArea(x,a,sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''),sel)});
 }
-function heat(x,map){
+function heat(x,res){
   const hm=document.createElement('canvas');hm.width=hm.height=W;const hx=hm.getContext('2d'),id=hx.createImageData(W,W);
-  const as=areas();
-  for(const a of as){const[x0,y0,x1,y1]=box(a);
-    for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++){const i=y*W+xx,r=map[i]/a.thr;if(r<.5)continue;const q=Math.min(1,(r-.5)/1.5);
+  for(const r of res){const a=P.areas.find(z=>z.id===r.id);if(!a)continue;const[x0,y0,x1,y1]=box(a);
+    for(let y=y0;y<y1;y++)for(let xx=x0;xx<x1;xx++){const i=y*W+xx,q0=r.map[i]/r.thr;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
       id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}}
   hx.putImageData(id,0,0);x.imageSmoothingEnabled=true;x.drawImage(hm,0,0,D,D);
 }
-function readout(r,label){
+function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
+function readout(r,live){
   const v=$('verdict');
   if(!r){$('fill').style.width='0';setLamps(null);return}
   const w=r.worst;
-  v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(label||'')+(r.ng?'NG':'OK');
-  $('roScore').textContent=`${S.areas.length||r.res.length>1?w.name.split(' · ')[0]+' · ':''}score ${w.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${w.thr.toFixed(1)}`;
+  v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(live?'LIVE · ':'')+(r.ng?'NG':'OK');
+  $('roScore').textContent=`${w.name} · score ${w.score.toFixed(1)}`;$('roThr').textContent=`Threshold ${w.thr.toFixed(1)}`;
   const max=Math.max(w.thr*2,w.score*1.05);
   $('fill').style.width=(Math.min(1,w.score/max)*100)+'%';$('fill').className='fill'+(r.ng?' ng':'');
   $('tick').style.left=`calc(${w.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1);
-  setLamps(label?null:r.ng);
+  setLamps(live?null:r.ng);
 }
-function drawView(){
-  const cv=$('view'),x=cv.getContext('2d'),v=$('verdict');
-  cv.classList.toggle('edit',S.edit);
+function idle(t,name,a,b){const v=$('verdict');v.className='verdict idle';v.textContent=t;$('imgName').textContent=name||'—';$('roScore').textContent=a||'—';$('roThr').textContent=b||'—';readout(null)}
+function drawScreen(ts){
+  const cv=$('view'),x=cv.getContext('2d');
+  cv.classList.toggle('edit',U.mode==='edit'&&L.role==='ctl');
   x.fillStyle='#05080a';x.fillRect(0,0,D,D);
-  if(S.edit&&S.ref){
-    x.drawImage(S.ref.disp,0,0);
-    S.areas.forEach(a=>strokeArea(x,a,EDC,a.name.split(' · ')[0]));
-    if(S.drag&&S.drag.mode==='new'){const d=S.drag;strokeArea(x,{x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},'#F5C542','')}
-    v.className='verdict idle';v.textContent='DRAW AREAS';$('imgName').textContent='reference';
-    $('roScore').textContent=`${S.areas.length} area${S.areas.length===1?'':'s'}`;$('roThr').textContent='Drag on the image';readout(null);return;
+  if(L.role==='cam'){
+    if(C.stream&&C.video.videoWidth){const v=C.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
+      const vd=$('verdict');vd.className='verdict live';vd.textContent=L.conns.length?'LIVE · PC connected':'LIVE';$('imgName').textContent=`${C.video.videoWidth}×${C.video.videoHeight}`;$('roScore').textContent=C.locked?'Exposure locked':'Auto exposure';$('roThr').textContent='code '+(L.code||'—')}
+    else idle('CAMERA OFF','—','Press Start camera','');
+    return;
   }
-  const t=S.sel;
-  if(!t){v.className='verdict idle';v.textContent=S.ref?'NO IMAGE':'NO REFERENCE';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';readout(null);return}
-  x.drawImage(t.disp,0,0);$('imgName').textContent=t.name;
-  if(t===S.ref||S.good.includes(t)){drawAreasRes(x,null);v.className='verdict idle';v.textContent=t===S.ref?'REFERENCE':'GOOD PART';$('roScore').textContent='Used for learning';$('roThr').textContent=`${goodSet().length} good images`;readout(null);return}
-  const r=result(t);
-  if(!r){v.className='verdict idle';v.textContent='NO REFERENCE';readout(null);return}
-  if(S.heat)heat(x,t.map);
-  drawAreasRes(x,r.res);readout(r);
+  if(!P){idle('NO PROGRAM');return}
+  if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.disp,0,0);idle('REFERENCE?','candidate','Is this image good?','Valid or retake');return}
+  if(U.mode==='edit'&&P.ref&&P.ref.disp){x.drawImage(P.ref.disp,0,0);drawAreas(x,null,true);
+    if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
+    idle('EDIT AREAS','reference',`${P.areas.length} area${P.areas.length===1?'':'s'}`,'Drag box / corners');return}
+  if(U.mode==='sample'&&U.view){const im=U.view._img;if(im&&im.complete)x.drawImage(im,0,0,D,D);else{const i=new Image();i.onload=()=>render();i.src=U.view.thumb;U.view._img=i}
+    drawAreas(x,null,false);const lb=P.areas.map(a=>`${a.name} ${U.view.labels[a.id]==='ng'?'NG':U.view.labels[a.id]==='ok'?'OK':'—'}`).join(' · ');
+    idle('LEARNED IMAGE','learned (low-res preview)',lb,'');return}
+  if(U.mode==='result'&&U.last){x.drawImage(U.last.disp,0,0);if(U.heat)heat(x,U.last.r.res);drawAreas(x,U.last.r.res,false);
+    $('imgName').textContent='triggered '+new Date(U.last.ts).toLocaleTimeString()+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
+  // live
+  const f=liveFrame();
+  if(!f){idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
+  const sw=f.videoWidth||f.width,sh=f.videoHeight||f.height,s=Math.min(sw,sh);x.drawImage(f,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
+  if(P.valid&&P.ref){if(!ts||ts-U.lastLive>300){U.lastLive=ts||0;U.live=inspect(grayOf(cv))}drawAreas(x,U.live.res,false);$('imgName').textContent='LIVE';readout(U.live,true)}
+  else{if(P.ref)drawAreas(x,null,false);idle('LIVE','LIVE',P.ref?'Program not validated':'No reference yet','')}
 }
-function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
-function thumbList(el,items,kind){
-  el.innerHTML='';
-  if(!items.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent=kind==='good'?'No extra good parts yet.':'No parts inspected yet.';el.appendChild(e);return}
-  for(const t of items){
-    const b=document.createElement('button');b.type='button';b.className='thumb'+(S.sel===t&&!S.edit?' sel':'');b.title=t.name;
-    const im=document.createElement('img');im.src=t.thumb;im.alt=t.name;b.appendChild(im);
-    if(kind==='test'){const c=document.createElement('span'),r=result(t);
-      if(!r){c.className='chip';c.textContent='—'}else{c.className='chip '+(r.ng?'ng':'ok');c.textContent=(r.ng?'NG ':'OK ')+r.worst.score.toFixed(1)}
-      b.appendChild(c)}
-    b.onclick=()=>{S.sel=t;S.edit=false;if(camOn())S.hold=true;renderAll()};
-    el.appendChild(b);
-  }
-}
-function areaRow(a,i,r,onThr,onAuto,onDel){
-  const row=document.createElement('div');row.className='area';
+function loop(ts){requestAnimationFrame(loop);
+  const live=(L.role==='cam')||(U.mode==='live'&&liveFrame());if(live)drawScreen(ts)}
+
+/* ---------- panel rendering ---------- */
+function areaRow(a,r){
+  const row=document.createElement('div');row.className='area'+(U.selArea===a.id&&U.mode==='edit'?' sel':'');
   const sw=document.createElement('span');sw.className='sw';
-  const nm=document.createElement('b');nm.textContent=a.name;
-  const val=document.createElement('span');val.className='val'+(r?(r.ng?' ng':' ok'):'');val.textContent=r?`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`:(a.auto?`auto ${(+a.auto).toFixed(1)}`:'');
-  row.append(sw,nm,val);
-  if(onDel){const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.title='Delete area';x.onclick=onDel;row.append(x)}else row.append(document.createElement('span'));
+  const nm=document.createElement('input');nm.type='text';nm.value=a.name;nm.maxLength=24;nm.setAttribute('aria-label','Area name');
+  nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'&&!P.valid)U.mode='edit';drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||`Area ${a.id}`;save();render()};
+  const val=document.createElement('span');val.className='val'+(r?(r.ng?' ng':' ok'):'');val.textContent=r?`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`:'';
+  const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.title='Delete area';x.onclick=()=>delArea(a);
+  row.append(sw,nm,val,x);
   const sl=document.createElement('div');sl.className='slider';
+  const lb=document.createElement('span');lb.className='lbl';lb.textContent='Threshold';
   const inp=document.createElement('input');inp.type='range';inp.min=.5;inp.max=Math.max(20,Math.ceil(a.thr*2));inp.step=.1;inp.value=a.thr;inp.setAttribute('aria-label',a.name+' threshold');
   const out=document.createElement('output');out.textContent=(+a.thr).toFixed(1);
-  inp.oninput=()=>{out.textContent=(+inp.value).toFixed(1);onThr(+inp.value)};
-  const au=document.createElement('button');au.type='button';au.className='btn small';au.textContent='Auto';au.onclick=onAuto;
-  const lb=document.createElement('span');lb.className='lbl';lb.textContent='Threshold';
-  sl.append(lb,inp,out,au);row.append(sl);return row;
+  inp.oninput=()=>{a.thr=+inp.value;a.manual=true;out.textContent=a.thr.toFixed(1);if(U.last)U.last.r=inspect(U.last.gray);drawScreen();save()};
+  inp.onchange=()=>render();
+  const au=document.createElement('button');au.type='button';au.className='btn small';au.textContent=a.manual?'Auto':'Auto ✓';au.title='Use the learned threshold';
+  au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.gray);save();render()};
+  sl.append(lb,inp,out,au);row.append(sl);
+  const st=a.stats;if(st){const s=document.createElement('div');s.className='stats'+(st.overlap?' warn':'');
+    s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area':'');row.append(s)}
+  return row;
 }
-function renderAll(){
-  if(L.role==='mon'){renderMon();return}
-  // step 1
+function renderProgSel(){
+  const sel=$('progSel'),idx=progIndex();sel.innerHTML='';
+  for(const p of idx){const o=document.createElement('option');o.value=p.id;o.textContent=`P${String(p.id).padStart(2,'0')} · ${p.name}`;if(P&&P.id===p.id)o.selected=true;sel.appendChild(o)}
+  if(!idx.length){const o=document.createElement('option');o.textContent='No program';sel.appendChild(o)}
+}
+function render(){
+  document.body.classList.toggle('role-cam',L.role==='cam');
+  $('roleCtl').setAttribute('aria-pressed',L.role==='ctl');$('roleCam').setAttribute('aria-pressed',L.role==='cam');
+  if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('modeTag').textContent='CAMERA';drawScreen();return}
+  // source
+  for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
+  $('phoneRow').hidden=SRC.kind!=='phone';
+  const ss=$('srcState'),sh=$('srcHint');
+  if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
+    sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
+  else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera: a new part arrives every 2.5 s, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
+  else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Take reference asks you for an image file.'}
+  $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind];
+  // program
+  $('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
+  $('progStat').textContent=P?`P${String(P.id).padStart(2,'0')} · ${P.name}`:'—';
+  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=P?(P.valid?'Validated':'Not validated'):'—';
+  // 1 reference
+  $('refStep').classList.toggle('locked',!P);
   const rb=$('refBox');rb.innerHTML='';
-  if(S.ref){const im=document.createElement('img');im.src=S.ref.thumb;im.alt='Reference image';const s=document.createElement('span');s.className='hint';s.textContent=S.ref.name;rb.append(im,s)}
-  $('refState').className='state '+(S.ref?'good':'warn');$('refState').textContent=S.ref?'Saved':'Needed';
-  // step 2
-  $('areaStep').classList.toggle('locked',!S.ref);$('drawBtn').disabled=!S.ref;
-  const sel=S.sel&&S.test.includes(S.sel)?result(S.sel):null;
+  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.img;im.alt='Reference';const s=document.createElement('span');s.className='hint';s.textContent='Reference saved';rb.append(im,s)}
+  const cand=U.mode==='cand'&&U.cand;
+  $('refBtn').hidden=!!cand;$('refOk').hidden=$('refNo').hidden=!cand;$('refBtn').textContent=P&&P.ref?'📷 Retake reference':'📷 Take reference';
+  $('refState').className='state'+(P&&P.ref?' good':' warn');$('refState').textContent=cand?'Check it':P&&P.ref?'Saved':'Needed';
+  // 2 areas
+  $('areaStep').classList.toggle('locked',!(P&&P.ref));
   const al=$('areaList');al.innerHTML='';
-  if(!S.areas.length){const e=document.createElement('div');e.className='empty';e.textContent=S.ref?'No area yet: the whole image is checked. Press + Draw area.':'Take the reference image first.';al.appendChild(e)}
-  S.areas.forEach((a,i)=>al.appendChild(areaRow(a,i,sel&&sel.res[i],v=>setThr(a,v),()=>autoThr(a),()=>removeArea(a))));
-  if(!S.areas.length&&S.ref)al.appendChild(areaRow(S.whole,0,sel&&sel.res[0],v=>setThr(S.whole,v),()=>autoThr(S.whole),null));
-  $('areaState').className='state'+(S.areas.length?' good':'');$('areaState').textContent=S.areas.length?`${S.areas.length} area${S.areas.length>1?'s':''}`:'Whole image';
-  $('drawBtn').textContent=S.edit?'Drawing… drag on the image':'+ Draw area';$('drawBtn').classList.toggle('primary',!S.edit);$('doneBtn').hidden=!S.edit;
-  // step 3
-  $('goodStep').classList.toggle('locked',!S.ref);
-  thumbList($('goodList'),S.good,'good');
-  const n=goodSet().length;$('goodState').className='state'+(n>=6?' good':n?' warn':'');$('goodState').textContent=n?`${n} good image${n>1?'s':''}`:'—';
-  // step 4
-  $('testStep').classList.toggle('locked',!S.model);
-  thumbList($('testList'),S.test,'test');
-  const rs=S.test.map(result).filter(Boolean),ng=rs.filter(r=>r.ng).length;
-  $('testState').className='state'+(rs.length?(ng?' warn':' good'):'');$('testState').textContent=rs.length?`${rs.length-ng} OK · ${ng} NG`:'—';
-  $('modelStat').textContent=S.ref?`${n} good image${n>1?'s':''} · ${S.areas.length||'whole image,'} ${S.areas.length?'area'+(S.areas.length>1?'s':''):'no area'}`:'No reference';
-  const tot=S.c.ok+S.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=S.c.ok;$('cNg').textContent=S.c.ng;$('cRate').textContent=(tot?S.c.ng/tot*100:0).toFixed(1)+'%';
-  $('runBtn').disabled=$('stepBtn').disabled=!(S.model&&(S.test.length||camOn()));
-  $('stepBtn').textContent=camOn()?'📷 Trigger once':'Trigger once';
-  $('liveBtn').hidden=!camOn()||!(S.hold||S.edit);
-  if(camOn()&&!S.hold&&!S.edit)return;
-  drawView();
+  const lr=U.mode==='result'&&U.last?U.last.r:null;
+  if(P)P.areas.forEach(a=>al.appendChild(areaRow(a,lr&&lr.res.find(z=>z.id===a.id))));
+  if(P&&!P.areas.length){const e=document.createElement('div');e.className='empty';e.textContent='No control area. Press + Add area.';al.appendChild(e)}
+  $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} area${P.areas.length===1?'':'s'}`:'—';
+  $('validBtn').disabled=!(P&&P.ref&&P.areas.length);$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
+  // 3 run & teach
+  $('runStep').classList.toggle('locked',!(P&&P.valid));
+  $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
+  $('modeTag').textContent=U.timer?'RUN':P&&P.valid?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
+  const te=$('teach');te.innerHTML='';
+  if(U.mode==='result'&&U.last&&P){te.hidden=false;
+    const h=document.createElement('span');h.className='lbl';h.textContent=U.last.learned?'Learned ✓ — trigger the next part':'Teach this image — is each area OK or NG?';te.appendChild(h);
+    for(const a of P.areas){const r=U.last.r.res.find(z=>z.id===a.id);const t=document.createElement('div');t.className='t';
+      const n=document.createElement('span');n.textContent=a.name;const sc=document.createElement('small');sc.textContent=r?`score ${r.score.toFixed(1)} · ${r.ng?'NG':'OK'}`:'';
+      const g=document.createElement('div');g.className='okng';
+      for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=document.createElement('button');b.type='button';b.textContent=lbl;b.className=cls+(U.last.labels[a.id]===v?' on':'');b.disabled=U.last.learned;
+        b.onclick=()=>{U.last.labels[a.id]=v;render()};g.appendChild(b)}
+      t.append(n,sc,g);te.appendChild(t)}
+    const lb=document.createElement('button');lb.type='button';lb.className='btn primary';lb.textContent=U.last.learned?'✓ Learned':'🎓 Learn this image';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb);
+  }else te.hidden=true;
+  const sl=$('sampleList');sl.innerHTML='';
+  if(!P||!P.samples.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent='Nothing learned yet: only the reference is used.';sl.appendChild(e)}
+  else for(const s of P.samples){const b=document.createElement('button');b.type='button';b.className='thumb'+(U.view===s&&U.mode==='sample'?' sel':'');
+    const im=document.createElement('img');im.src=s.thumb;im.alt='Learned image';b.appendChild(im);
+    const ngA=P.areas.filter(a=>s.labels[a.id]==='ng');const c=document.createElement('span');c.className='chip '+(ngA.length?'ng':'ok');c.textContent=ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK';b.appendChild(c);
+    b.onclick=()=>{if(U.view===s&&U.mode==='sample'){if(confirm('Remove this image from learning?'))forget(s);return}U.view=s;U.mode='sample';render()};
+    b.title='Click to view, click again to remove';sl.appendChild(b)}
+  $('runState').className='state';$('runState').textContent=P?`${P.samples.length} learned`:'—';
+  const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
+  $('liveBtn').disabled=U.mode==='live';
+  const m=$('srcHint');if(U.msg){m.textContent=U.msg}
+  drawScreen();
 }
 
-/* ---------- drawing control areas on the image ---------- */
+/* ---------- area editing on the image ---------- */
 function ptr(e){const r=$('view').getBoundingClientRect();return[Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))]}
 $('view').addEventListener('pointerdown',e=>{
-  if(!S.edit||L.role!=='sen')return;
+  if(U.mode!=='edit'||L.role!=='ctl'||!P)return;
   e.preventDefault();$('view').setPointerCapture(e.pointerId);
-  const[px,py]=ptr(e);
-  const hit=[...S.areas].reverse().find(a=>px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1);
-  S.drag=hit?{mode:'move',a:hit,sx:px,sy:py,o:{...hit}}:{mode:'new',sx:px,sy:py,cx:px,cy:py};
+  const[px,py]=ptr(e),tol=.035;
+  let d=null;
+  for(const a of[...P.areas].reverse()){
+    const cs=[['x0','y0'],['x1','y0'],['x0','y1'],['x1','y1']].find(([cx,cy])=>Math.abs(px-a[cx])<tol&&Math.abs(py-a[cy])<tol);
+    if(cs){d={mode:'corner',a,cx:cs[0],cy:cs[1]};break}
+    if(px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1){d={mode:'move',a,sx:px,sy:py,o:{...a}};break}
+  }
+  U.drag=d||{mode:'new',sx:px,sy:py,cx:px,cy:py};
+  if(d){U.selArea=d.a.id;render()}
 });
 $('view').addEventListener('pointermove',e=>{
-  if(!S.drag)return;const[px,py]=ptr(e),d=S.drag;
+  const d=U.drag;if(!d)return;const[px,py]=ptr(e);
   if(d.mode==='new'){d.cx=px;d.cy=py}
-  else{const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0;let nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));d.a.x0=nx;d.a.y0=ny;d.a.x1=nx+w;d.a.y1=ny+h}
-  drawView();
+  else if(d.mode==='move'){const w=d.o.x1-d.o.x0,h=d.o.y1-d.o.y0,nx=Math.min(1-w,Math.max(0,d.o.x0+px-d.sx)),ny=Math.min(1-h,Math.max(0,d.o.y0+py-d.sy));d.a.x0=nx;d.a.y0=ny;d.a.x1=nx+w;d.a.y1=ny+h}
+  else{const a=d.a;a[d.cx]=px;a[d.cy]=py}
+  drawScreen();
 });
 function endDrag(){
-  const d=S.drag;if(!d)return;S.drag=null;
+  const d=U.drag;if(!d)return;U.drag=null;
   if(d.mode==='new'){const a={x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)};
-    if(a.x1-a.x0>.03&&a.y1-a.y0>.03){aid=Math.max(aid,...S.areas.map(x=>x.id))+1;S.areas.push({id:aid,name:`Area ${S.areas.length+1}`,...a,thr:DEF_THR,manual:false});
-      setMsg(`Area ${S.areas.length} added. Draw another, or press Done.`)}}
-  relearn();renderAll();pubState();
+    if(a.x1-a.x0>.03&&a.y1-a.y0>.03){const id=P.areas.reduce((m,z)=>Math.max(m,z.id),0)+1;P.areas.push({id,name:`Area ${id}`,...a,thr:DEF_THR,manual:false});U.selArea=id}}
+  else{const a=d.a;if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.03)a.x1=Math.min(1,a.x0+.03);if(a.y1-a.y0<.03)a.y1=Math.min(1,a.y0+.03)}
+  P.valid=false;learnAll();save();render();
 }
 $('view').addEventListener('pointerup',endDrag);$('view').addEventListener('pointercancel',endDrag);
 
-/* ---------- live camera (works when the page is opened directly, not inside claude.ai) ---------- */
-const C={stream:null,video:null,facing:'environment',locked:false,lastLive:0,ht:null,live:null};
-const camOn=()=>!!C.stream;
-function setMsg(t,err){const m=$('camMsg');m.textContent=t;m.classList.toggle('err',!!err)}
-function grab(){const v=C.video,c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c}
-function camButtons(){const on=camOn();$('flipBtn').hidden=$('lockBtn').hidden=$('ghostL').hidden=!on;$('refCap').hidden=$('goodCap').hidden=$('testCap').hidden=!on;
-  $('camBtn').textContent=on?'■ Stop camera':'📷 Start live camera';$('camBtn').classList.toggle('primary',!on)}
+/* ---------- phone camera (Camera role) ---------- */
+const C={stream:null,video:null,facing:'environment',locked:false};
 async function startCam(){
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setMsg('Live camera needs a secure (https) page. Use the 📷 Phone photo buttons.',true);return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camMsg('The camera needs this page opened directly over https (GitHub Pages), not inside claude.ai.',true);return}
   try{
-    stopCam(false);
+    stopCam();
     C.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:C.facing},width:{ideal:1920},height:{ideal:1080}}});
     if(!C.video){C.video=document.createElement('video');C.video.playsInline=true;C.video.muted=true;C.video.setAttribute('playsinline','')}
-    C.video.srcObject=C.stream;await C.video.play();
-    C.locked=false;S.hold=false;
-    const tr=C.stream.getVideoTracks()[0],st=tr.getSettings?tr.getSettings():{};
-    $('srcStat').textContent=`Camera ${st.width||C.video.videoWidth}×${st.height||C.video.videoHeight}`;
-    camButtons();setMsg(S.ref?'Camera on. Place a part and press Trigger once.':'Camera on. Step 1: place a good part and press "Capture reference".');
-    renderAll();requestAnimationFrame(liveLoop);peerVideo();pubState();
-  }catch(e){C.stream=null;camButtons();
-    setMsg(e&&e.name==='NotAllowedError'?'The camera is blocked on this page. Use the 📷 Phone photo buttons (they open the camera app).':'Could not open the camera ('+(e&&e.name||e)+'). Use 📷 Phone photo.',true)}
+    C.video.srcObject=C.stream;await C.video.play();C.locked=false;
+    $('camBtn').textContent='■ Stop camera';$('camBtn').classList.remove('primary');$('flipBtn').hidden=$('lockBtn').hidden=false;$('lockBtn').textContent='Lock exposure';
+    camMsg('Camera on. Fix the phone above the part. Everything else is done on the PC.');
+    callPCs();sendStatus();render();
+    try{if(navigator.wakeLock)C.wake=await navigator.wakeLock.request('screen')}catch(e){}
+  }catch(e){C.stream=null;camMsg(e&&e.name==='NotAllowedError'?'Camera blocked. Open this page directly (GitHub Pages address) and allow the camera.':'Could not open the camera ('+(e&&e.name||e)+').',true)}
 }
-function stopCam(render=true){
-  if(C.stream)C.stream.getTracks().forEach(t=>t.stop());C.stream=null;if(!render)return;
-  stopRun();S.hold=false;$('srcStat').textContent='Image files';camButtons();setMsg('Camera stopped.');renderAll();pubState();
-}
+function stopCam(){if(C.stream){C.stream.getTracks().forEach(t=>t.stop());C.stream=null;$('camBtn').textContent='📷 Start camera';$('camBtn').classList.add('primary');$('flipBtn').hidden=$('lockBtn').hidden=true;sendStatus();render()}}
+function camMsg(t,err){const m=$('camMsg');m.textContent=t;m.classList.toggle('err',!!err)}
 async function lockCam(){
   const tr=C.stream&&C.stream.getVideoTracks()[0];if(!tr)return;
   const caps=tr.getCapabilities?tr.getCapabilities():{},adv={},mode=C.locked?'continuous':'manual';
   for(const k of['exposureMode','whiteBalanceMode','focusMode'])if(caps[k]&&caps[k].includes(mode))adv[k]=mode;
-  if(!Object.keys(adv).length){setMsg('This browser cannot lock exposure. Keep the light constant (fixed lamp, no window light).',true);return}
-  try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure';setMsg(C.locked?'Exposure, focus and white balance locked.':'Automatic exposure again.')}
-  catch(e){setMsg('Lock failed: '+e.name,true)}
+  if(!Object.keys(adv).length){camMsg('This phone browser cannot lock exposure. Keep the light constant.',true);return}
+  try{await tr.applyConstraints({advanced:[adv]});C.locked=!C.locked;$('lockBtn').textContent=C.locked?'Unlock exposure':'Lock exposure'}catch(e){camMsg('Lock failed: '+e.name,true)}
 }
-function capItem(prefix,n){return camOn()&&C.video.videoWidth?toItem(grab(),`${prefix}_${String(n).padStart(prefix==='part'?4:2,'0')}.jpg`):null}
-function captureTest(){
-  if(!S.model){setMsg('Take the reference image first (step 1).',true);return}
-  const t=capItem('part',S.test.length+1);if(!t)return;flash();addTests([t],true);
-}
-function holdThenLive(){if(!camOn())return;clearTimeout(C.ht);C.ht=setTimeout(()=>{S.hold=false;renderAll()},S.timer?1800:2500)}
-function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
-function ghost(){
-  if(!S.ref)return null;if(S.ref.ghost)return S.ref.ghost;
-  const c=document.createElement('canvas');c.width=c.height=160;c.getContext('2d').drawImage(S.ref.disp,0,0,160,160);return S.ref.ghost=c;
-}
-function liveLoop(ts){
-  if(!camOn())return;requestAnimationFrame(liveLoop);
-  if(S.hold||S.edit||L.role!=='sen'||!C.video.videoWidth)return;
-  const cv=$('view'),x=cv.getContext('2d'),v=C.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
-  x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  if(S.model&&ts-C.lastLive>250){C.lastLive=ts;C.live=evaluate(diffMap(S.model,grayOf(cv)));pubLive(C.live)}
-  if(!S.model)C.live=null;
-  if(ghost()&&$('ghostT').checked){x.globalAlpha=.28;x.drawImage(ghost(),0,0,D,D);x.globalAlpha=1}
-  drawAreasRes(x,C.live&&C.live.res);
-  $('imgName').textContent=C.locked?'LIVE · exposure locked':'LIVE';
-  if(C.live)readout(C.live,'LIVE · ');else{const vd=$('verdict');vd.className='verdict live';vd.textContent='LIVE';$('roScore').textContent='No reference';$('roThr').textContent='—';readout(null)}
+function snap(){ // full-resolution still, square, 640 px
+  if(!C.stream||!C.video.videoWidth)return null;return square(C.video).toDataURL('image/jpeg',.88);
 }
 
-/* ---------- link to the PC ----------
-   Inside claude.ai: shared data store (photos only, no live video there).
-   Opened directly (https): peer-to-peer link with a pairing code, carries live video too. */
-const L={role:'sen',kind:null,db:null,peer:null,conns:[],conn:null,calls:[],last:null,state:null,log:[],loaded:Date.now(),busy:false,next:null,view:null,tick:null,
-  video:null,showLive:true,live:null,lastLiveSent:0};
+/* ---------- link (PeerJS): phone = camera, PC = controller ---------- */
+const L={role:stored('vs1-role2')||(matchMedia('(pointer:coarse)').matches?'cam':'ctl'),kind:null,peer:null,conns:[],conn:null,calls:[],video:null,camOn:false,wait:{},code:null};
 function linkStat(t,cls){const e=$('linkStat');e.textContent=t;e.className='link'+(cls?' '+cls:'')}
-function jpeg(canvas,size,q){const c=document.createElement('canvas');c.width=c.height=size;c.getContext('2d').drawImage(canvas,0,0,size,size);return c.toDataURL('image/jpeg',q)}
-function stateMsg(){return{areas:areas().map(a=>({id:a.id,name:a.name,x0:a.x0,y0:a.y0,x1:a.x1,y1:a.y1,thr:a.thr,auto:a.auto||null})),
-  whole:!S.areas.length,ok:S.c.ok,ng:S.c.ng,learned:goodSet().length,hasRef:!!S.ref,cam:camOn(),sensorTs:Date.now()}}
-let lastShot=null;
-function canPub(){return L.role==='sen'&&!S.sample&&(L.db||L.conns.length)}
-async function dbWrite(path,data){
-  if(L.busy){L.next=[path,data];return}
-  L.busy=true;
-  try{await L.db.doc(path).set(data);linkStat('sent '+new Date().toLocaleTimeString(),'on')}catch(e){linkStat('send failed: '+(e&&e.code||e),'err')}
-  L.busy=false;if(L.next){const n=L.next;L.next=null;dbWrite(...n)}
-}
-function peerSend(m){for(const c of L.conns)if(c.open)try{c.send(m)}catch(e){}}
-function pubState(){
-  if(!canPub())return;const st=stateMsg();
-  if(L.db)dbWrite('live/last',{state:st,shot:lastShot});
-  peerSend({type:'state',state:st});
-}
-function pubShot(t){
-  if(!canPub())return;const r=result(t);if(!r)return;
-  drawView();const cv=$('view'),ts=Date.now();
-  lastShot={name:t.name,ts,verdict:r.ng?'NG':'OK',worst:{name:r.worst.name,score:+r.worst.score.toFixed(2),thr:r.worst.thr},
-    res:r.res.map(x=>({id:x.id,name:x.name,score:+x.score.toFixed(2),thr:x.thr,ng:x.ng})),img:jpeg(cv,480,.72)};
-  const entry={name:t.name,ts,verdict:lastShot.verdict,score:lastShot.worst.score,thumb:jpeg(cv,120,.6)};
-  L.log.unshift(entry);L.log=L.log.slice(0,16);
-  const st=stateMsg();
-  if(L.db){dbWrite('live/last',{state:st,shot:lastShot});setTimeout(()=>L.db.doc('live/log').set({items:L.log}).catch(()=>{}),300)}
-  peerSend({type:'shot',state:st,shot:lastShot,entry});
-}
-function pubLive(r){
-  if(!L.conns.length||L.role!=='sen')return;const now=Date.now();if(now-L.lastLiveSent<300)return;L.lastLiveSent=now;
-  peerSend({type:'live',live:{ng:r.ng,res:r.res.map(x=>({score:+x.score.toFixed(2),thr:x.thr,ng:x.ng})),worst:{name:r.worst.name,score:+r.worst.score.toFixed(2),thr:r.worst.thr}}});
-}
-function applyCmd(c){
-  if(!c||L.role!=='sen')return;
-  if(c.thrs&&typeof c.thrs==='object')for(const a of areas()){const v=c.thrs[a.id];if(typeof v==='number'&&isFinite(v)){a.thr=Math.min(100,Math.max(.1,v));a.manual=true}}
-  if(c.auto)for(const a of areas())if(a.id===c.auto){a.manual=false;a.thr=a.auto||DEF_THR}
-  if(c.reset){S.c={ok:0,ng:0};S.cursor=0}
-  renderAll();pubState();
-  if(c.trigger){if(camOn())captureTest();else setMsg('The PC asked for a picture: start the live camera to allow remote triggers.',true)}
-}
-function sendCmd(c){
-  if(L.db)L.db.doc('live/cmd').set({...c,ts:Date.now()}).then(()=>linkStat('command sent','on'),e=>linkStat('send failed: '+(e&&e.code||e),'err'));
-  else if(L.conn&&L.conn.open){L.conn.send({type:'cmd',cmd:c});linkStat('command sent','on')}
-  else linkStat('not connected','err');
-}
-function onMsg(m){
-  if(!m||typeof m!=='object')return;
-  if(L.role==='sen'){if(m.type==='cmd')applyCmd(m.cmd);return}
-  if(m.type==='state'||m.type==='shot'||m.type==='hello')L.state=m.state||L.state;
-  if(m.type==='shot'&&m.shot){L.last=m.shot;if(m.entry){L.log.unshift(m.entry);L.log=L.log.slice(0,16)}L.view=null;L.showLive=false;clearTimeout(L.backLive);L.backLive=setTimeout(()=>{L.showLive=true;renderMon()},2500)}
-  if(m.type==='hello'){L.last=m.shot||null;L.log=Array.isArray(m.log)?m.log:[]}
-  if(m.type==='live')L.live=m.live;
-  if(m.type!=='live')renderMon();
-}
-
-/* peer-to-peer (PeerJS) */
 const Q=new URLSearchParams(location.search);
 function peerOpts(){const h=Q.get('peer');if(!h)return{};const[host,port]=h.split(':');return{host,port:+port||443,path:'/',secure:(+port||443)===443}}
 function loadPeerJs(){return new Promise((ok,bad)=>{if(window.Peer)return ok();const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';s.onload=ok;s.onerror=bad;document.head.appendChild(s)})}
 function newCode(){const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';for(let i=0;i<6;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
-function store(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
-function stored(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function peerVideo(){
-  for(const c of L.calls)try{c.close()}catch(e){}L.calls=[];
-  if(!L.peer||!C.stream)return;
-  for(const c of L.conns)if(c.open)L.calls.push(L.peer.call(c.peer,C.stream));
-}
-function startSensorPeer(){
+function sendStatus(){for(const c of L.conns)if(c.open)try{c.send({type:'status',cam:!!C.stream})}catch(e){}}
+function callPCs(){for(const c of L.calls)try{c.close()}catch(e){}L.calls=[];if(!L.peer||!C.stream)return;for(const c of L.conns)if(c.open)L.calls.push(L.peer.call(c.peer,C.stream))}
+function startCamPeer(){
   if(L.peer){L.peer.destroy();L.peer=null}
   let code=stored('vs1-code');if(!code){code=newCode();store('vs1-code',code)}
-  $('pairCode').textContent=code;$('pairState').className='state';$('pairState').textContent='Waiting for PC';
+  L.code=code;$('pairCode').textContent=code;$('camState').className='state';$('camState').textContent='Waiting for PC';
   const p=new Peer('vs1-'+code,peerOpts());L.peer=p;
-  p.on('open',()=>{linkStat('ready · code '+code,'on')});
-  p.on('error',e=>{if(e.type==='unavailable-id'){store('vs1-code',newCode());setTimeout(startSensorPeer,500)}else linkStat('link error: '+e.type,'err')});
+  p.on('open',()=>linkStat('ready · code '+code,'on'));
+  p.on('error',e=>{if(e.type==='unavailable-id'){store('vs1-code',newCode());setTimeout(startCamPeer,500)}else linkStat('link error: '+e.type,'err')});
   p.on('disconnected',()=>{try{p.reconnect()}catch(e){}});
   p.on('connection',c=>{
-    c.on('open',()=>{L.conns.push(c);$('pairState').className='state good';$('pairState').textContent='PC connected';linkStat('PC connected','on');
-      c.send({type:'hello',state:stateMsg(),shot:lastShot,log:L.log});if(C.stream)L.calls.push(p.call(c.peer,C.stream))});
-    c.on('data',onMsg);
-    c.on('close',()=>{L.conns=L.conns.filter(x=>x!==c);if(!L.conns.length){$('pairState').className='state';$('pairState').textContent='Waiting for PC';linkStat('ready · code '+code,'on')}});
+    c.on('open',()=>{L.conns.push(c);$('camState').className='state good';$('camState').textContent='PC connected';linkStat('PC connected','on');
+      c.send({type:'status',cam:!!C.stream});if(C.stream)L.calls.push(p.call(c.peer,C.stream));render()});
+    c.on('data',m=>{if(m&&m.type==='snap'){const img=snap();c.send({type:'snap',id:m.id,img});
+      document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}});
+    c.on('close',()=>{L.conns=L.conns.filter(x=>x!==c);if(!L.conns.length){$('camState').className='state';$('camState').textContent='Waiting for PC';linkStat('ready · code '+code,'on')}render()});
   });
 }
-function startMonitorPeer(){
-  if(L.peer){L.peer.destroy();L.peer=null}
+function connectPhone(){
+  if(L.kind!=='peer'){render();return}
+  if(L.peer){L.peer.destroy();L.peer=null}L.conn=null;L.camOn=false;
   const code=($('pairIn').value||'').trim().toLowerCase();
-  if(code.length!==6){$('pairState').className='state warn';$('pairState').textContent='Type the 6-letter code';return}
-  store('vs1-pair',code);$('pairState').className='state';$('pairState').textContent='Connecting…';linkStat('connecting…');
+  if(code.length!==6){flashMsg('Type the 6-letter code shown on the phone.');return}
+  store('vs1-pair',code);linkStat('connecting…');
   const p=new Peer(peerOpts());L.peer=p;
   p.on('open',()=>{
     const c=p.connect('vs1-'+code,{reliable:true});L.conn=c;
-    c.on('open',()=>{$('pairState').className='state good';$('pairState').textContent='Connected';linkStat('sensor '+code+' connected','on')});
-    c.on('data',onMsg);
-    c.on('close',()=>{$('pairState').className='state warn';$('pairState').textContent='Disconnected';linkStat('disconnected','err');L.live=null;if(L.video)L.video.srcObject=null;renderMon()});
+    c.on('open',()=>{linkStat('phone '+code+' connected','on');render()});
+    c.on('data',m=>{if(!m)return;if(m.type==='status'){L.camOn=!!m.cam;render()}
+      if(m.type==='snap'){const f=L.wait[m.id];delete L.wait[m.id];if(f){if(m.img)f(m.img);else f(null)}}});
+    c.on('close',()=>{L.camOn=false;linkStat('phone disconnected','err');if(L.video)L.video.srcObject=null;render()});
   });
   p.on('call',call=>{call.answer();call.on('stream',st=>{if(!L.video){L.video=document.createElement('video');L.video.playsInline=true;L.video.muted=true;L.video.setAttribute('playsinline','')}
-    L.video.srcObject=st;L.video.play().catch(()=>{});L.showLive=true;requestAnimationFrame(monLoop)})});
-  p.on('error',e=>{$('pairState').className='state warn';$('pairState').textContent=e.type==='peer-unavailable'?'Code not found':'Error';linkStat('link error: '+e.type,'err')});
+    L.video.srcObject=st;L.video.play().catch(()=>{});render()})});
+  p.on('error',e=>linkStat(e.type==='peer-unavailable'?'code not found — is the phone page open?':'link error: '+e.type,'err'));
 }
-
-/* ---------- monitor (PC) ---------- */
-function ago(ts){const s=Math.max(0,Math.round((Date.now()-ts)/1000));return s<60?s+' s ago':Math.round(s/60)+' min ago'}
-const hasVideo=()=>L.video&&L.video.srcObject&&L.video.videoWidth&&L.state&&L.state.cam;
-function monLoop(){
-  if(L.role!=='mon'||!L.video||!L.video.srcObject)return;requestAnimationFrame(monLoop);
-  if(!(L.showLive&&!L.view&&hasVideo()))return;
-  const cv=$('view'),x=cv.getContext('2d'),v=L.video,sw=v.videoWidth,sh=v.videoHeight,s=Math.min(sw,sh);
-  x.drawImage(v,(sw-s)/2,(sh-s)/2,s,s,0,0,D,D);
-  const st=L.state;
-  if(st)st.areas.forEach((a,i)=>{if(st.whole&&!(L.live&&L.live.res[i]))return;const r=L.live&&L.live.res[i];
-    strokeArea(x,a,r?(r.ng?NGC:OKC):EDC,(st.whole?'':a.name.split(' · ')[0])+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:''))});
-  $('imgName').textContent='LIVE from sensor';
-  if(L.live)readout(L.live,'LIVE · ');else{const vd=$('verdict');vd.className='verdict live';vd.textContent='LIVE';$('roScore').textContent='—';$('roThr').textContent='—';readout(null)}
-}
-function renderMon(){
-  if(L.role!=='mon')return;
-  const st=L.state||{}, d=L.view||L.last, v=$('verdict'), x=$('view').getContext('2d');
-  $('view').classList.remove('edit');
-  $('srcStat').textContent=st.cam?'Phone sensor · live camera':'Phone sensor (remote)';
-  const ms=$('monState');
-  if(!L.kind){ms.className='state';ms.textContent='Starting…'}
-  else if(!L.db&&!(L.conn&&L.conn.open)){ms.className='state warn';ms.textContent='Not connected';$('monHint').textContent=L.kind==='peer'?'Open this same page on the phone, choose Sensor, then type the code it shows in the box above.':'No link available here.'}
-  else if(!L.last){ms.className='state';ms.textContent='Waiting…'}
-  else{ms.className='state good';ms.textContent='Last image '+ago(L.last.ts)}
-  $('monTrig').hidden=!(L.kind==='peer'&&st.cam);$('monLive').hidden=!(L.kind==='peer'&&st.cam);
-  $('monLive').textContent=L.showLive&&!L.view?'Showing live':'Show live';
-  $('modelStat').textContent=st.hasRef?`${st.learned} good image${st.learned>1?'s':''} · ${st.whole?'whole image':st.areas.length+' area'+(st.areas.length>1?'s':'')}`:'No reference (set it on the phone)';
-  const ok=st.ok||0,ng=st.ng||0,tot=ok+ng;
-  $('cTotal').textContent=tot;$('cOk').textContent=ok;$('cNg').textContent=ng;$('cRate').textContent=(tot?ng/tot*100:0).toFixed(1)+'%';
-  // area thresholds (not while the user drags a slider)
-  const ma=$('monAreas');
-  if(!ma.contains(document.activeElement)||document.activeElement.type!=='range'){
-    ma.innerHTML='';
-    if(!st.areas||!st.hasRef){const e=document.createElement('div');e.className='empty';e.textContent='No program on the sensor yet.';ma.appendChild(e)}
-    else st.areas.forEach((a,i)=>{const r=L.last&&L.last.res&&L.last.res.find(z=>z.id===a.id);
-      ma.appendChild(areaRow(a,i,r,val=>sendCmd({thrs:{[a.id]:val}}),()=>sendCmd({auto:a.id}),null))});
-  }
-  const ml=$('monList');ml.innerHTML='';
-  if(!L.log.length){const e=document.createElement('div');e.className='empty';e.style.gridColumn='1/-1';e.textContent='No inspections received yet.';ml.appendChild(e)}
-  for(const it of L.log){
-    const b=document.createElement('button');b.type='button';b.className='thumb'+(L.view===it?' sel':'');b.title=it.name;
-    const im=document.createElement('img');im.src=it.thumb;im.alt=it.name;b.appendChild(im);
-    const c=document.createElement('span');c.className='chip '+(it.verdict==='NG'?'ng':'ok');c.textContent=it.verdict+' '+(+it.score).toFixed(1);b.appendChild(c);
-    b.onclick=()=>{L.view=L.view===it?null:it;renderMon()};ml.appendChild(b);
-  }
-  if(L.showLive&&!L.view&&hasVideo())return; // live loop draws the screen
-  x.fillStyle='#05080a';x.fillRect(0,0,D,D);
-  const src=d&&(d.img||d.thumb);
-  if(!src){v.className='verdict idle';v.textContent='WAITING FOR SENSOR';$('imgName').textContent='—';$('roScore').textContent='Score —';$('roThr').textContent='Threshold —';readout(null);return}
-  const im=new Image();im.onload=()=>{if((L.view||L.last)===d&&!(L.showLive&&!L.view&&hasVideo()))x.drawImage(im,0,0,D,D)};im.src=src;
-  $('imgName').textContent=(L.view?'history · ':'')+d.name+' · '+new Date(d.ts).toLocaleTimeString();
-  if(L.view){const isNg=d.verdict==='NG';v.className='verdict '+(isNg?'ng':'ok');v.textContent=d.verdict;$('roScore').textContent=`Score ${(+d.score).toFixed(1)}`;$('roThr').textContent='—';$('fill').style.width='0';setLamps(null)}
-  else readout({ng:d.verdict==='NG',res:d.res||[],worst:d.worst});
-}
-
-/* ---------- roles ---------- */
 function setRole(r){
-  L.role=r;store('vs1-role',r);
-  $('roleSen').setAttribute('aria-pressed',r==='sen');$('roleMon').setAttribute('aria-pressed',r==='mon');
-  document.body.classList.toggle('role-mon',r==='mon');
-  clearInterval(L.tick);
-  if(r==='mon'){stopRun();if(camOn())stopCam(false);camButtons();S.hold=false;S.edit=false;$('modeTag').textContent='MONITOR';$('modeTag').classList.remove('run');L.tick=setInterval(renderMon,5000)}
-  else{$('modeTag').textContent='SETUP';$('srcStat').textContent='Image files'}
-  $('pairTitle').textContent=r==='mon'?'Connect to the sensor':'Link to PC';
-  if(L.kind==='peer'){if(r==='sen')startSensorPeer();else{if(L.peer){L.peer.destroy();L.peer=null}L.conn=null;const c=stored('vs1-pair');if(c){$('pairIn').value=c;startMonitorPeer()}}}
-  if(L.kind==='db'&&r==='mon'){L.log=L.dbLog||[]}
-  renderAll();
+  L.role=r;store('vs1-role2',r);stopRun();
+  if(r==='ctl'){stopCam();if(L.kind==='peer'){if(L.peer){L.peer.destroy();L.peer=null}L.conns=[];if(SRC.kind==='phone')setSrc('phone')}}
+  else{if(L.kind==='peer')startCamPeer();else linkStat('needs the GitHub Pages address','err')}
+  render();
 }
 
 /* ---------- wiring ---------- */
-const onFile=(id,fn)=>{$(id).onchange=async e=>{const items=await filesToItems(e.target.files);e.target.value='';if(items.length)fn(items)}};
-onFile('refShot',it=>setRef(it[0]));onFile('refFile',it=>setRef(it[0]));
-onFile('goodShot',addGood);onFile('goodFile',addGood);
-onFile('testShot',it=>addTests(it,true));onFile('testFile',it=>addTests(it,false));
-$('refCap').onclick=()=>{const it=capItem('reference',1);if(it){flash();setRef(it)}};
-$('goodCap').onclick=()=>{const it=capItem('good',S.good.length+2);if(it){flash();addGood([it]);S.hold=true;renderAll();holdThenLive()}};
-$('testCap').onclick=captureTest;
-$('goodClear').onclick=()=>{S.good=[];relearn();if(S.sel&&!S.test.includes(S.sel)&&S.sel!==S.ref)S.sel=null;renderAll();pubState()};
-$('testClear').onclick=()=>{stopRun();S.test=[];S.cursor=0;if(S.sel&&S.test.indexOf(S.sel)<0&&S.sel!==S.ref&&!S.good.includes(S.sel))S.sel=null;renderAll()};
-$('sampleBtn').onclick=loadSample;
-$('drawBtn').onclick=()=>{if(!S.ref)return;stopRun();S.edit=true;S.hold=false;setMsg('Drag on the image to draw a control area.');renderAll()};
-$('doneBtn').onclick=()=>{S.edit=false;if(S.test.length)S.sel=S.test[S.test.length-1];else S.sel=S.ref;renderAll()};
-$('runBtn').onclick=toggleRun;$('stepBtn').onclick=trigger;
-$('resetBtn').onclick=()=>{if(L.role==='mon'){sendCmd({reset:1});return}S.c={ok:0,ng:0};S.cursor=0;renderAll();pubState()};
-$('heatT').onchange=e=>{S.heat=e.target.checked;drawView()};
-$('camBtn').onclick=()=>camOn()?stopCam():startCam();
+$('roleCtl').onclick=()=>setRole('ctl');$('roleCam').onclick=()=>setRole('cam');
+$('srcPhone').onclick=()=>setSrc('phone');$('srcDemo').onclick=()=>setSrc('demo');$('srcFile').onclick=()=>setSrc('file');
+$('pairBtn').onclick=connectPhone;$('pairIn').onkeydown=e=>{if(e.key==='Enter')connectPhone()};
+$('newBtn').onclick=()=>{stopRun();newProg();render()};
+$('delBtn').onclick=()=>{if(!P||!confirm(`Delete program "${P.name}"?`))return;store('vs1-prog-'+P.id,null);store('vs1-progs',JSON.stringify(progIndex().filter(p=>p.id!==P.id)));P=null;
+  const idx=progIndex();if(idx.length)loadProg(idx[idx.length-1].id);else newProg();render()};
+$('progSel').onchange=e=>{stopRun();if(loadProg(+e.target.value))render()};
+$('progName').onchange=e=>{if(!P)return;P.name=e.target.value.trim()||P.name;save();render()};
+$('refBtn').onclick=takeRef;$('refOk').onclick=refValid;$('refNo').onclick=takeRef;
+$('addArea').onclick=()=>addArea(true);$('validBtn').onclick=validate;
+$('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;
+$('liveBtn').onclick=()=>{U.mode='live';U.view=null;render()};
+$('resetBtn').onclick=()=>{U.c={ok:0,ng:0};render()};
+$('heatT').onchange=e=>{U.heat=e.target.checked;drawScreen()};
+$('camBtn').onclick=()=>C.stream?stopCam():startCam();
 $('flipBtn').onclick=()=>{C.facing=C.facing==='environment'?'user':'environment';startCam()};
 $('lockBtn').onclick=lockCam;
-$('liveBtn').onclick=()=>{S.hold=false;S.edit=false;renderAll()};
-$('roleSen').onclick=()=>setRole('sen');$('roleMon').onclick=()=>setRole('mon');
-$('pairBtn').onclick=startMonitorPeer;$('pairIn').onkeydown=e=>{if(e.key==='Enter')startMonitorPeer()};
-$('monTrig').onclick=()=>sendCmd({trigger:1});
-$('monLive').onclick=()=>{L.view=null;L.showLive=true;renderMon()};
-['refStep','goodStep','testStep'].forEach(id=>{const el=$(id);
-  el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag')});
-  el.addEventListener('dragleave',()=>el.classList.remove('drag'));
-  el.addEventListener('drop',async e=>{e.preventDefault();el.classList.remove('drag');const it=await filesToItems(e.dataTransfer.files);if(!it.length)return;
-    id==='refStep'?setRef(it[0]):id==='goodStep'?addGood(it):addTests(it,false)});
-});
+document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-loadSample();
-{const fp=document.featurePolicy||document.permissionsPolicy;
- const blocked=fp&&fp.allowsFeature?!fp.allowsFeature('camera'):window.self!==window.top;
- if(blocked){$('camBtn').hidden=true;setMsg('Take each picture with the 📷 Phone photo buttons: they open the phone camera app.')}}
-{let r=stored('vs1-role');if(r!=='sen'&&r!=='mon')r=matchMedia('(pointer:coarse)').matches?'sen':'mon';setRole(r)}
+{const idx=progIndex(),cur=+stored('vs1-cur');if(!(cur&&loadProg(cur))&&!(idx.length&&loadProg(idx[idx.length-1].id)))newProg()}
+if(SRC.kind==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
+render();requestAnimationFrame(loop);
 (async()=>{
-  const db=window.claude&&window.claude.use?await window.claude.use('db').catch(()=>null):null;
-  if(db){
-    L.kind='db';L.db=db;linkStat('connected','on');
-    db.doc('live/last').onSnapshot(s=>{const d=s.exists?s.data():null;L.state=d&&d.state||null;const shot=d&&d.shot||null;
-      if(shot&&(!L.last||shot.ts!==L.last.ts)){L.last=shot;L.view=null}renderMon()},e=>linkStat('error: '+e.code,'err'));
-    db.doc('live/log').onSnapshot(s=>{const d=s.exists&&s.data();L.dbLog=d&&Array.isArray(d.items)?d.items:[];if(L.role==='mon'){L.log=L.dbLog;renderMon()}else if(!L.log.length)L.log=L.dbLog.slice()});
-    db.doc('live/cmd').onSnapshot(s=>{const c=s.exists&&s.data();if(c&&c.ts>L.loaded){L.loaded=c.ts;applyCmd(c)}});
-    renderAll();return;
-  }
-  if(window.claude&&window.claude.use){linkStat('off','err');L.kind='none';renderAll();return}
-  try{await loadPeerJs()}catch(e){linkStat('link unavailable (no internet?)','err');L.kind='none';renderAll();return}
-  L.kind='peer';$('pairStep').hidden=false;
+  // inside claude.ai the camera and the peer link are not available: demo camera and files still work
+  const inClaude=!!(window.claude&&window.claude.use)||window.self!==window.top;
+  if(!inClaude){try{await loadPeerJs();L.kind='peer'}catch(e){L.kind='none';linkStat('link unavailable (no internet?)','err')}}
+  else{L.kind='none';linkStat('phone link: GitHub Pages only','err');if(SRC.kind==='phone')setSrc('demo')}
   setRole(L.role);
 })();
 })();

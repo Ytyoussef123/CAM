@@ -11,19 +11,22 @@ Prototype of an industrial vision sensor (OK / NG part inspection) built on a Ra
 
 ## Inspection console
 
-Program flow, like a commercial vision sensor:
+The **phone is only a live camera**; the **PC is the controller** where programs are made and run.
 
-1. **Reference image** — one good part in its exact position.
-2. **Control areas** — draw boxes on the reference around what must be checked.
-3. **More good parts** — 5–20 photos; thresholds are set automatically per area.
-4. **Inspect** — each picture is OK or NG; one NG area makes the part NG.
+Open `https://ytyoussef123.github.io/CAM/inspection-console.html` on both devices
+(GitHub Pages must be enabled for the branch).
 
-### Phone = sensor, PC = monitor
+- **Phone:** choose 📱 Camera, press Start camera. It shows a 6-letter code.
+- **PC:** choose 🖥 PC · controller, Image source → Phone camera, type the code, Connect.
 
-Open the page on both devices. Choose **Sensor** on the phone and **Monitor** on the PC.
+Program flow on the PC:
 
-- **From GitHub Pages** (`https://ytyoussef123.github.io/CAM/inspection-console.html`):
-  live camera on the phone. The phone shows a 6-letter code; type it on the PC to get
-  live video, results, remote trigger and threshold control (peer-to-peer link via PeerJS).
-- **From the claude.ai link**: no live video (the camera is blocked there); take pictures
-  with the 📷 Phone photo buttons. Results reach the PC through the claude.ai data store.
+1. **Reference image** — taken from the live view; accept it (Valid) or retake.
+2. **Control areas** — add boxes, move them, resize them by the corners, name them, set thresholds. Validate the program.
+3. **Run & teach** — Trigger takes a full-resolution picture from the phone and inspects it.
+   Mark each area OK or NG and press Learn: each area learns from its OK examples and
+   its threshold is placed between the OK and NG examples.
+
+Programs are saved in the PC browser (several programs, P01, P02…).
+A **demo camera** (simulated parts) and **image files** can replace the phone for testing.
+Inside claude.ai the phone link is not available (the camera is blocked there): use the demo camera.
