@@ -225,35 +225,147 @@ body:not(.page-run) .run-only{display:none!important}
 .askbox p{margin:0}
 .askin{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--fg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ===== VS-1 console layout: industrial, RUN / PROGRAM workflow ===== */
+:root{--tb:#F3F5F6;--tile:#E8ECEE;--tile-b:#BFC8CE;--live:#1F6FB2;--warn:#B86E00;--imgbg:#2A3036}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--tb:#131B20;--tile:#1D282F;--tile-b:#34444E;--live:#3B8FD9;--warn:#F2A93B;--imgbg:#05080A}}
+:root[data-theme="dark"]{--tb:#131B20;--tile:#1D282F;--tile-b:#34444E;--live:#3B8FD9;--warn:#F2A93B;--imgbg:#05080A}
+body{padding-block:10px 0}
+.spacer{flex:1}
+.app{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;min-height:calc(100vh - 10px)}
+/* top toolbar */
+.tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--tb);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.tile{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:92px;height:54px;padding:4px 14px;border:1px solid var(--tile-b);border-radius:6px;background:var(--tile);font-family:var(--f-display);font-weight:700;font-size:17px;letter-spacing:.05em}
+.tile .ic{font-size:19px;line-height:1}
+.tile[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tile:hover{border-color:var(--accent)}
+.modes{display:flex;gap:6px}
+.progbox{display:flex;flex-direction:column;gap:3px;min-width:0}
+.progbox .row{gap:6px;flex-wrap:nowrap}
+.progbox select.prog{max-width:260px}
+/* program steps bar */
+.steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:var(--tb);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.stab{display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px 0 10px;border:1px solid var(--tile-b);border-radius:6px;background:var(--tile);font-family:var(--f-display);font-weight:600;font-size:18px}
+.stab b{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--panel);border:1px solid var(--tile-b);font-size:15px}
+.stab:hover:not(:disabled){border-color:var(--accent)}
+.stab[aria-current="step"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.stab[aria-current="step"] b{background:var(--accent-fg);color:var(--accent);border-color:var(--accent-fg)}
+.stab.done:not([aria-current="step"]) b{background:var(--ok);color:#fff;border-color:var(--ok)}
+.stab:disabled{opacity:.45;cursor:not-allowed}
+.sarr{color:var(--muted);font-size:11px}
+/* work area: image on the left, panel on the right */
+.work{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(340px,1fr);gap:8px;align-items:start;flex:1}
+@media (max-width:980px){.work{grid-template-columns:minmax(0,1fr)}}
+.left{display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
+.statusrow{display:flex;gap:12px;align-items:stretch;min-width:0}
+.statusrow .verdict{position:static;flex:none;display:flex;align-items:center;justify-content:center;min-width:140px;min-height:66px;padding:6px 16px;border-radius:6px;font-family:var(--f-display);font-weight:700;font-size:38px;line-height:1;letter-spacing:.03em;color:#fff;text-align:center}
+.statusrow .verdict.idle{background:#46535c;font-size:20px;padding:6px 12px}
+.statusrow .verdict.live{background:var(--live);color:#fff;font-size:26px}
+.statusrow .verdict.master{background:var(--accent);color:var(--accent-fg);font-size:30px}
+.sinfo{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.sinfo>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sinfo .pname{font-family:var(--f-display);font-size:19px;font-weight:600;color:var(--fg)}
+.imgbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;border-top:1px solid var(--line);padding-top:8px}
+.screenwrap{background:var(--imgbg);border-radius:6px;padding:8px;display:flex;justify-content:center}
+.screen{width:min(100%,max(300px,calc(100vh - 450px)));border-radius:3px}
+.page-run .screen{width:min(100%,max(300px,calc(100vh - 380px)))}
+.counters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:stretch}
+@media (max-width:560px){.counters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cbox{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.cbox b{font-family:var(--f-mono);font-size:22px;font-weight:500;font-variant-numeric:tabular-nums}
+.cbox small{font-family:var(--f-mono);font-size:11px;color:var(--muted);line-height:1.35}
+.cbox small i{font-style:normal;color:var(--fg)}
+.cbox.lamps{flex-direction:row;align-items:center;justify-content:space-around;gap:10px}
+.lamp.on.mgl i{background:var(--warn);border-color:var(--warn);box-shadow:0 0 12px var(--warn)}
+.counters>.btn{align-self:center}
+/* right panel */
+.right{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pnl{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column;min-width:0}
+.pnlh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel-2);border-radius:8px 8px 0 0}
+.pnlh .pstep{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;color:var(--muted)}
+.pnlh h2{font-family:var(--f-display);font-weight:700;font-size:24px;margin:0}
+.pnlh .state{margin-left:auto;align-self:center}
+.pnl>.hint{padding:8px 14px 0;margin:0}
+.pbody{padding:10px 14px 14px;display:flex;flex-direction:column;gap:12px}
+.sp{display:none;flex-direction:column;gap:14px}
+#progPanel[data-step="1"] .sp1,#progPanel[data-step="2"] .sp2,#progPanel[data-step="3"] .sp3,#progPanel[data-step="4"] .sp4{display:flex}
+.sp.locked{opacity:.5;pointer-events:none}
+.sec{display:flex;flex-direction:column;gap:8px}
+.sec>.lbl,.sec>.row:first-child{border-bottom:1px solid var(--line);padding-bottom:4px}
+.pnlf{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--line);background:var(--panel-2);border-radius:0 0 8px 8px}
+/* tool settings: tile buttons, add menu, compact list */
+.ttools{display:flex;flex-wrap:wrap;gap:6px}
+.tile2{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:74px;height:52px;padding:3px 10px;border:1px solid var(--tile-b);border-radius:6px;background:var(--tile);font-size:13px;font-weight:600}
+.tile2 .ic{font-size:18px;line-height:1}
+.tile2:hover:not(:disabled){border-color:var(--accent)}
+.tile2.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.tile2:disabled{opacity:.45;cursor:not-allowed}
+.tile2.add{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.addwrap{position:relative}
+.menu{position:absolute;top:56px;left:0;z-index:20;display:flex;flex-direction:column;min-width:240px;background:var(--panel);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:4px}
+.menu[hidden]{display:none!important}
+.menu button{border:0;background:none;text-align:left;padding:9px 10px;border-radius:4px;font-size:14px}
+.menu button:hover,.menu button:focus-visible{background:var(--panel-2)}
+.trow .tn{min-width:2ch}
+/* run tabs */
+.rtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rtabs button{border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;background:none;padding:7px 12px;font-weight:600;font-size:14px;color:var(--muted);margin-bottom:-1px}
+.rtabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--fg)}
+.rtabs button:hover{color:var(--fg)}
+#runStep .pbody>.rt{display:none}
+#runStep[data-rt="hist"] .rt-hist,#runStep[data-rt="teach"] .rt-teach,#runStep[data-rt="rep"] .rt-rep{display:flex}
+.rt{flex-direction:column;gap:10px}
+/* outputs */
+.outrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.outrow b{font-family:var(--f-display);font-size:20px}
+.outrow select{font:inherit;padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);min-width:0}
+/* status bar */
+.sbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;font-family:var(--f-mono);font-size:11.5px;color:var(--muted);background:var(--tb);border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin-bottom:10px}
+.sbar b{font-weight:500;color:var(--fg)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
-<div class="wrap">
-  <header class="bar">
+<div class="app">
+  <header class="tb">
     <div class="brand">VS-1<small>Vision Sensor</small></div>
-    <div class="stat"><span class="lbl">Image source</span><b id="srcStat">—</b></div>
-    <div class="stat ctl-only"><span class="lbl">Program</span><b id="progStat">—</b></div>
+    <div class="modes ctl-only" role="group" aria-label="Mode">
+      <button class="tile" type="button" id="pageRun" aria-pressed="false"><span class="ic">▶</span>RUN</button>
+      <button class="tile" type="button" id="pageProg" aria-pressed="true"><span class="ic">⚙</span>PROGRAM</button>
+    </div>
+    <div class="progbox ctl-only"><span class="lbl">Program</span>
+      <div class="row"><select class="prog" id="progSel" aria-label="Program"></select>
+        <button class="btn small" id="newBtn" type="button">+ New</button>
+        <button class="btn small" id="delBtn" type="button" title="Delete this program" aria-label="Delete this program">🗑</button></div></div>
     <span class="spacer"></span>
-    <div class="stat ctl-only"><span class="lbl">Mode</span>
-      <div class="seg" role="group" aria-label="Mode"><button type="button" id="pageProg" aria-pressed="true">⚙ Program</button><button type="button" id="pageRun" aria-pressed="false">▶ Run</button></div></div>
     <div class="stat"><span class="lbl">This device is</span>
       <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleCtl" aria-pressed="true">🖥 PC · controller</button><button type="button" id="roleCam" aria-pressed="false">📱 Camera</button></div></div>
-    <div class="stat"><span class="lbl">Link</span><span class="link" id="linkStat">—</span></div>
     <span class="mode" id="modeTag">SETUP</span>
   </header>
 
-  <div class="main">
-    <section class="viewer" aria-label="Image">
-      <div class="screen">
-        <canvas id="view" width="640" height="640"></canvas>
-        <div class="verdict idle" id="verdict">—</div>
-        <div class="imgname" id="imgName">—</div>
-        <div class="readout"><span id="roScore">—</span><span id="roThr">—</span></div>
-      </div>
+  <nav class="steps ctl-only prog-only" aria-label="Program steps">
+    <button class="stab" type="button" id="st1" data-step="1"><b>1</b>Image</button><span class="sarr" aria-hidden="true">▶</span>
+    <button class="stab" type="button" id="st2" data-step="2"><b>2</b>Master</button><span class="sarr" aria-hidden="true">▶</span>
+    <button class="stab" type="button" id="st3" data-step="3"><b>3</b>Tools</button><span class="sarr" aria-hidden="true">▶</span>
+    <button class="stab" type="button" id="st4" data-step="4"><b>4</b>Outputs</button>
+  </nav>
 
-      <div class="scorebar ctl-only">
-        <div class="track" aria-hidden="true"><div class="fill" id="fill" style="width:0"></div><div class="tick" id="tick" style="left:50%"></div></div>
-        <div class="scorerow"><span>0</span><span id="scaleMax">—</span></div>
+  <main class="work">
+    <section class="left" aria-label="Image">
+      <div class="statusrow">
+        <div class="verdict idle" id="verdict" role="status">—</div>
+        <div class="sinfo">
+          <div class="pname" id="progStat">—</div>
+          <div id="imgName">—</div>
+          <div><span id="roScore">—</span> · <span id="roThr">—</span></div>
+        </div>
       </div>
+      <div class="imgbar ctl-only">
+        <span class="vz" aria-label="Screen zoom"><button class="btn small" id="vzOut" type="button" aria-label="Zoom out">−</button><output id="vzVal">×1.0</output><button class="btn small" id="vzIn" type="button" aria-label="Zoom in">+</button><button class="btn small" id="vzFit" type="button">⛶ Fit</button></span>
+        <label class="toggle"><input type="checkbox" id="heatT" checked> Defect heat map</label>
+        <span class="spacer"></span>
+        <button class="btn small" id="liveBtn" type="button">● Live view</button>
+      </div>
+      <div class="screenwrap"><div class="screen"><canvas id="view" width="640" height="640"></canvas></div></div>
+      <div hidden><div id="fill"></div><div id="tick"></div><span id="scaleMax"></span></div>
 
       <div class="cambar cam-only">
         <button class="btn primary" id="camBtn" type="button">📷 Start camera</button>
@@ -262,121 +374,141 @@ body:not(.page-run) .run-only{display:none!important}
         <span class="msg" id="camMsg">This phone is only the camera: everything is done from the PC. Fix the phone above the part and start the camera.</span>
       </div>
 
-      <div class="controls ctl-only">
-        <button class="btn" id="liveBtn" type="button">Live view</button>
-        <span class="vz" aria-label="Screen zoom"><button class="btn small" id="vzOut" type="button" aria-label="Zoom out">−</button><output id="vzVal">×1.0</output><button class="btn small" id="vzIn" type="button" aria-label="Zoom in">+</button><button class="btn small" id="vzFit" type="button">Fit</button></span>
-        <button class="btn" id="resetBtn" type="button">Reset counters</button>
-        <label class="toggle"><input type="checkbox" id="heatT" checked> Defect heat map</label>
-      </div>
-
-      <div class="line ctl-only">
-        <div class="count"><span class="lbl">Inspected</span><b id="cTotal">0</b><small id="cMarg"></small></div>
-        <div class="count"><span class="lbl">OK</span><b id="cOk">0</b></div>
-        <div class="count"><span class="lbl">NG</span><b id="cNg">0</b></div>
-        <div class="count"><span class="lbl">NG rate</span><b id="cRate">0.0%</b></div>
-        <div class="count"><span class="lbl">Process</span><b id="cTime">—</b><small id="cTimeS"></small></div>
-        <div class="lamps" aria-label="Output signals">
-          <div class="lamp okl" id="lampOk"><i></i>OUT1 OK</div>
-          <div class="lamp ngl" id="lampNg"><i></i>OUT2 NG</div>
+      <div class="counters ctl-only">
+        <div class="cbox"><span class="lbl">Time</span><b id="cTime">—</b><small id="cTimeS"></small></div>
+        <div class="cbox"><span class="lbl">Trigger</span><b id="cTotal">0</b><small>OK <i id="cOk">0</i> · NG <i id="cNg">0</i> · NG rate <i id="cRate">0.0%</i></small><small id="cMarg"></small></div>
+        <div class="cbox lamps" aria-label="Outputs">
+          <div class="lamp okl" id="lampOk"><i></i><span id="o1Lbl">OUT1 · OK</span></div>
+          <div class="lamp ngl" id="lampNg"><i></i><span id="o2Lbl">OUT2 · NG</span></div>
         </div>
+        <button class="btn small" id="resetBtn" type="button">↺ Reset</button>
       </div>
     </section>
 
-    <aside class="setup">
+    <aside class="right">
       <div class="msgbox ctl-only" id="msgBox" role="status" hidden></div>
+
       <!-- phone (camera) -->
       <section class="step cam-only" id="camPair">
         <div class="stephead"><span class="stepnum">⇄</span><h2>Link to the PC</h2><span class="state" id="camState">—</span></div>
-        <div class="row"><span class="hint">On the PC, choose <b>Phone camera</b> and type this code:</span><span class="code" id="pairCode">······</span></div>
+        <div class="row"><span class="hint">On the PC, choose <b>Phone camera</b> (PROGRAM, step 1) and type this code:</span><span class="code" id="pairCode">······</span></div>
         <p class="hint" id="camHint">Keep this page open, the screen on, and the phone fixed. The PC takes the pictures.</p>
       </section>
 
-      <!-- PC (controller) -->
-      <section class="step ctl-only" id="srcStep">
-        <div class="stephead"><span class="stepnum">⇄</span><h2>Image source</h2><span class="state" id="srcState">—</span></div>
-        <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button></div>
-        <div class="row" id="phoneRow"><span class="hint">Code shown on the phone:</span><input class="codein" type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Phone code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
-        <p class="hint" id="srcHint"></p>
-      </section>
+      <!-- PROGRAM: 4 steps -->
+      <section class="pnl ctl-only prog-only" id="progPanel" data-step="1" aria-labelledby="pStepTitle">
+        <header class="pnlh"><span class="pstep" id="pStepNo">STEP 1</span><h2 id="pStepTitle">Image</h2><span class="state" id="progState">—</span></header>
+        <p class="hint" id="pStepHint"></p>
+        <div class="pbody">
+          <div class="sp sp1" id="srcStep">
+            <div class="sec"><span class="lbl">Program name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
+            <div class="sec">
+              <div class="row"><span class="lbl">Image source</span><span class="spacer"></span><span class="state" id="srcState">—</span></div>
+              <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button></div>
+              <div class="row" id="phoneRow"><span class="hint">Code shown on the phone:</span><input class="codein" type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Phone code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
+              <p class="hint" id="srcHint"></p>
+            </div>
+            <div class="sec">
+              <span class="lbl">Camera zoom (saved in the program)</span>
+              <div class="zrow"><input type="range" id="zoomIn" min="1" max="4" step="0.1" value="1" aria-label="Camera zoom"><output id="zoomOut">×1.0</output></div>
+              <div class="zrow" id="panRow"><span class="lbl">Position ↔</span><input type="range" id="panX" min="-1" max="1" step="0.02" value="0" aria-label="Horizontal position"><span class="lbl">↕</span><input type="range" id="panY" min="-1" max="1" step="0.02" value="0" aria-label="Vertical position"></div>
+              <div class="row" id="zoomLock" hidden><span class="hint" id="zoomLockTxt"></span><button class="btn small" id="zoomChange" type="button">Change zoom</button></div>
+              <p class="hint">Keep the light constant and the camera fixed: every picture is compared with the master image.</p>
+            </div>
+          </div>
 
-      <section class="step ctl-only" id="progStep">
-        <div class="stephead"><span class="stepnum">P</span><h2>Program</h2><span class="state" id="progState">—</span></div>
-        <div class="row">
-          <select class="prog" id="progSel" aria-label="Program"></select>
-          <button class="btn primary" id="newBtn" type="button">+ New program</button>
-          <button class="btn small" id="delBtn" type="button">Delete</button>
+          <div class="sp sp2" id="refStep">
+            <div class="row"><span class="lbl">Master image</span><span class="spacer"></span><span class="state" id="refState">—</span></div>
+            <div class="refbox" id="refBox"></div>
+            <div class="row">
+              <button class="btn primary big" id="refBtn" type="button">📷 Register master</button>
+              <button class="btn primary big" id="refOk" type="button" hidden>✔ Valid</button>
+              <button class="btn big" id="refNo" type="button" hidden>↺ Not valid · retake</button>
+            </div>
+          </div>
+
+          <div class="sp sp3" id="areaStep">
+            <div class="ttools">
+              <div class="addwrap"><button class="tile2 add" id="addBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="addMenu"><span class="ic">＋</span>Add tool</button>
+                <div class="menu" id="addMenu" role="menu" hidden>
+                  <button type="button" role="menuitem" id="addRect">▭ Area (rectangle)</button>
+                  <button type="button" role="menuitem" id="addCirc">◯ Area (circle)</button>
+                  <button type="button" role="menuitem" id="addMeas">📏 Measure (gap, width)</button>
+                  <button type="button" role="menuitem" id="addRef">⌖ Position reference</button>
+                </div></div>
+              <button class="tile2" id="editBtn" type="button" title="Edit only this tool, zoomed"><span class="ic">✎</span>Edit</button>
+              <button class="tile2" id="copyBtn" type="button" title="Copy this tool"><span class="ic">⧉</span>Copy</button>
+              <button class="tile2" id="delToolBtn" type="button" title="Delete this tool"><span class="ic">✕</span>Delete</button>
+              <button class="tile2" id="doneBtn" type="button" hidden><span class="ic">✓</span>Done</button>
+            </div>
+            <div class="tlist" id="toolList3" aria-label="Tools of the program"></div>
+            <div class="row"><span class="lbl">Settings of the selected tool</span><span class="spacer"></span><span class="state" id="areaState">—</span></div>
+            <div class="areas" id="areaList"></div>
+            <div class="note"><b>How it decides:</b> each area remembers the pictures you taught it. A new picture is compared with the closest one: the same as a taught OK picture scores <b>100</b>, the same as a taught NG picture scores <b>0</b>, other parts score by how close they are. Below its <b>limit</b> (50 by default) the area is NG, and one NG tool makes the part NG. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
+          </div>
+
+          <div class="sp sp4" id="outStep">
+            <div class="outrow"><b>OUT1</b><select id="o1Sel" aria-label="What OUT1 signals"></select></div>
+            <div class="outrow"><b>OUT2</b><select id="o2Sel" aria-label="What OUT2 signals"></select></div>
+            <p class="hint">On the VS-1 sensor these are the two isolated outputs to the PLC. In this prototype they are the two lamps under the image.</p>
+            <button class="btn primary big" id="validBtn" type="button">✔ Finish · go to RUN</button>
+          </div>
         </div>
-        <div class="row"><span class="lbl">Name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
+        <footer class="pnlf"><button class="btn" id="stepBack" type="button">◀ Back</button><span class="spacer"></span><button class="btn primary" id="stepNext" type="button">Next ▶</button></footer>
       </section>
 
-      <section class="step ctl-only prog-only" id="refStep">
-        <div class="stephead"><span class="stepnum">1</span><h2>Reference image</h2><span class="state" id="refState">—</span></div>
-        <p class="hint">Put one <b>good</b> part in its exact position. Use the camera zoom to frame it, then take the reference from the live view. The zoom is saved in the program.</p>
-        <div class="refbox" id="refBox"></div>
-        <div class="zrow"><span class="lbl">Camera zoom</span><input type="range" id="zoomIn" min="1" max="4" step="0.1" value="1" aria-label="Camera zoom"><output id="zoomOut">×1.0</output></div>
-        <div class="zrow" id="panRow"><span class="lbl">Position ↔</span><input type="range" id="panX" min="-1" max="1" step="0.02" value="0" aria-label="Horizontal position"><span class="lbl">↕</span><input type="range" id="panY" min="-1" max="1" step="0.02" value="0" aria-label="Vertical position"></div>
-        <div class="row" id="zoomLock" hidden><span class="hint" id="zoomLockTxt"></span><button class="btn small" id="zoomChange" type="button">Change zoom</button></div>
-        <div class="row">
-          <button class="btn primary big" id="refBtn" type="button">📷 Take reference</button>
-          <button class="btn primary big" id="refOk" type="button" hidden>✔ Valid</button>
-          <button class="btn big" id="refNo" type="button" hidden>↺ Not valid · retake</button>
+      <!-- RUN -->
+      <section class="pnl ctl-only run-only" id="runStep" data-rt="hist" aria-labelledby="runTitle">
+        <header class="pnlh"><span class="pstep">RUN</span><h2 id="runTitle">Inspection</h2><span class="state" id="runState">—</span></header>
+        <div class="pbody">
+          <p class="hint" id="runHint" hidden>This program is not finished yet. Go to <b>⚙ PROGRAM</b>, complete the 4 steps and press Finish.</p>
+          <div class="row">
+            <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
+            <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
+          </div>
+          <div class="tlist" id="toolList" aria-label="Results per tool"></div>
+          <div class="rtabs" role="tablist" aria-label="Run tools">
+            <button type="button" role="tab" id="rtHist" data-rt="hist" aria-selected="true">Limit &amp; histogram</button>
+            <button type="button" role="tab" id="rtTeach" data-rt="teach" aria-selected="false">Additional learning</button>
+            <button type="button" role="tab" id="rtRep" data-rt="rep" aria-selected="false">Repeatability</button>
+          </div>
+          <div class="rt rt-hist histo" id="histo">
+            <span class="lbl" id="histTitle">—</span>
+            <canvas id="histC" height="130" aria-label="Score histogram of the selected tool"></canvas>
+            <div class="hs" id="histStats">—</div>
+            <div id="histLim"></div>
+          </div>
+          <div class="rt rt-teach" id="teachStep">
+            <div class="row"><span class="lbl">Teach</span><span class="spacer"></span><span class="state" id="teachState">—</span></div>
+            <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
+            <div class="teach" id="teach" hidden></div>
+            <span class="lbl">Learned images</span>
+            <div class="thumbs" id="sampleList"></div>
+            <div class="areas" id="auditBox"></div>
+          </div>
+          <div class="rt rt-rep" id="repStep">
+            <div class="row"><span class="lbl">Repeatability test</span><span class="spacer"></span><span class="state" id="repState">—</span></div>
+            <p class="hint">Leave one OK part under the camera and start the test: the sensor takes several pictures without learning and shows how much each result moves and how close it comes to its limit. Tick <b>re-place</b> to take the part out and put it back between pictures (4 s each): the placement is then part of the test.</p>
+            <div class="row">
+              <label class="toggle">Pictures <select id="repN" aria-label="Number of pictures"><option>10</option><option selected>20</option><option>30</option></select></label>
+              <label class="toggle"><input type="checkbox" id="repMove"> I re-place the part between pictures</label>
+              <button class="btn primary" id="repBtn" type="button">⟳ Start the test</button>
+            </div>
+            <div class="areas" id="repOut"></div>
+          </div>
         </div>
       </section>
-
-      <section class="step ctl-only prog-only" id="areaStep">
-        <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
-        <p class="hint"><b>▭ / ◯</b> check an area against the good parts. <b>📏 Measure</b>: draw a line across a gap, the two edges are found and the distance checked. <b>⌖ Position reference</b>: a distinctive part of the piece that is searched in every picture so all other tools follow the part if it moves. On the image: ✋ drag to move, drag a corner or an end to resize, turn an area with its round ↻ handle. <b>✎</b> edits one tool alone, zoomed; <b>⧉</b> copies a tool (for example one window per screw). Each area scores 0–100 and is OK at or above its <b>limit</b> (50 by default).</p>
-        <div class="areas" id="areaList"></div>
-        <div class="row">
-          <button class="btn" id="editBtn" type="button">✎ Edit tools</button>
-          <button class="btn" id="addRect" type="button">+ ▭ Rectangle</button>
-          <button class="btn" id="addCirc" type="button">+ ◯ Circle</button>
-          <button class="btn" id="addMeas" type="button">+ 📏 Measure</button>
-          <button class="btn" id="addRef" type="button">+ ⌖ Position reference</button>
-          <button class="btn" id="doneBtn" type="button" hidden>✓ Done</button>
-          <button class="btn primary big" id="validBtn" type="button">✔ Validate program</button>
-        </div>
-      </section>
-
-      <section class="step ctl-only run-only" id="runStep">
-        <div class="stephead"><span class="stepnum">▶</span><h2>Run</h2><span class="state" id="runState">—</span></div>
-        <p class="hint" id="runHint" hidden>This program is not validated yet. Go to <b>⚙ Program</b>, finish steps 1 and 2 and press Validate.</p>
-        <div class="row">
-          <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
-          <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
-        </div>
-        <div class="tlist" id="toolList" aria-label="Results per tool"></div>
-        <div class="histo" id="histo">
-          <span class="lbl" id="histTitle">—</span>
-          <canvas id="histC" height="130" aria-label="Score histogram of the selected tool"></canvas>
-          <div class="hs" id="histStats">—</div>
-          <div id="histLim"></div>
-        </div>
-      </section>
-
-      <section class="step ctl-only run-only" id="repStep">
-        <div class="stephead"><span class="stepnum">⟳</span><h2>Repeatability test</h2><span class="state" id="repState">—</span></div>
-        <p class="hint">Leave one OK part under the camera and start the test: the sensor takes several pictures without learning and shows how much each result moves and how close it comes to its limit. Tick <b>re-place</b> to take the part out and put it back between pictures (4 s each): the placement is then part of the test.</p>
-        <div class="row">
-          <label class="toggle">Pictures <select id="repN" aria-label="Number of pictures"><option>10</option><option selected>20</option><option>30</option></select></label>
-          <label class="toggle"><input type="checkbox" id="repMove"> I re-place the part between pictures</label>
-          <button class="btn primary" id="repBtn" type="button">⟳ Start the test</button>
-        </div>
-        <div class="areas" id="repOut"></div>
-      </section>
-
-      <section class="step ctl-only run-only" id="teachStep">
-        <div class="stephead"><span class="stepnum">🎓</span><h2>Teach</h2><span class="state" id="teachState">—</span></div>
-        <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
-        <div class="teach" id="teach" hidden></div>
-        <span class="lbl">Learned images</span>
-        <div class="thumbs" id="sampleList"></div>
-        <div class="areas" id="auditBox"></div>
-      </section>
-
-      <div class="note ctl-only prog-only"><b>How it decides:</b> each area remembers the pictures you taught it. A new picture is compared with the closest one: the same as a taught OK picture scores <b>100</b>, the same as a taught NG picture scores <b>0</b>, other parts score by how close they are. Below its <b>limit</b> (50 by default) the area is NG, and one NG area makes the part NG. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
     </aside>
-  </div>
+  </main>
+
+  <footer class="sbar" aria-label="Status">
+    <span>Source: <b id="srcStat">—</b></span>
+    <span class="ctl-only" id="sbZoom"></span>
+    <span>Link: <span class="link" id="linkStat">—</span></span>
+    <span class="ctl-only" id="sbLearn"></span>
+    <span class="spacer"></span>
+    <span>VS-1 prototype</span>
+  </footer>
   <input type="file" id="fileIn" accept="image/*" hidden>
 </div>
 
@@ -664,7 +796,7 @@ function tx(mode,fn){return new Promise((ok,bad)=>{if(!DBH)return bad(new Error(
 let saveT=null;
 function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
   if(!P)return;
-  const rec={id:P.id,name:P.name,valid:P.valid,scale:P.scale||null,cam:{...P.cam},
+  const rec={id:P.id,name:P.name,valid:P.valid,scale:P.scale||null,out:P.out||null,cam:{...P.cam},
     areas:P.areas.map(a=>{const o={};for(const k in a)if(k[0]!=='_'&&k!=='stats'&&k!=='auto')o[k]=a[k];return o}),
     ref:P.ref&&P.ref.blob?{blob:P.ref.blob,thumb:P.ref.thumb}:null,
     samples:P.samples.filter(s=>s.blob).map(s=>({id:s.id,blob:s.blob,thumb:s.thumb,labels:s.labels,off:s.off||null}))};
@@ -676,7 +808,7 @@ function save(){clearTimeout(saveT);saveT=setTimeout(async()=>{
 async function loadProg(id){
   const d=progs.find(p=>p.id===id);if(!d)return false;
   stopRun();
-  P={id:d.id,name:d.name,valid:!!d.valid,scale:d.scale||null,cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
+  P={id:d.id,name:d.name,valid:!!d.valid,scale:d.scale||null,out:d.out||{o1:'ok',o2:'ng'},cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
     areas:(d.areas||[]).map(normTool),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
   U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];U.selTool=null;resetView();
   if(d.ref&&d.ref.blob){try{const bmp=await createImageBitmap(d.ref.blob);const c=canvas(bmp.width);c.getContext('2d').drawImage(bmp,0,0);
@@ -685,12 +817,12 @@ async function loadProg(id){
 }
 function newProg(){
   const id=progs.reduce((m,p)=>Math.max(m,p.id),0)+1;
-  P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,scale:null,cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
+  P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,scale:null,out:{o1:'ok',o2:'ng'},cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
   U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];U.selTool=null;U.page='prog';resetView();sendCam();save();
 }
 
 /* ---------- UI state ---------- */
-const U={only:null,page:'prog',hist:{},times:[],selTool:null,mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
+const U={only:null,page:'prog',step:1,rtab:'hist',hist:{},times:[],selTool:null,mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
 let msgT=null;
 function flashMsg(t){U.msg=t;clearTimeout(msgT);msgT=setTimeout(()=>{U.msg='';render()},6000);render()}
 
@@ -759,7 +891,7 @@ async function refValid(){
   P.ref={full:f.full,size:f.size,thumb:thumbOf(f.full),blob:await toBlob(f.full),cache:{}};
   const had=P.areas.length;P.samples=[];P.valid=false;
   if(!had)addArea('rect',false);
-  U.mode='edit';save();learnAll();
+  save();learnAll();setStep(3);
   flashMsg(had?'New reference saved. Tools kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1, add more tools.');
 }
 const nextId=()=>P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1;
@@ -904,12 +1036,25 @@ function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
 function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,3000);trigger()}
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
-function setPage(p){ // ⚙ Program (make and edit) or ▶ Run (inspect, statistics, teach)
+function setPage(p){ // ⚙ PROGRAM (4 steps: image, master, tools, outputs) or ▶ RUN (inspect, statistics, teach)
   U.page=p;store('vs1-page',p);
-  if(p==='run'){if(U.mode==='edit'||U.mode==='cand'){U.mode='live';U.cand=null}U.only=null;resetView()}
-  else stopRun();
-  render();
+  if(p==='run'){if(U.mode==='edit'||U.mode==='cand'||U.mode==='master'){U.mode='live';U.cand=null}U.only=null;U.drag=null;resetView();render()}
+  else{stopRun();setStep(U.step||(P&&P.ref?3:1))}
 }
+function setStep(n){ // what the image shows follows the step: live to frame, master, tools to edit, master with outputs
+  n=Math.max(1,Math.min(4,n||1));while(n>1&&!stepOk(n))n--;
+  U.step=n;stopRun();U.only=null;U.drag=null;$('addMenu').hidden=true;
+  if(n===2)U.mode=U.cand?'cand':'live';else if(n===3)U.mode='edit';else if(n===4)U.mode='master';else U.mode='live';
+  resetView();render();
+}
+function stepNext(){
+  const n=(U.step||1)+1;
+  if(!stepOk(n)){flashMsg(n===3?'Register the master image first (press 📷 Register master).':'Add at least one area or measure first (＋ Add tool).');return}
+  setStep(n);
+}
+function stepBack(){setStep((U.step||1)-1)}
+async function delSel(){const a=selTool3();if(a&&await ask(`Delete ${a.name}?`,{ok:'Delete'}))delArea(a)}
+function toggleAddMenu(open){const m=$('addMenu'),o=open==null?m.hidden:open;m.hidden=!o;$('addBtn').setAttribute('aria-expanded',o);if(o){const f=m.querySelector('button');if(f)f.focus()}}
 function afterLimit(){ // a limit or tolerance changed: judge the shown results again
   if(U.last)rejudge(U.last.r);rejudge(U.live);drawScreen();renderRun();drawHist();save();
 }
@@ -984,7 +1129,17 @@ function heat(x,R){
     hx.putImageData(id,0,0);const[cx,cy]=ctr(a),w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;
     x.save();areaPath(x,a);x.clip();x.translate(cx*D,cy*D);x.rotate(a.ang||0);x.imageSmoothingEnabled=true;x.drawImage(hm,-w/2,-h/2,w,h);x.restore()}
 }
-function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
+function outVal(v,R){ // is an output on, for a result (null = no result)
+  if(!R)return false;
+  if(v==='ok')return!R.ng;if(v==='ng')return!!R.ng;if(v==='marg')return!!R.marg;if(v==='none')return false;
+  const id=+String(v).slice(2),x=R.res.find(z=>z.id===id);if(x)return!!x.ng;
+  const m=R.meas.find(z=>z.id===id);if(m)return!m.ok;
+  const rt=refTool();return!!(rt&&rt.id===id&&!R.pos.found);
+}
+function setLamps(R){ // OUT1 / OUT2 follow what step 4 assigns to them
+  for(const[id,k]of[['lampOk','o1'],['lampNg','o2']]){const v=outSel(k),l=$(id);
+    l.className='lamp '+(v==='ok'?'okl':v==='marg'?'mgl':'ngl')+(outVal(v,R)?' on':'')}
+}
 function tolTxt(m){if(m.nom==null)return'no tolerance set';return`${fmtLen(m.nom)} ± ${fmtLen(mTol(m))}`}
 function readout(r,live){
   const v=$('verdict');
@@ -998,7 +1153,7 @@ function readout(r,live){
   if(bar){$('fill').style.width=Math.max(0,Math.min(100,bar.score))+'%';$('fill').className='fill'+(bar.ng?' ng':'');
     $('tick').style.left=`calc(${bar.limit}% - 1px)`;$('scaleMax').textContent='100'}
   else{$('fill').style.width=r.ng?'100%':'0';$('fill').className='fill'+(r.ng?' ng':'');$('scaleMax').textContent='—'}
-  setLamps(live?null:r.ng);
+  setLamps(live?null:r);
 }
 function idle(t,name,a,b){const v=$('verdict');v.className='verdict idle';v.textContent=t;$('imgName').textContent=name||'—';$('roScore').textContent=a||'—';$('roThr').textContent=b||'—';readout(null)}
 function drawScreen(ts){
@@ -1017,6 +1172,9 @@ function drawScreen(ts){
   const fin=()=>x.setTransform(1,0,0,1,0,0);
   if(!P){fin();idle('NO PROGRAM');return}
   if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.full,0,0,D,D);fin();idle('REFERENCE?','candidate · '+U.cand.size+' px','Is this image good?','Valid or retake');return}
+  if(U.mode==='master'&&P.ref){x.drawImage(P.ref.full,0,0,D,D);drawAreas(x,null,false);fin();
+    const v=$('verdict');v.className='verdict master';v.textContent='MASTER';v.title='';
+    $('imgName').textContent=`master image · ${P.ref.size} px`;$('roScore').textContent=`${P.areas.length} tool${P.areas.length===1?'':'s'}`;$('roThr').textContent=P.valid?'program finished':'program not finished';readout(null);return}
   if(U.mode==='edit'&&P.ref){x.drawImage(P.ref.full,0,0,D,D);drawAreas(x,null,true);
     if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{shape:'rect',x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
     fin();const one=U.only&&P.areas.find(a=>a.id===U.only);
@@ -1184,29 +1342,64 @@ function toolStatus(a,R){ // what the run line of a tool shows
   const r=R&&R.res.find(z=>z.id===a.id);
   return{txt:r?String(Math.round(r.score)):'—',ok:r?!r.ng:null,fill:r?r.score:null,lim:limOf(a),marg:!!(r&&r.marg),mg:marginOf(a)};
 }
-let runKey='';
-function renderRun(){
-  const box=$('toolList');if(!box||!P)return;
+function toolRows(box,sel,onSel,R,setup){ // compact tool lines (RUN and tool settings): number, icon, name, margin, OK/NG, value, bar
+  if(!box||!P)return;
   const tools=runOrder(),key=tools.map(a=>a.id+a.type+a.name+(a.shape||'')).join('|');
-  if(!tools.some(a=>a.id===U.selTool)){const t=tools.find(isCheck)||tools[0];U.selTool=t?t.id:null}
-  if(key!==runKey){runKey=key;box.innerHTML='';
+  if(box.dataset.key!==key){box.dataset.key=key;box.innerHTML='';
+    if(!tools.length)box.append(el('div','empty','No tool yet: press ＋ Add tool.'));
     for(const a of tools){const b=el('button','trow');b.type='button';b.dataset.id=a.id;
       b.append(el('span','tn',tNum(a)),el('span','ti',tIcon(a)),el('span','tname',a.name),el('span','mg'),el('span','tbadge','—'),el('span','tval','—'));
       const bar=el('div','tbar');bar.append(el('i','tband'),el('i','tfill'),el('i','tlim'),el('i','tmark'));b.append(bar);
-      b.onclick=()=>{U.selTool=a.id;renderRun();renderHistLim();drawHist()};box.appendChild(b)}}
-  const R=runResult();
-  for(const b of box.children){const a=tools.find(t=>t.id===+b.dataset.id);if(!a)continue;const s=toolStatus(a,R);
-    b.classList.toggle('sel',a.id===U.selTool);
-    const bd=b.querySelector('.tbadge');bd.textContent=s.ok==null?'—':(s.marg?'⚠ ':'')+(s.ok?'OK':'NG');bd.className='tbadge'+(s.ok==null?'':s.ok?' ok':' ng')+(s.marg?' marg':'');
+      b.onclick=()=>onSel(a);box.appendChild(b)}}
+  for(const b of box.children){if(!b.dataset.id)continue;const a=tools.find(t=>t.id===+b.dataset.id);if(!a)continue;const s=toolStatus(a,R);
+    b.classList.toggle('sel',a.id===sel);b.setAttribute('aria-pressed',a.id===sel);
+    const bd=b.querySelector('.tbadge');bd.hidden=!!setup&&s.ok==null;bd.textContent=s.ok==null?'—':(s.marg?'⚠ ':'')+(s.ok?'OK':'NG');bd.className='tbadge'+(s.ok==null?'':s.ok?' ok':' ng')+(s.marg?' marg':'');
     bd.title=s.marg?'Marginal: close to the limit, a small change could flip this result':'';
     const mp=b.querySelector('.mg'),mg=s.mg;mp.hidden=!mg||mg.v==null;if(mg&&mg.v!=null){mp.textContent=`margin ${mg.v}`;mp.className='mg '+mg.cls;mp.title=marginTxt(mg)}
-    b.querySelector('.tval').textContent=s.txt;
+    b.querySelector('.tval').textContent=setup&&s.ok==null?(s.lim!=null?`limit ${s.lim}`:a.type==='measure'?(a.nom!=null?`${fmtLen(a.nom)} ± ${fmtLen(mTol(a))}`:'no tolerance'):'—'):s.txt;
     const f=b.querySelector('.tfill'),l=b.querySelector('.tlim'),bn=b.querySelector('.tband'),mk=b.querySelector('.tmark');
     f.hidden=s.fill==null;if(s.fill!=null){f.style.width=Math.max(0,Math.min(100,s.fill))+'%';f.className='tfill'+(s.ok===false?' ng':'')}
     l.hidden=s.lim==null;if(s.lim!=null)l.style.left=`calc(${s.lim}% - 1px)`;
     bn.hidden=!s.band;if(s.band){bn.style.left=s.band[0]+'%';bn.style.width=(s.band[1]-s.band[0])+'%'}
     mk.hidden=s.mark==null;if(s.mark!=null)mk.style.left=s.mark+'%';
   }
+}
+function renderRun(){ // RUN: one line per tool, the selected one feeds the histogram
+  if(!P)return;const tools=runOrder();
+  if(!tools.some(a=>a.id===U.selTool)){const t=tools.find(isCheck)||tools[0];U.selTool=t?t.id:null}
+  toolRows($('toolList'),U.selTool,a=>{U.selTool=a.id;renderRun();renderHistLim();drawHist()},runResult());
+}
+const selTool3=()=>P?P.areas.find(a=>a.id===U.selArea)||null:null;
+function renderTools3(R){ // PROGRAM step 3: the same lines, selecting the tool to edit
+  if(!P)return;
+  if(!selTool3()&&P.areas.length){const t=P.areas.find(isCheck)||runOrder()[0];U.selArea=t.id}
+  toolRows($('toolList3'),U.selArea,a=>{U.selArea=a.id;U.only=null;if(P.ref)U.mode='edit';resetView();render()},R,true);
+}
+/* ---------- PROGRAM steps and outputs ---------- */
+const STEPS={1:{t:'Image',h:'Choose the camera and frame the part. The camera zoom and position are saved in the program.'},
+  2:{t:'Master',h:'Put one good part in its exact position and register it as the master image: everything else is set on it.'},
+  3:{t:'Tools',h:'Add inspection tools on the master image, place them and set their limits. Select a tool in the list to change it.'},
+  4:{t:'Outputs',h:'Choose what the two outputs signal, then finish: the program goes to RUN.'}};
+const stepDone=n=>!P?false:n===1?true:n===2?!!P.ref:n===3?!!(P.ref&&(checks().length||measures().length)):!!P.valid;
+const stepOk=n=>n<=2||(n===3?!!(P&&P.ref):!!(P&&P.ref&&(checks().length||measures().length)));
+function renderSteps(){
+  let st=U.step||1;while(st>1&&!stepOk(st))st--;U.step=st;
+  $('progPanel').dataset.step=st;
+  for(let n=1;n<=4;n++){const b=$('st'+n);b.setAttribute('aria-current',n===st?'step':'false');b.disabled=!stepOk(n);b.classList.toggle('done',stepDone(n))}
+  $('pStepNo').textContent=`STEP ${st}`;$('pStepTitle').textContent=STEPS[st].t;$('pStepHint').textContent=STEPS[st].h;
+  $('stepBack').disabled=st<=1;$('stepNext').hidden=st>=4;
+  $('stepNext').textContent=['','Next: master ▶','Next: tools ▶','Next: outputs ▶'][st]||'Next ▶';
+}
+const outSel=k=>(P&&P.out&&P.out[k])||(k==='o1'?'ok':'ng');
+function outName(v){if(v==='ok')return'OK';if(v==='ng')return'NG';if(v==='marg')return'⚠ marginal';if(v==='none')return'—';
+  const a=P&&P.areas.find(t=>'t:'+t.id===v);return a?a.name+' NG':'?'}
+function outOptions(){const o=[['ok','Part OK'],['ng','Part NG'],['marg','Marginal result ⚠ (close to a limit)']];
+  if(P)for(const a of runOrder())o.push([`t:${a.id}`,`${tNum(a)} · ${a.name} NG`+(a.type==='ref'?' (part not found)':'')]);
+  o.push(['none','Not used']);return o}
+function renderOutputs(){
+  for(const k of['o1','o2']){const sel=$(k+'Sel'),cur=outSel(k);
+    if(document.activeElement!==sel){sel.innerHTML='';for(const[v,t]of outOptions()){const op=document.createElement('option');op.value=v;op.textContent=t;if(v===cur)op.selected=true;sel.appendChild(op)}}}
+  $('o1Lbl').textContent='OUT1 · '+outName(outSel('o1'));$('o2Lbl').textContent='OUT2 · '+outName(outSel('o2'));
 }
 function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888'}
 const histTool=()=>P?P.areas.find(t=>t.id===U.selTool)||null:null;
@@ -1270,48 +1463,58 @@ function render(){
   document.body.classList.toggle('page-run',U.page==='run');
   $('roleCtl').setAttribute('aria-pressed',L.role==='ctl');$('roleCam').setAttribute('aria-pressed',L.role==='cam');
   $('pageProg').setAttribute('aria-pressed',U.page!=='run');$('pageRun').setAttribute('aria-pressed',U.page==='run');
-  if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('modeTag').textContent='CAMERA';drawScreen();return}
+  if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('progStat').textContent='VS-1 camera';$('modeTag').textContent='CAMERA';drawScreen();return}
   const mb=$('msgBox');mb.hidden=!U.msg;mb.textContent=U.msg||'';
+  // step 1: image source and camera zoom
   for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
   $('phoneRow').hidden=SRC.kind!=='phone';
   const ss=$('srcState'),sh=$('srcHint');
   if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
   else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, slightly shifted, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
-  else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Take reference asks you for an image file.'}
-  $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind];
-  // program
-  $('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
-  $('progStat').textContent=P?`P${String(P.id).padStart(2,'0')} · ${P.name}`:'—';
-  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=learning?'Learning…':P?(P.valid?'Validated':'Not validated'):'—';
-  // 1 reference + camera zoom
-  $('refStep').classList.toggle('locked',!P);
-  const rb=$('refBox');rb.innerHTML='';
-  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.thumb;im.alt='Reference';rb.append(im,el('span','hint',`Reference saved · ${P.ref.size} px`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:'')))}
-  const cand=U.mode==='cand'&&U.cand;
-  $('refBtn').hidden=!!cand;$('refOk').hidden=$('refNo').hidden=!cand;$('refBtn').textContent=P&&P.ref?'📷 Retake reference':'📷 Take reference';
-  $('refState').className='state'+(P&&P.ref?' good':' warn');$('refState').textContent=cand?'Check it':P&&P.ref?'Saved':'Needed';
+  else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Register master asks you for an image file.'}
+  $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind]+(P&&P.ref?` · ${P.ref.size} px`:'');
   const cam=P?P.cam:{zoom:1,ox:0,oy:0},locked=!!(P&&P.ref);
   $('zoomIn').value=cam.zoom;$('zoomOut').textContent='×'+(+cam.zoom).toFixed(1);$('panX').value=cam.ox;$('panY').value=cam.oy;
   $('zoomIn').disabled=$('panX').disabled=$('panY').disabled=locked;$('panRow').hidden=cam.zoom<=1.01;
-  $('zoomLock').hidden=!locked;$('zoomLockTxt').textContent=`Zoom ×${(+cam.zoom).toFixed(1)} is locked by the reference.`;
-  // 2 tools
+  $('zoomLock').hidden=!locked;$('zoomLockTxt').textContent=`Zoom ×${(+cam.zoom).toFixed(1)} is locked by the master image.`;
+  // program
+  if(document.activeElement!==$('progName'))$('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
+  $('progStat').textContent=P?`P${String(P.id).padStart(2,'0')} · ${P.name}`:'—';
+  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=learning?'Learning…':P?(P.valid?'Finished':'Not finished'):'—';
+  // step 2: master image
+  $('refStep').classList.toggle('locked',!P);
+  const rb=$('refBox');rb.innerHTML='';
+  if(P&&P.ref){const im=document.createElement('img');im.src=P.ref.thumb;im.alt='Master image';rb.append(im,el('span','hint',`Master image saved · ${P.ref.size} px`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:'')))}
+  else rb.append(el('div','empty','No master image yet.'));
+  const cand=U.mode==='cand'&&U.cand;
+  $('refBtn').hidden=!!cand;$('refOk').hidden=$('refNo').hidden=!cand;$('refBtn').textContent=P&&P.ref?'📷 Register a new master':'📷 Register master';
+  $('refState').className='state'+(P&&P.ref?' good':' warn');$('refState').textContent=cand?'Check it':P&&P.ref?'Saved':'Needed';
+  // step 3: tools
   $('areaStep').classList.toggle('locked',!(P&&P.ref));
-  const al=$('areaList');al.innerHTML='';
   const lr=(U.mode==='result'&&U.last?U.last.r:null)||(U.mode==='live'&&U.live)||null;
-  if(P)runOrder().forEach(a=>al.appendChild(toolRow(a,lr)));
-  if(P&&!P.areas.length)al.appendChild(el('div','empty','No tool yet. Add a rectangle, a circle, a measure or a position reference.'));
-  $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'}`:'—';
-  $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Validated · ▶ Run':'✔ Validate program';
-  $('editBtn').hidden=!(P&&P.ref)||U.mode==='edit';$('doneBtn').hidden=!U.only||U.mode!=='edit';
-  $('addRef').textContent=refTool()?'⌖ Edit position reference':'+ ⌖ Position reference';
-  // run
+  if(P){$('toolList3').dataset.key='';renderTools3(lr)}
+  const sa=selTool3(),al=$('areaList');al.innerHTML='';
+  if(sa)al.appendChild(toolRow(sa,lr));else al.appendChild(el('div','empty',P&&P.areas.length?'Select a tool in the list.':'No tool yet: press ＋ Add tool.'));
+  $('areaState').className='state';$('areaState').textContent=sa?`${tNum(sa)} · ${{check:sa.shape==='ellipse'?'circle area':'area',measure:'measure',ref:'position reference'}[sa.type||'check']}`:'—';
+  $('editBtn').disabled=$('delToolBtn').disabled=!sa||!(P&&P.ref);$('copyBtn').disabled=!sa||sa.type==='ref'||!(P&&P.ref);
+  $('editBtn').classList.toggle('on',!!(U.only&&sa&&U.only===sa.id));$('addBtn').disabled=!(P&&P.ref);
+  $('doneBtn').hidden=!U.only||U.mode!=='edit';
+  $('addRef').textContent=refTool()?'⌖ Position reference (edit)':'⌖ Position reference';
+  // step 4: outputs
+  renderOutputs();
+  $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Finished · go to RUN':'✔ Finish · go to RUN';
+  renderSteps();
+  // RUN
   const ok=!!(P&&P.valid);
   $('runHint').hidden=ok;$('toolList').hidden=$('histo').hidden=!ok;$('trigBtn').disabled=$('runBtn').disabled=!ok;
   $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
   $('modeTag').textContent=U.timer?'RUN':ok?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
-  $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not validated';
-  if(ok){runKey='';renderRun();renderHistLim()}
+  $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not finished';
+  $('runStep').dataset.rt=U.rtab||'hist';
+  for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep']])$(id).setAttribute('aria-selected',(U.rtab||'hist')===k);
+  $('rtTeach').textContent='Additional learning'+(U.mode==='result'&&U.last&&!U.last.learned?' •':'');
+  if(ok){$('toolList').dataset.key='';renderRun();renderHistLim()}
   // teach
   const te=$('teach');te.innerHTML='';const flags=P?audit():{};
   if(U.mode==='sample'&&U.view&&P){te.hidden=false;const s=U.view,si=P.samples.indexOf(s);
@@ -1340,7 +1543,7 @@ function render(){
     else if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=()=>learnLast(false);te.appendChild(lb)}
   }else te.hidden=true;
   const sl=$('sampleList');sl.innerHTML='';
-  if(!P||!P.samples.length){const e=el('div','empty','Nothing learned yet: only the reference is used.');e.style.gridColumn='1/-1';sl.appendChild(e)}
+  if(!P||!P.samples.length){const e=el('div','empty','Nothing learned yet: only the master image is used.');e.style.gridColumn='1/-1';sl.appendChild(e)}
   else for(const[si,s]of P.samples.entries()){const b=el('button','thumb'+(U.view===s&&U.mode==='sample'?' sel':''));b.type='button';
     const im=document.createElement('img');im.src=s.thumb;im.alt='Learned image';b.appendChild(im);
     const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),`${si+1} · `+(ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK')));
@@ -1352,16 +1555,18 @@ function render(){
   const nf=P?P.samples.filter(s=>flags[s.id]).length:0;
   if(nf)ab.append(el('div','warnbox',`⚠ ${nf} learned image${nf>1?'s':''} disagree${nf>1?'':'s'} with the others (marked ⚠). Open ${nf>1?'them':'it'} to check: a teaching mistake makes that defect accepted (or good parts rejected).`));
   $('teachState').className='state';$('teachState').textContent=P?`${P.samples.length} learned`:'—';
-  // counters and processing time
+  // counters, processing time, status bar
   const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cMarg').textContent=U.c.marg?`⚠ ${U.c.marg} marginal`:'';$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
   const tm=U.times;
   if(tm.length){$('cTime').textContent=Math.round(tm[tm.length-1])+' ms';
     $('cTimeS').textContent=`max ${Math.round(Math.max(...tm))} · min ${Math.round(Math.min(...tm))} · avg ${Math.round(tm.reduce((s,v)=>s+v,0)/tm.length)}`}
-  else{$('cTime').textContent='—';$('cTimeS').textContent=''}
+  else{$('cTime').textContent='—';$('cTimeS').textContent='max · min · avg'}
+  $('sbZoom').textContent=P?`Camera zoom ×${(+P.cam.zoom).toFixed(1)}`:'';
+  $('sbLearn').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'} · ${P.samples.length} learned image${P.samples.length===1?'':'s'}`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:''):'';
   renderRep();
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
-  if(ok)drawHist();
+  if(ok&&(U.rtab||'hist')==='hist')drawHist();
 }
 
 /* ---------- pointer: move, resize and turn tools, pan the zoomed screen, hand cursors ---------- */
@@ -1528,19 +1733,29 @@ function setRole(r){
 $('roleCtl').onclick=()=>setRole('ctl');$('roleCam').onclick=()=>setRole('cam');
 $('srcPhone').onclick=()=>setSrc('phone');$('srcDemo').onclick=()=>setSrc('demo');$('srcFile').onclick=()=>setSrc('file');
 $('pairBtn').onclick=connectPhone;$('pairIn').onkeydown=e=>{if(e.key==='Enter')connectPhone()};
-$('newBtn').onclick=()=>{stopRun();newProg();render()};
+$('newBtn').onclick=()=>{stopRun();newProg();setStep(1)};
 $('delBtn').onclick=async()=>{if(!P||!await ask(`Delete program "${P.name}"? Its reference and learned images are deleted too.`,{ok:'Delete'}))return;const id=P.id;progs=progs.filter(p=>p.id!==id);try{await tx('readwrite',st=>st.delete(id))}catch(e){}
-  P=null;if(progs.length)await loadProg(progs[progs.length-1].id);else newProg();render()};
-$('progSel').onchange=e=>loadProg(+e.target.value);
+  P=null;if(progs.length)await loadProg(progs[progs.length-1].id);else newProg();if(U.page==='prog')setStep(P&&P.ref?3:1);else render()};
+$('progSel').onchange=async e=>{await loadProg(+e.target.value);if(U.page==='prog')setStep(P&&P.ref?3:1)};
 $('progName').onchange=e=>{if(!P)return;P.name=e.target.value.trim()||P.name;save();render()};
 $('refBtn').onclick=takeRef;$('refOk').onclick=refValid;$('refNo').onclick=takeRef;
 $('zoomIn').oninput=e=>setCam('zoom',+e.target.value);$('panX').oninput=e=>setCam('ox',+e.target.value);$('panY').oninput=e=>setCam('oy',+e.target.value);
 $('zoomChange').onclick=async()=>{if(!await ask('Changing the camera zoom needs a new reference. The reference and the learned images will be cleared (areas are kept). Continue?'))return;
   P.ref=null;P.samples=[];P.valid=false;U.mode='live';U.last=null;save();render()};
-$('editBtn').onclick=()=>{stopRun();U.mode='edit';U.only=null;resetView();render()};
+$('editBtn').onclick=()=>{const a=selTool3();if(a)editOnly(a)};
+$('copyBtn').onclick=()=>{const a=selTool3();if(a)copyTool(a)};
+$('delToolBtn').onclick=delSel;
 $('doneBtn').onclick=()=>{U.only=null;resetView();render()};
 $('addMeas').onclick=addMeasure;$('addRef').onclick=addRef;
+$('addBtn').onclick=e=>{e.stopPropagation();toggleAddMenu()};
+$('addMenu').addEventListener('click',()=>toggleAddMenu(false));
+$('addMenu').addEventListener('keydown',e=>{if(e.key==='Escape'){toggleAddMenu(false);$('addBtn').focus()}});
+document.addEventListener('click',e=>{if(!$('addMenu').hidden&&!e.target.closest('.addwrap'))toggleAddMenu(false)});
 $('pageProg').onclick=()=>setPage('prog');$('pageRun').onclick=()=>setPage('run');
+for(let n=1;n<=4;n++)$('st'+n).onclick=()=>setStep(n);
+$('stepNext').onclick=stepNext;$('stepBack').onclick=stepBack;
+for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep']])$(id).onclick=()=>{U.rtab=k;render()};
+for(const k of['o1','o2'])$(k+'Sel').onchange=e=>{if(!P)return;P.out={...(P.out||{o1:'ok',o2:'ng'}),[k]:e.target.value};save();render()};
 $('repBtn').onclick=repStart;
 addEventListener('resize',()=>{if(U.page==='run')drawHist()});
 $('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
@@ -1555,12 +1770,13 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');
   if(!(cur&&await loadProg(cur))&&!(progs.length&&await loadProg(progs[progs.length-1].id)))newProg();
   U.page=P&&P.valid&&stored('vs1-page')!=='prog'?'run':'prog';
+  U.step=P&&P.ref?3:1;if(U.page==='prog')U.mode=U.step===3?'edit':'live';
   if(SRC.kind==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
   render();requestAnimationFrame(loop);
   // inside claude.ai the camera and the peer link are not available: demo camera and files still work

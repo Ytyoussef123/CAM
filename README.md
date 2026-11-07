@@ -11,7 +11,13 @@ Prototype of an industrial vision sensor (OK / NG part inspection) built on a Ra
 
 ## Inspection console
 
-The **phone is only a live camera**; the **PC is the controller**, with two modes: **⚙ Program** (make and edit programs) and **▶ Run** (inspect, statistics, teach).
+The **phone is only a live camera**; the **PC is the controller**, laid out like an industrial vision
+sensor console (VS-1 look): toolbar with **▶ RUN / ⚙ PROGRAM** and the program selector, a big status
+block (LIVE / MASTER / OK / NG), the image with its zoom bar, TIME / TRIGGER / OUT boxes under it and a
+status bar. **⚙ PROGRAM** has four steps — **1 Image** (source, camera zoom), **2 Master** (master
+image), **3 Tools** (＋ Add tool, Edit, Copy, Delete, settings of the selected tool), **4 Outputs**
+(what OUT1 / OUT2 signal) — and **Finish** goes to **▶ RUN** (tool list, then tabs *Limit & histogram*,
+*Additional learning*, *Repeatability*).
 
 Open `https://ytyoussef123.github.io/CAM/inspection-console.html` on both devices
 (GitHub Pages must be enabled for the branch).
