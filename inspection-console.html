@@ -183,7 +183,7 @@ body:not(.page-run) .run-only{display:none!important}
 .msgbox{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14px}
 /* run screen: one line per tool */
 .tlist{display:flex;flex-direction:column;gap:6px}
-.trow{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;gap:4px 8px;align-items:center;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.trow{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto auto;gap:4px 8px;align-items:center;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
 .trow:hover{border-color:var(--accent)}
 .trow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .trow .tn{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
@@ -205,6 +205,25 @@ body:not(.page-run) .run-only{display:none!important}
 .count small{font-family:var(--f-mono);font-size:11px;line-height:1.3;color:var(--muted)}
 .line{grid-template-columns:repeat(5,minmax(0,1fr)) auto}
 @media (max-width:560px){.line{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* safeguards: margin, marginal results, teaching checks, repeatability test */
+:root{--warn:#B86E00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--warn:#F2A93B}}
+:root[data-theme="dark"]{--warn:#F2A93B}
+.mg{font-family:var(--f-mono);font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid currentColor;white-space:nowrap;justify-self:start}
+.mg.good{color:var(--ok)} .mg.fair{color:var(--warn)} .mg.risk{color:var(--ng)} .mg.none{color:var(--muted)}
+.tbadge.marg{box-shadow:0 0 0 2px var(--warn)}
+.verdict.marg{box-shadow:0 0 0 4px var(--warn)}
+.warnbox{background:var(--panel);border:1px solid var(--warn);border-left:4px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+.thumb .flag{position:absolute;left:3px;top:3px;background:var(--warn);color:#fff;font-size:11px;padding:0 4px;border-radius:3px}
+.rep{display:flex;flex-direction:column;gap:5px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.rhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rhead b{font-family:var(--f-display);font-size:17px;font-weight:600}
+.rstrip{display:flex;gap:2px;flex-wrap:wrap}
+.rstrip i{width:10px;height:10px;border-radius:2px;background:var(--ok)} .rstrip i.ng{background:var(--ng)}
+.askbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.askbox{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:16px;max-width:460px;width:100%;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.askbox p{margin:0}
+.askin{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--panel-2);color:var(--fg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -251,7 +270,7 @@ body:not(.page-run) .run-only{display:none!important}
       </div>
 
       <div class="line ctl-only">
-        <div class="count"><span class="lbl">Inspected</span><b id="cTotal">0</b></div>
+        <div class="count"><span class="lbl">Inspected</span><b id="cTotal">0</b><small id="cMarg"></small></div>
         <div class="count"><span class="lbl">OK</span><b id="cOk">0</b></div>
         <div class="count"><span class="lbl">NG</span><b id="cNg">0</b></div>
         <div class="count"><span class="lbl">NG rate</span><b id="cRate">0.0%</b></div>
@@ -335,12 +354,24 @@ body:not(.page-run) .run-only{display:none!important}
         </div>
       </section>
 
+      <section class="step ctl-only run-only" id="repStep">
+        <div class="stephead"><span class="stepnum">⟳</span><h2>Repeatability test</h2><span class="state" id="repState">—</span></div>
+        <p class="hint">Leave one OK part under the camera and start the test: the sensor takes several pictures without learning and shows how much each result moves and how close it comes to its limit. Tick <b>re-place</b> to take the part out and put it back between pictures (4 s each): the placement is then part of the test.</p>
+        <div class="row">
+          <label class="toggle">Pictures <select id="repN" aria-label="Number of pictures"><option>10</option><option selected>20</option><option>30</option></select></label>
+          <label class="toggle"><input type="checkbox" id="repMove"> I re-place the part between pictures</label>
+          <button class="btn primary" id="repBtn" type="button">⟳ Start the test</button>
+        </div>
+        <div class="areas" id="repOut"></div>
+      </section>
+
       <section class="step ctl-only run-only" id="teachStep">
         <div class="stephead"><span class="stepnum">🎓</span><h2>Teach</h2><span class="state" id="teachState">—</span></div>
         <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
         <div class="teach" id="teach" hidden></div>
         <span class="lbl">Learned images</span>
         <div class="thumbs" id="sampleList"></div>
+        <div class="areas" id="auditBox"></div>
       </section>
 
       <div class="note ctl-only prog-only"><b>How it decides:</b> each area remembers the pictures you taught it. A new picture is compared with the closest one: the same as a taught OK picture scores <b>100</b>, the same as a taught NG picture scores <b>0</b>, other parts score by how close they are. Below its <b>limit</b> (50 by default) the area is NG, and one NG area makes the part NG. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
@@ -534,29 +565,35 @@ async function ensureGrays(){ // learned pictures are re-cut when tools move, tu
    the closest OK example gives the score, so a picture identical to a taught OK example scores 100
    (differences below the camera noise count as identical). When NG examples exist, a picture closer
    to an NG example than to any OK example is pulled down: identical to a taught NG example scores 0. */
-const NOISE=1; // differences under this (in noise units) count as "the same picture"
-const eff=d=>Math.max(0,d-NOISE);
+// sensitivity of an area: differences under "noise" (in noise units) count as the same picture; "scale" sets how fast the score drops
+const SENS={low:{noise:1.5,scale:1.5},normal:{noise:1,scale:1},high:{noise:.25,scale:.6}};
+const sensOf=a=>SENS[a.sens]||SENS.normal;
+const noiseOf=a=>sensOf(a).noise;
+const eff=(d,nz)=>Math.max(0,d-nz);
+const BAND=10; // a result closer than this to its limit is "marginal": a small change could flip it
 function devMap(g,e,sd,gw,gh){const n=gw*gh,d=new Float32Array(n);for(let i=0;i<n;i++)d[i]=Math.abs(g[i]-e[i])/sd[i];return blurWH(d,gw,gh,1)}
 function devMax(m,mk){let mx=0;for(let i=0;i<m.length;i++)if((!mk||mk[i])&&m[i]>mx)mx=m[i];return mx}
 function relScore(dOk,dNg,s){let sc=match(dOk,s);if(dNg!=null)sc=Math.min(sc,dOk+dNg>0?100*dNg/(dOk+dNg):50);return sc}
 function scoreArea(a,g){ // a new picture against the learned examples of the area
-  const M=a._m,{gw,gh}=grid(a),mk=maskOf(a,gw,gh);
+  const M=a._m,{gw,gh}=grid(a),mk=maskOf(a,gw,gh),nz=noiseOf(a);
   let bi=-1,bd=Infinity,bm=null;
   M.ok.forEach((e,i)=>{const m=devMap(g,e,M.sd,gw,gh),d=devMax(m,mk);if(d<bd){bd=d;bi=i;bm=m}});
-  let dNg=null,ni=-1;M.ng.forEach((e,i)=>{const d=eff(devMax(devMap(g,e,M.sd,gw,gh),mk));if(dNg==null||d<dNg){dNg=d;ni=i}});
-  const dOk=eff(bd),byNg=dNg!=null&&dNg<dOk; // closer to a taught NG picture than to any OK one
+  let dNg=null,ni=-1;M.ng.forEach((e,i)=>{const d=eff(devMax(devMap(g,e,M.sd,gw,gh),mk),nz);if(dNg==null||d<dNg){dNg=d;ni=i}});
+  const dOk=eff(bd,nz),byNg=dNg!=null&&dNg<dOk; // closer to a taught NG picture than to any OK one
   return{score:Math.round(relScore(dOk,dNg,a.thr)),dev:byNg?dNg:dOk,map:bm,near:byNg?M.ngSrc[ni]:M.okSrc[bi],nearNg:byNg};
 }
 function learnArea(a){
-  const{gw,gh}=grid(a),n=gw*gh,mk=maskOf(a,gw,gh);
+  const{gw,gh}=grid(a),n=gw*gh,mk=maskOf(a,gw,gh),nz=noiseOf(a);
   const ok=[refGray(a)],okSrc=['ref'],ng=[],ngSrc=[];
   for(const s of P.samples){const g=sGray(s,a);if(!g)continue;if(s.labels[a.id]==='ok'){ok.push(g);okSrc.push(s.id)}else if(s.labels[a.id]==='ng'){ng.push(g);ngSrc.push(s.id)}}
-  // camera noise per pixel, from the OK examples (never below FLOOR)
+  // normal variation per pixel, from the OK examples: a median-based spread, so one odd (or wrongly taught) example
+  // cannot make a defect look "normal"; never below FLOOR
   const sd=new Float32Array(n).fill(FLOOR);
-  if(ok.length>1)for(let i=0;i<n;i++){let m=0;for(const g of ok)m+=g[i];m/=ok.length;let v=0;for(const g of ok){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(ok.length-1)),FLOOR)}
+  if(ok.length>1){const k=ok.length,h=k>>1,buf=new Float32Array(k),dev=new Float32Array(k),med=b=>{b.sort();return k%2?b[h]:(b[h-1]+b[h])/2};
+    for(let i=0;i<n;i++){for(let j=0;j<k;j++)buf[j]=ok[j][i];const m=med(buf);for(let j=0;j<k;j++)dev[j]=Math.abs(ok[j][i]-m);sd[i]=Math.max(1.4826*med(dev),FLOOR)}}
   // distance between every pair of examples (each pair once)
   const all=ok.concat(ng),N=all.length,nO=ok.length,Dm=Array.from({length:N},()=>new Float32Array(N));
-  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=eff(devMax(devMap(all[i],all[j],sd,gw,gh),mk));Dm[i][j]=Dm[j][i]=d}
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=eff(devMax(devMap(all[i],all[j],sd,gw,gh),mk),nz);Dm[i][j]=Dm[j][i]=d}
   const minOver=(i,from,to)=>{let m=null;for(let j=from;j<to;j++)if(j!==i&&(m==null||Dm[i][j]<m))m=Dm[i][j];return m};
   const looOk=nO>1?ok.map((_,k)=>minOver(k,0,nO)):[];   // each OK example against the other OK examples
   const ngToOk=ng.map((_,k)=>minOver(nO+k,0,nO));          // each NG example against the OK examples
@@ -567,8 +604,8 @@ function learnArea(a){
   else if(minNg!=null)s=Math.min(DEF_THR,minNg*.6);
   else if(maxOk!=null)s=Math.max(maxOk*1.25,maxOk+2,DEF_THR); // teaching OK examples never makes the area stricter
   else s=DEF_THR;
-  a.thr=a.auto=Math.max(1,Math.round(s*10)/10);
-  if(a._legacyThr!=null){a.limit=Math.round(Math.max(0,Math.min(100,match(eff(a._legacyThr),a.thr))));delete a._legacyThr}
+  a.thr=a.auto=Math.max(1,Math.round(s*sensOf(a).scale*10)/10);
+  if(a._legacyThr!=null){a.limit=Math.round(Math.max(0,Math.min(100,match(eff(a._legacyThr,nz),a.thr))));delete a._legacyThr}
   if(a.limit==null)a.limit=50;
   a._m={ok,ng,sd,okSrc,ngSrc};a._k=gKey(a);
   // how the examples score when each one is judged without itself (how well the area tells OK from NG)
@@ -576,7 +613,27 @@ function learnArea(a){
   const ngSc=ng.map((_,k)=>relScore(ngToOk[k],ng.length>1?minOver(nO+k,nO,N):null,a.thr));
   const okLow=okSc.length?Math.min(...okSc):null,ngHigh=ngSc.length?Math.max(...ngSc):null;
   a.stats={nOk:nO,nNg:ng.length,okLow,ngHigh,overlap:okLow!=null&&ngHigh!=null&&okLow<=ngHigh};
+  a._loo={ok:okSrc.map((id,k)=>[id,okSc.length?okSc[k]:null]),ng:ngSrc.map((id,k)=>[id,ngSc[k]])};
 }
+function marginOf(a){ // safety margin: how far the taught examples (each judged without itself) are from the limit
+  const st=a.stats;if(!st)return null;const L=limOf(a),ms=[];
+  if(st.okLow!=null)ms.push(st.okLow-L);if(st.ngHigh!=null)ms.push(L-st.ngHigh);
+  if(!ms.length)return{v:null,cls:'none'};
+  const v=Math.round(Math.min(...ms));
+  return{v,cls:v>=20?'good':v>=BAND?'fair':'risk',okOnly:st.ngHigh==null,ngOnly:st.okLow==null,
+    mid:st.okLow!=null&&st.ngHigh!=null&&st.okLow>st.ngHigh?Math.round((st.okLow+st.ngHigh)/2):null};
+}
+const marginTxt=m=>!m||m.v==null?'margin: teach a few examples to know it':
+  `${m.cls==='good'?'good':m.cls==='fair'?'small':'risky'} margin: ${m.v} points`+(m.okOnly?' (OK side only — no NG example taught)':m.ngOnly?' (NG side only)':'');
+function audit(){ // learned pictures that disagree with their label when judged by the others: possible teaching mistakes
+  const out={},add=(id,t)=>(out[id]=out[id]||[]).push(t);
+  for(const a of checks()){const L=limOf(a),lo=a._loo;if(!lo||!a._m)continue;
+    if(a._m.ok.length>=3)for(const[id,sc]of lo.ok)if(sc!=null&&Math.round(sc)<L)add(id,{area:a.name,lab:'OK',score:Math.round(sc)});
+    if(a._m.ok.length>=2)for(const[id,sc]of lo.ng)if(sc!=null&&Math.round(sc)>=L)add(id,{area:a.name,lab:'NG',score:Math.round(sc)});
+  }
+  return out;
+}
+const measMarg=(m,r)=>m.nom!=null&&!!r.found&&Math.abs(Math.abs(r.value-m.nom)-mTol(m))<.2*mTol(m);
 function learnAll(){ // async because learned pictures may need to be decoded again
   if(!P||!P.ref)return Promise.resolve();
   const run=(async()=>{await ensureGrays();if(!P||!P.ref)return;checks().forEach(learnArea);if(U.last)U.last.r=inspect(U.last.frame)})();
@@ -586,16 +643,18 @@ function inspect(f){
   const pos=findPos(f.full,f.size),o=pos.found?pos:{dx:0,dy:0};
   const res=checks().map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);
     const g=areaGray(f.full,f.size,a,o),r=scoreArea(a,g),lim=limOf(a),{gw,gh}=grid(a);
-    return{id:a.id,name:a.name,dev:r.dev,score:r.score,limit:lim,ng:r.score<lim,dlim:devAt(lim,a.thr)+NOISE,map:r.map,gw,gh,gray:g,key:a._k,near:r.near,nearNg:r.nearNg}});
-  const meas=measures().map(m=>({id:m.id,name:m.name,...measureTool(f.full,f.size,m,o)}));
-  return{res,meas,pos,off:o,worst:worstOf(res),ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok)};
+    return{id:a.id,name:a.name,dev:r.dev,score:r.score,limit:lim,ng:r.score<lim,marg:Math.abs(r.score-lim)<BAND,dlim:devAt(lim,a.thr)+noiseOf(a),
+      map:r.map,gw,gh,gray:g,key:a._k,near:r.near,nearNg:r.nearNg}});
+  const meas=measures().map(m=>{const r={id:m.id,name:m.name,...measureTool(f.full,f.size,m,o)};r.marg=measMarg(m,r);return r});
+  const rt=refTool();if(rt&&!pos.none)pos.marg=Math.abs(Math.round(pos.score*100)-(rt.minScore||60))<BAND;
+  return{res,meas,pos,off:o,worst:worstOf(res),ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok),marg:!!pos.marg||res.some(r=>r.marg)||meas.some(r=>r.marg)};
 }
 function rejudge(R){ // apply changed limits to a result without measuring again
   if(!R||!P)return;
-  const rt=refTool();if(rt&&R.pos&&!R.pos.none)R.pos.found=Math.round(R.pos.score*100)>=(rt.minScore||60);
-  for(const x of R.res){const a=P.areas.find(t=>t.id===x.id);if(!a)continue;x.limit=limOf(a);x.ng=x.score<x.limit;x.dlim=devAt(x.limit,a.thr)+NOISE}
-  for(const m of R.meas){const a=P.areas.find(t=>t.id===m.id);if(a)m.ok=!!m.found&&(a.nom==null||Math.abs(m.value-a.nom)<=mTol(a))}
-  R.worst=worstOf(R.res);R.ng=!R.pos.found||R.res.some(x=>x.ng)||R.meas.some(m=>!m.ok);
+  const rt=refTool();if(rt&&R.pos&&!R.pos.none){const v=Math.round(R.pos.score*100),L=rt.minScore||60;R.pos.found=v>=L;R.pos.marg=Math.abs(v-L)<BAND}
+  for(const x of R.res){const a=P.areas.find(t=>t.id===x.id);if(!a)continue;x.limit=limOf(a);x.ng=x.score<x.limit;x.marg=Math.abs(x.score-x.limit)<BAND;x.dlim=devAt(x.limit,a.thr)+noiseOf(a)}
+  for(const m of R.meas){const a=P.areas.find(t=>t.id===m.id);if(a){m.ok=!!m.found&&(a.nom==null||Math.abs(m.value-a.nom)<=mTol(a));m.marg=measMarg(a,m)}}
+  R.worst=worstOf(R.res);R.ng=!R.pos.found||R.res.some(x=>x.ng)||R.meas.some(m=>!m.ok);R.marg=!!R.pos.marg||R.res.some(x=>x.marg)||R.meas.some(m=>m.marg);
 }
 
 /* ---------- storage (IndexedDB: holds the full-resolution pictures) ---------- */
@@ -622,7 +681,7 @@ async function loadProg(id){
   U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];U.selTool=null;resetView();
   if(d.ref&&d.ref.blob){try{const bmp=await createImageBitmap(d.ref.blob);const c=canvas(bmp.width);c.getContext('2d').drawImage(bmp,0,0);
     P.ref={full:c,size:bmp.width,blob:d.ref.blob,thumb:d.ref.thumb,cache:{}}}catch(e){P.ref=null;P.valid=false}}
-  store('vs1-cur',String(id));sendCam();await learnAll();render();return true;
+  store('vs1-cur',String(id));sendCam();await learnAll();renderProgSel();render();return true;
 }
 function newProg(){
   const id=progs.reduce((m,p)=>Math.max(m,p.id),0)+1;
@@ -669,7 +728,7 @@ function samplePart(seed,defect,S=1280,mx=0,my=0){
   for(let i=0;i<d.length;i+=4){const n=(r()-.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
   x.putImageData(id,0,0);return c;
 }
-function demoNext(){const r=Math.random(),d=r<.65?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];SRC.demo=samplePart(++SRC.demoSeed*7919,d,1280,(Math.random()-.5)*16,(Math.random()-.5)*16)}
+function demoNext(){const r=Math.random(),d=r<.65?null:['missing','scratch','chip','stain'][Math.floor(Math.random()*4)];const p={seed:++SRC.demoSeed*7919,defect:d,mx:(Math.random()-.5)*16,my:(Math.random()-.5)*16};SRC.params=p;SRC.demo=samplePart(p.seed,p.defect,1280,p.mx,p.my)}
 function setSrc(k){
   SRC.kind=k;store('vs1-src',k);clearInterval(SRC.demoT);
   if(k==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
@@ -738,8 +797,8 @@ function editOnly(a){ // edit one tool alone, zoomed on it
 function measRef(m){return P.ref?measureTool(P.ref.full,P.ref.size,m,null):null}
 function setNominal(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: no two edges found on the reference. Move the line across the gap, or lower the contrast.`);return}
   m.nom=r.value;m.tol=Math.max(2,r.value*.05);save();render();flashMsg(`${m.name}: nominal ${fmtLen(m.nom)} ± ${fmtLen(m.tol)}`)}
-function calibrate(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: no edges found on the reference, cannot calibrate.`);return}
-  const v=prompt(`${m.name} measures ${r.value.toFixed(1)} px on the reference.\nReal length in mm?`,'');if(v==null)return;
+async function calibrate(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: no edges found on the reference, cannot calibrate.`);return}
+  const v=await ask(`${m.name} measures ${r.value.toFixed(1)} px on the reference. What is its real length in mm?`,{input:'',ok:'Calibrate'});if(v==null)return;
   const mm=parseFloat(String(v).replace(',','.'));if(!(mm>0)){flashMsg('Calibration cancelled: type a length in mm.');return}
   P.scale=mm/r.value;save();render();flashMsg(`Calibrated: 1 px = ${(P.scale*1000).toFixed(1)} µm. All measures now in mm.`)}
 async function validate(){
@@ -758,12 +817,17 @@ async function trigger(){
   if(!P||!P.valid)return;
   const f=await grab();if(!f)return;if(learning)await learning;
   const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
-  r.ng?U.c.ng++:U.c.ok++;record(r,dt);
+  r.ng?U.c.ng++:U.c.ok++;if(r.marg)U.c.marg=(U.c.marg||0)+1;record(r,dt);
   U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
   U.mode='result';U.view=null;flash();if(r.ng&&navigator.vibrate)navigator.vibrate(150);render();
 }
-async function learnLast(){
-  const l=U.last;if(!l||l.learned)return;l.learned=true;render();
+const CONFLICT=20; // teaching against the sensor by this much asks for a confirmation
+async function learnLast(force){
+  const l=U.last;if(!l||l.learned)return;
+  if(force!==true){ // a label far from what the sensor sees is often a teaching mistake: ask first
+    const w=l.r.res.filter(r=>{const lab=l.labels[r.id];return lab==='ok'&&r.score<=r.limit-CONFLICT||lab==='ng'&&r.score>=r.limit+CONFLICT});
+    if(w.length){l.warn=w.map(r=>({name:r.name,score:r.score,limit:r.limit,lab:l.labels[r.id]}));render();return}}
+  l.warn=null;l.learned=true;render();
   const cache={};for(const r of l.r.res)cache[r.key]=r.gray;
   P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache,off:{key:refKey(),dx:l.r.off.dx,dy:l.r.off.dy}});
   await learnAll();save();
@@ -773,6 +837,67 @@ async function learnLast(){
     (a.stats.ngHigh!=null?`NG ≤ ${Math.round(a.stats.ngHigh)}`:'')).join(' · ');
   flashMsg(`Learned as image ${n}. It now scores 100 where you said OK and 0 where you said NG; a new picture of the same part in the same place scores the same.`+
     (sum?` Other parts — ${sum}.`:'')+(warn.length?` ⚠ ${warn.join(', ')}: an OK and an NG example look alike — move or shrink the area.`:''));
+}
+function centerLimit(a){ // put the limit half way between the lowest OK example and the highest NG example
+  const m=marginOf(a);if(!m||m.mid==null)return;a.limit=m.mid;afterLimit();render();
+  flashMsg(`${a.name}: limit set to ${m.mid}, half way between the OK and the NG examples.`);
+}
+/* ---------- repeatability test: the same part, several pictures, no learning ---------- */
+const REP={run:false,shots:[],i:0,n:20,move:false,res:null};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function demoShot(move){ // the demo part again: fresh camera noise, and a small re-placement if asked
+  const p=SRC.params;if(!p)return SRC.demo;
+  const c=samplePart(p.seed,p.defect,1280,p.mx+(move?(Math.random()-.5)*2.5:0),p.my+(move?(Math.random()-.5)*2.5:0));
+  const x=c.getContext('2d'),id=x.getImageData(0,0,c.width,c.height),d=id.data,lt=move?(Math.random()-.5)*4:0;
+  for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*6+lt;d[i]+=n;d[i+1]+=n;d[i+2]+=n}
+  x.putImageData(id,0,0);return c;
+}
+async function repStart(){
+  if(REP.run){REP.run=false;render();return} // second press: stop
+  if(!P||!P.valid)return;
+  if(SRC.kind==='file'){flashMsg('The repeatability test needs a live picture: use the phone camera or the demo camera.');return}
+  stopRun();
+  Object.assign(REP,{run:true,shots:[],i:0,n:+$('repN').value||20,move:$('repMove').checked,res:null});
+  const demo=SRC.kind==='demo';if(demo)clearInterval(SRC.demoT);
+  render();
+  for(let i=0;i<REP.n&&REP.run;i++){
+    REP.i=i+1;
+    if(i>0)await sleep(REP.move&&!demo?4000:500); // time to take the part out and put it back
+    if(!REP.run)break;
+    if(demo)SRC.demo=demoShot(REP.move&&i>0);
+    const f=await grab();if(!f)break;if(learning)await learning;
+    const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
+    REP.shots.push(r);
+    U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false,test:true};
+    U.mode='result';render();
+  }
+  REP.run=false;REP.res=repSummary(REP.shots);
+  if(demo)SRC.demoT=setInterval(demoNext,2500);
+  render();
+}
+function stats(v){const n=v.length;if(!n)return null;const mean=v.reduce((s,x)=>s+x,0)/n;
+  return{n,min:Math.min(...v),max:Math.max(...v),mean,sd:n>1?Math.sqrt(v.reduce((s,x)=>s+(x-mean)**2,0)/(n-1)):0}}
+function repSummary(shots){ // per tool: spread of the results and how close they came to the limit
+  if(!shots.length)return null;
+  return runOrder().map(a=>{
+    const oks=[],vals=[];let L=null,pos=null;
+    for(const r of shots){
+      if(a.type==='ref'){if(r.pos.none)continue;vals.push(Math.round(r.pos.score*100));oks.push(r.pos.found);L=a.minScore||60}
+      else if(a.type==='measure'){const m=r.meas.find(z=>z.id===a.id);if(!m)continue;vals.push(m.found?m.value:null);oks.push(m.ok)}
+      else{const x=r.res.find(z=>z.id===a.id);if(!x)continue;vals.push(x.score);oks.push(!x.ng);L=x.limit}
+    }
+    const nOk=oks.filter(Boolean).length,nNg=oks.length-nOk,flip=nOk>0&&nNg>0,num=vals.filter(v=>v!=null),st=stats(num);
+    const out={id:a.id,name:a.name,type:a.type,oks,nOk,nNg,flip,st,L,miss:vals.length-num.length};
+    if(a.type==='ref'){const dx=stats(shots.filter(r=>!r.pos.none).map(r=>r.off.dx*P.ref.size)),dy=stats(shots.filter(r=>!r.pos.none).map(r=>r.off.dy*P.ref.size));out.sdx=dx?dx.sd:0;out.sdy=dy?dy.sd:0}
+    if(a.type==='measure'){
+      if(a.nom!=null&&st){const W=2*mTol(a);out.pct=6*st.sd/W*100;out.verdict=flip||out.miss?'unstable':out.pct>30?'risk':out.pct>10?'fair':'good'}
+      else out.verdict=flip||out.miss?'unstable':'good';
+    }else if(st){
+      out.close=Math.min(...num.map(v=>Math.abs(v-L)));
+      out.verdict=flip?'unstable':out.close<BAND?'fair':'good';
+    }
+    return out;
+  });
 }
 function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
 function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
@@ -830,11 +955,11 @@ function drawMeasure(x,m,o,r,sel,edit){
     for(const E of[E1,E2]){x.beginPath();x.moveTo(E[0]+nx*t,E[1]+ny*t);x.lineTo(E[0]-nx*t,E[1]-ny*t);x.stroke()}
     x.lineWidth=3/z;x.beginPath();x.moveTo(E1[0]+nx*t*.7,E1[1]+ny*t*.7);x.lineTo(E2[0]+nx*t*.7,E2[1]+ny*t*.7);x.stroke()}
   if(sel){handle(x,X0,Y0,color);handle(x,X1,Y1,color)}
-  const txt=m.name+(r?(r.found?' '+fmtLen(r.value):' no edges'):edit&&m.nom!=null?' '+fmtLen(m.nom):'');
+  const txt=(r&&r.marg?'⚠ ':'')+m.name+(r?(r.found?' '+fmtLen(r.value):' no edges'):edit&&m.nom!=null?' '+fmtLen(m.nom):'');
   label(x,Math.min(X0,X1),Math.min(Y0,Y1)-bw,color,txt);
 }
 function drawRef(x,a,pos,sel){
-  if(pos&&!pos.none){const f=pos.found?shift(a,pos):a;strokeArea(x,f,pos.found?REFC:NGC,`⌖ ${a.name} ${Math.round(pos.score*100)}`,false,pos.found?null:[6,6])}
+  if(pos&&!pos.none){const f=pos.found?shift(a,pos):a;strokeArea(x,f,pos.found?REFC:NGC,`${pos.marg?'⚠ ':''}⌖ ${a.name} ${Math.round(pos.score*100)}`,false,pos.found?null:[6,6])}
   else strokeArea(x,a,sel?SELC:REFC,`⌖ ${a.name}`+(sel?` · search ±${a.range}%`:''),sel,[10/V.z,6/V.z]);
   if(sel){const R=(a.range||20)/100;x.strokeStyle=REFC;x.lineWidth=1/V.z;x.setLineDash([3/V.z,5/V.z]);
     x.strokeRect((a.x0-R)*D,(a.y0-R)*D,(a.x1-a.x0+2*R)*D,(a.y1-a.y0+2*R)*D);x.setLineDash([])}
@@ -847,7 +972,7 @@ function drawAreas(x,R,edit){
     else if(a.type==='ref')drawRef(x,a,R&&R.pos,sel);
     else{const r=R&&R.res.find(z=>z.id===a.id),deg=Math.round((a.ang||0)*180/Math.PI);
       strokeArea(x,shift(a,o),sel?SELC:r?(r.ng?NGC:OKC):EDC,
-        a.name+(r?` ${Math.round(r.score)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`+(deg?` · ${deg}°`:''):''),sel)}
+        (r&&r.marg?'⚠ ':'')+a.name+(r?` ${Math.round(r.score)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`+(deg?` · ${deg}°`:''):''),sel)}
   }
   x.globalAlpha=1;
 }
@@ -864,7 +989,7 @@ function tolTxt(m){if(m.nom==null)return'no tolerance set';return`${fmtLen(m.nom
 function readout(r,live){
   const v=$('verdict');
   if(!r){$('fill').style.width='0';setLamps(null);return}
-  v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(live?'LIVE · ':'')+(r.ng?'NG':'OK');
+  v.className='verdict '+(r.ng?'ng':'ok')+(r.marg?' marg':'');v.textContent=(live?'LIVE · ':'')+(r.ng?'NG':'OK')+(r.marg?' ⚠':'');v.title=r.marg?'Marginal: a tool is close to its limit':'';
   let a='',b='',bar=null;const mf=r.meas.find(m=>!m.ok),w=r.worst;
   if(!r.pos.found){const rt=refTool(),lim=rt?rt.minScore||60:60;a=`⌖ ${rt?rt.name:'Position'} not found · ${Math.round(r.pos.score*100)}`;b=`Limit ${lim}`;bar={score:r.pos.score*100,limit:lim,ng:true}}
   else if(w&&(w.ng||!mf)){a=`${w.name} · ${Math.round(w.score)}`;b=`Limit ${w.limit}`;bar=w}
@@ -916,6 +1041,16 @@ function loop(ts){requestAnimationFrame(loop);if(L.role==='cam'||(U.mode==='live
 
 /* ---------- panel rendering ---------- */
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function ask(text,{ok='OK',cancel='Cancel',input=null}={}){ // in-page dialog: browser pop-ups can be blocked inside claude.ai
+  return new Promise(res=>{
+    const bg=el('div','askbg'),bx=el('div','askbox');bx.setAttribute('role','dialog');bx.setAttribute('aria-modal','true');bx.append(el('p',null,text));
+    let inp=null;if(input!=null){inp=document.createElement('input');inp.type='text';inp.value=input;inp.className='askin';inp.setAttribute('aria-label',text);bx.append(inp)}
+    const row=el('div','row'),b1=el('button','btn primary',ok),b2=el('button','btn',cancel);b1.type=b2.type='button';
+    const done=v=>{bg.remove();res(v)};b1.onclick=()=>done(inp?inp.value:true);b2.onclick=()=>done(null);
+    bg.addEventListener('keydown',e=>{if(e.key==='Escape')done(null);else if(e.key==='Enter'&&inp)done(inp.value)});
+    row.append(b1,b2);bx.append(row);bg.append(bx);document.body.append(bg);(inp||b1).focus();
+  });
+}
 function sliderRow(label,min,max,step,val,fmt,onInput,extra){
   const sl=el('div','slider'),lb=el('span','lbl',label),inp=document.createElement('input');inp.type='range';inp.min=min;inp.max=max;inp.step=step;inp.value=val;inp.setAttribute('aria-label',label);
   const out=el('output',null,fmt(+val));inp.oninput=()=>{out.textContent=fmt(+inp.value);onInput(+inp.value)};inp.onchange=()=>render();
@@ -932,8 +1067,10 @@ function tolInputs(a){ // nominal ± tolerance of a measure, in mm when calibrat
 function limitRow(a){ // the OK / NG limit of a tool, on the 0–100 score
   if(a.type==='ref'){const r=sliderRow('Min match',0,100,1,a.minScore||60,v=>String(v),v=>{a.minScore=v;afterLimit()});
     r.querySelector('input').onchange=()=>{if(U.last)U.last.r=inspect(U.last.frame);save();render()};return r}
-  const d=el('button','btn small','↺ 50');d.type='button';d.title='Back to the default limit (50)';d.onclick=()=>{a.limit=50;afterLimit();render()};
-  return sliderRow('Limit',0,100,1,limOf(a),v=>String(v),v=>{a.limit=v;afterLimit()},d);
+  const ex=el('span','tools'),d=el('button','btn small','↺ 50');d.type='button';d.title='Back to the default limit (50)';d.onclick=()=>{a.limit=50;afterLimit();render()};ex.append(d);
+  const m=marginOf(a);if(m&&m.mid!=null&&m.mid!==limOf(a)){const c=el('button','btn small',`⇔ ${m.mid}`);c.type='button';
+    c.title='Put the limit half way between the lowest OK example and the highest NG example: the biggest margin on both sides';c.onclick=()=>centerLimit(a);ex.append(c)}
+  return sliderRow('Limit',0,100,1,limOf(a),v=>String(v),v=>{a.limit=v;afterLimit()},ex);
 }
 function toolRow(a,res){
   const kind=a.type||'check';
@@ -959,13 +1096,19 @@ function toolRow(a,res){
     const ds=document.createElement('select');ds.setAttribute('aria-label',a.name+' detail');
     for(const[k,t]of[['auto','Auto'],['1','×1'],['2','×2'],['4','×4'],['8','×8']]){const o=document.createElement('option');o.value=k;o.textContent=t;if(String(a.detail||'auto')===k)o.selected=true;ds.appendChild(o)}
     ds.onchange=()=>{a.detail=ds.value;P.valid=false;save();learnAll()};
-    const g=grid(a);op.append(sh,el('span','lbl','Detail'),ds,el('span','val',`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`));
+    const ss=document.createElement('select');ss.setAttribute('aria-label',a.name+' sensitivity');
+    for(const[k,t]of[['low','Low'],['normal','Normal'],['high','High']]){const o=document.createElement('option');o.value=k;o.textContent=t;if((a.sens||'normal')===k)o.selected=true;ss.appendChild(o)}
+    ss.onchange=()=>{a.sens=ss.value;save();learnAll()};ss.title='Low: tolerant · Normal · High: also finds faint differences (check with the repeatability test)';
+    const g=grid(a);op.append(sh,el('span','lbl','Detail'),ds,el('span','val',`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`),el('span','lbl','Sensitivity'),ss);
     const deg=Math.round((a.ang||0)*180/Math.PI);
     if(deg){const rb=el('button','btn small',`⟲ ${deg}° → 0°`);rb.type='button';rb.title='Angle reset';rb.onclick=()=>{a.ang=0;P.valid=false;save();learnAll()};op.append(rb)}
     row.append(op,limitRow(a));
     const st=a.stats;if(st){const s=el('div','stats'+(st.overlap?' warn':''));s.title='Lowest / highest: how the examples score when each one is judged without itself — how well this area tells OK from NG';
       s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.okLow!=null?` (lowest ${Math.round(st.okLow)})`:'')+` · ${st.nNg} NG`+(st.ngHigh!=null?` (highest ${Math.round(st.ngHigh)})`:'')+
         (st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
+    const mg=marginOf(a),ml=el('div','opts'),pill=el('span','mg '+(mg?mg.cls:'none'),marginTxt(mg));
+    pill.title='Safety margin: distance between the limit and the closest taught example (each judged without itself). Green ≥ 20, orange ≥ 10, red below.';
+    ml.append(pill);row.append(ml);
   }
   else if(kind==='measure'){
     const r=res&&res.meas.find(z=>z.id===a.id);
@@ -1000,19 +1143,46 @@ function renderProgSel(){
 /* ---------- run screen: one line per tool with its score bar, histogram of the selected tool ---------- */
 const nearTxt=r=>{if(!r||r.near==null||!P.samples.length)return'';const nm=r.near==='ref'?'the reference':`learned ${P.samples.findIndex(s=>s.id===r.near)+1}`;
   const k=r.nearNg?' (NG)':'';return r.dev===0?` · same as ${nm}${k}`:` · closest: ${nm}${k}`};
+const flagTxt=(f,ref)=>ref?`⚠ ${f.area}: the reference scores ${f.score} against your other OK examples. If the reference part was defective, retake the reference (⚙ Program, step 1).`:
+  f.lab==='OK'?`⚠ ${f.area}: taught OK, but judged by the other examples it scores ${f.score} (below the limit). If it was a teaching mistake, remove it.`:
+  `⚠ ${f.area}: taught NG, but judged by the other examples it scores ${f.score} (above the limit): it looks like a good part. Check the label.`;
+const VERD={good:'Stable',fair:'Marginal',risk:'Not capable',unstable:'Unstable'};
+function renderRep(){ // repeatability test panel
+  const out=$('repOut'),st=$('repState');if(!out)return;
+  $('repBtn').textContent=REP.run?'■ Stop the test':'⟳ Start the test';$('repBtn').disabled=!REP.run&&!(P&&P.valid);
+  $('repN').disabled=$('repMove').disabled=REP.run;
+  out.innerHTML='';
+  if(REP.run){st.className='state';st.textContent=`Picture ${REP.i}/${REP.n}`;
+    out.append(el('p','hint',REP.move?`Picture ${REP.i} of ${REP.n}: take the part out and put it back in its place before the next picture.`:`Picture ${REP.i} of ${REP.n}: do not touch the part.`));return}
+  const res=REP.res;if(!res){st.className='state';st.textContent='—';return}
+  const bad=res.filter(t=>t.verdict==='unstable'||t.verdict==='risk').length,fair=res.filter(t=>t.verdict==='fair').length;
+  st.className='state'+(bad?' warn':fair?'':' good');st.textContent=bad?'Unstable':fair?'Marginal':'Stable';
+  out.append(el('p','hint',`${REP.shots.length} pictures`+(REP.move?', the part re-placed each time':' of the same part, not touched')+'. Nothing was learned and the counters were not changed.'));
+  for(const t of res){
+    const row=el('div','rep'),head=el('div','rhead');
+    head.append(el('b',null,`${t.name}`),el('span','mg '+({good:'good',fair:'fair',risk:'risk',unstable:'risk'}[t.verdict]||'none'),VERD[t.verdict]||'—'));row.append(head);
+    const strip=el('div','rstrip');strip.title='One mark per picture: green OK, red NG';for(const o of t.oks)strip.append(el('i',o?'ok':'ng'));row.append(strip);
+    let txt='';
+    if(t.type==='measure'){if(t.st)txt=`${fmtLen(t.st.min)} – ${fmtLen(t.st.max)} · average ${fmtLen(t.st.mean)} · spread σ ${fmtLen(t.st.sd)}`+
+        (t.pct!=null?` · 6σ = ${t.pct.toFixed(0)} % of the tolerance (good below 10 %, too much above 30 %)`:' · set a tolerance to judge it');if(t.miss)txt+=` · no edges ${t.miss}×`}
+    else if(t.st){txt=`scores ${t.st.min}–${t.st.max} · average ${t.st.mean.toFixed(1)} · spread σ ${t.st.sd.toFixed(1)} · closest to the limit (${t.L}): ${Math.round(t.close)} points`;
+      if(t.type==='ref')txt+=` · position spread σ ${t.sdx.toFixed(1)} × ${t.sdy.toFixed(1)} px`}
+    row.append(el('div','stats',txt+` · ${t.nOk} OK / ${t.nNg} NG`));out.append(row);
+  }
+}
 const runResult=()=>U.mode==='result'&&U.last?U.last.r:(U.mode==='live'?U.live:null);
 const tNum=a=>String(a.id).padStart(2,'0');
 const tIcon=a=>a.type==='ref'?'⌖':a.type==='measure'?'📏':a.shape==='ellipse'?'◯':'▭';
 const runOrder=()=>[...P.areas].sort((a,b)=>((a.type==='ref'?-1:0)-(b.type==='ref'?-1:0))||a.id-b.id);
 function toolStatus(a,R){ // what the run line of a tool shows
   if(a.type==='ref'){const p=R&&R.pos,v=p&&!p.none?p.score*100:null;
-    return{txt:v==null?'—':String(Math.round(v)),ok:v==null?null:p.found,fill:v,lim:a.minScore||60}}
-  if(a.type==='measure'){const m=R&&R.meas.find(z=>z.id===a.id),st={txt:m?(m.found?fmtLen(m.value):'no edges'):'—',ok:m?m.ok:null};
+    return{txt:v==null?'—':String(Math.round(v)),ok:v==null?null:p.found,fill:v,lim:a.minScore||60,marg:!!(p&&p.marg)}}
+  if(a.type==='measure'){const m=R&&R.meas.find(z=>z.id===a.id),st={txt:m?(m.found?fmtLen(m.value):'no edges'):'—',ok:m?m.ok:null,marg:!!(m&&m.marg)};
     if(a.nom!=null){const t=mTol(a),lo=a.nom-3*t,hi=a.nom+3*t,pc=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
       st.band=[pc(a.nom-t),pc(a.nom+t)];if(m&&m.found)st.mark=pc(m.value)}
     return st}
   const r=R&&R.res.find(z=>z.id===a.id);
-  return{txt:r?String(Math.round(r.score)):'—',ok:r?!r.ng:null,fill:r?r.score:null,lim:limOf(a)};
+  return{txt:r?String(Math.round(r.score)):'—',ok:r?!r.ng:null,fill:r?r.score:null,lim:limOf(a),marg:!!(r&&r.marg),mg:marginOf(a)};
 }
 let runKey='';
 function renderRun(){
@@ -1021,13 +1191,15 @@ function renderRun(){
   if(!tools.some(a=>a.id===U.selTool)){const t=tools.find(isCheck)||tools[0];U.selTool=t?t.id:null}
   if(key!==runKey){runKey=key;box.innerHTML='';
     for(const a of tools){const b=el('button','trow');b.type='button';b.dataset.id=a.id;
-      b.append(el('span','tn',tNum(a)),el('span','ti',tIcon(a)),el('span','tname',a.name),el('span','tbadge','—'),el('span','tval','—'));
+      b.append(el('span','tn',tNum(a)),el('span','ti',tIcon(a)),el('span','tname',a.name),el('span','mg'),el('span','tbadge','—'),el('span','tval','—'));
       const bar=el('div','tbar');bar.append(el('i','tband'),el('i','tfill'),el('i','tlim'),el('i','tmark'));b.append(bar);
       b.onclick=()=>{U.selTool=a.id;renderRun();renderHistLim();drawHist()};box.appendChild(b)}}
   const R=runResult();
   for(const b of box.children){const a=tools.find(t=>t.id===+b.dataset.id);if(!a)continue;const s=toolStatus(a,R);
     b.classList.toggle('sel',a.id===U.selTool);
-    const bd=b.querySelector('.tbadge');bd.textContent=s.ok==null?'—':s.ok?'OK':'NG';bd.className='tbadge'+(s.ok==null?'':s.ok?' ok':' ng');
+    const bd=b.querySelector('.tbadge');bd.textContent=s.ok==null?'—':(s.marg?'⚠ ':'')+(s.ok?'OK':'NG');bd.className='tbadge'+(s.ok==null?'':s.ok?' ok':' ng')+(s.marg?' marg':'');
+    bd.title=s.marg?'Marginal: close to the limit, a small change could flip this result':'';
+    const mp=b.querySelector('.mg'),mg=s.mg;mp.hidden=!mg||mg.v==null;if(mg&&mg.v!=null){mp.textContent=`margin ${mg.v}`;mp.className='mg '+mg.cls;mp.title=marginTxt(mg)}
     b.querySelector('.tval').textContent=s.txt;
     const f=b.querySelector('.tfill'),l=b.querySelector('.tlim'),bn=b.querySelector('.tband'),mk=b.querySelector('.tmark');
     f.hidden=s.fill==null;if(s.fill!=null){f.style.width=Math.max(0,Math.min(100,s.fill))+'%';f.className='tfill'+(s.ok===false?' ng':'')}
@@ -1084,7 +1256,9 @@ function drawHist(){
   // numbers
   const nums=vals.filter(v=>v!=null),ok=vals.filter(sp.ok).length;
   $('histStats').textContent=vals.length?`${vals.length} trigger${vals.length>1?'s':''} · OK ${ok} · NG ${vals.length-ok}`+
-    (nums.length?` · max ${sp.fmt(Math.max(...nums))} · min ${sp.fmt(Math.min(...nums))} · avg ${sp.fmt(nums.reduce((s,v)=>s+v,0)/nums.length)}`:'')+(miss?` · no edges ${miss}`:''):'No trigger yet for this tool.';
+    (nums.length?` · max ${sp.fmt(Math.max(...nums))} · min ${sp.fmt(Math.min(...nums))} · avg ${sp.fmt(nums.reduce((s,v)=>s+v,0)/nums.length)}`:'')+(miss?` · no edges ${miss}`:'')+
+    (nums.length&&sp.lim!=null?` · closest to the limit: ${Math.round(Math.min(...nums.map(v=>Math.abs(v-sp.lim))))} points`:'')+
+    (nums.length&&sp.band?` · closest to a tolerance edge: ${fmtLen(Math.min(...nums.map(v=>Math.min(Math.abs(v-sp.band[0]),Math.abs(v-sp.band[1])))))}`:''):'No trigger yet for this tool.';
 }
 function renderHistLim(){ // "limit adjustment" for the selected tool, right under its histogram
   const box=$('histLim'),a=histTool();if(!box)return;box.innerHTML='';if(!a)return;
@@ -1139,33 +1313,52 @@ function render(){
   $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not validated';
   if(ok){runKey='';renderRun();renderHistLim()}
   // teach
-  const te=$('teach');te.innerHTML='';
-  if(U.mode==='result'&&U.last&&P){te.hidden=false;const R=U.last.r;
-    te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':'Teach this image — is each area OK or NG?'));
+  const te=$('teach');te.innerHTML='';const flags=P?audit():{};
+  if(U.mode==='sample'&&U.view&&P){te.hidden=false;const s=U.view,si=P.samples.indexOf(s);
+    te.append(el('span','lbl',`Learned image ${si+1}`));
+    for(const a of checks())te.append(el('div','stats',`${a.name}: taught ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'— (area added later)'}`));
+    for(const f of flags[s.id]||[])te.append(el('div','warnbox',flagTxt(f)));
+    const row=el('div','row'),rm=el('button','btn','🗑 Remove from learning'),cl=el('button','btn small','Close');rm.type=cl.type='button';
+    rm.onclick=async()=>{if(await ask(`Remove learned image ${si+1}? The areas will be learned again without it.`,{ok:'Remove'}))forget(s)};
+    cl.onclick=()=>{U.view=null;U.mode='live';render()};row.append(rm,cl);te.append(row);
+  }
+  else if(U.mode==='result'&&U.last&&P){te.hidden=false;const R=U.last.r;
+    te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':(U.last.test?'Repeatability test picture — ':'')+'Teach this image — is each area OK or NG?'));
     if(!R.pos.none){const t=el('div','t');t.append(el('span',null,'⌖ '+(refTool()||{}).name),el('small',null,R.pos.found?`found · ${Math.round(R.pos.score*100)}`:`NOT FOUND · ${Math.round(R.pos.score*100)}`),el('span'));te.appendChild(t)}
     for(const a of checks()){const r=R.res.find(z=>z.id===a.id);const t=el('div','t');
       const g=el('div','okng');
       for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=el('button',cls+(U.last.labels[a.id]===v?' on':''),lbl);b.type='button';b.disabled=U.last.learned;
-        b.onclick=()=>{U.last.labels[a.id]=v;render()};g.appendChild(b)}
-      t.append(el('span',null,a.name),el('small',null,r?`score ${Math.round(r.score)} · ${r.ng?'NG':'OK'}${nearTxt(r)}`:''),g);te.appendChild(t)}
+        b.onclick=()=>{U.last.labels[a.id]=v;U.last.warn=null;render()};g.appendChild(b)}
+      t.append(el('span',null,a.name),el('small',null,r?`score ${Math.round(r.score)} · ${r.ng?'NG':'OK'}${r.marg?' ⚠ near the limit':''}${nearTxt(r)}`:''),g);te.appendChild(t)}
     for(const m of measures()){const r=R.meas.find(z=>z.id===m.id);const t=el('div','t');
       t.append(el('span',null,'📏 '+m.name),el('small',null,r?(r.found?`${fmtLen(r.value)} · ${r.ok?'OK':'NG'}`:'no edges · NG'):''),el('small',null,tolTxt(m)));te.appendChild(t)}
-    if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb)}
+    if(U.last.warn){const w=el('div','warnbox');w.append(el('b',null,'Are you sure?'));
+      for(const c of U.last.warn)w.append(el('div',null,c.lab==='ok'?`${c.name} scored ${c.score} (limit ${c.limit}): it looks very different from the good examples. Taught as OK, it will be accepted from now on — and so will any part that looks like it, even with a defect at that spot.`:
+        `${c.name} scored ${c.score} (limit ${c.limit}): it looks like the good examples. Taught as NG, parts that look like it will be rejected — good parts may be rejected too.`));
+      const row=el('div','row'),n=el('button','btn primary','Cancel — check the labels'),y=el('button','btn','Teach anyway');n.type=y.type='button';
+      n.onclick=()=>{U.last.warn=null;render()};y.onclick=()=>learnLast(true);row.append(n,y);w.append(row);te.appendChild(w)}
+    else if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=()=>learnLast(false);te.appendChild(lb)}
   }else te.hidden=true;
   const sl=$('sampleList');sl.innerHTML='';
   if(!P||!P.samples.length){const e=el('div','empty','Nothing learned yet: only the reference is used.');e.style.gridColumn='1/-1';sl.appendChild(e)}
   else for(const[si,s]of P.samples.entries()){const b=el('button','thumb'+(U.view===s&&U.mode==='sample'?' sel':''));b.type='button';
     const im=document.createElement('img');im.src=s.thumb;im.alt='Learned image';b.appendChild(im);
     const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),`${si+1} · `+(ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK')));
-    b.onclick=()=>{if(U.view===s&&U.mode==='sample'){if(confirm('Remove this image from learning?'))forget(s);return}U.view=s;U.mode='sample';render()};
-    b.title='Click to view, click again to remove';sl.appendChild(b)}
+    const fl=flags[s.id];if(fl)b.appendChild(el('span','flag','⚠'));
+    b.onclick=()=>{if(U.view===s&&U.mode==='sample'){U.view=null;U.mode='live'}else{U.view=s;U.mode='sample'}render()};
+    b.title=(fl?fl.map(flagTxt).join('\n')+'\n':'')+'Click to see it (and remove it if needed)';sl.appendChild(b)}
+  const ab=$('auditBox');ab.innerHTML='';
+  for(const f of flags.ref||[])ab.append(el('div','warnbox',flagTxt(f,true)));
+  const nf=P?P.samples.filter(s=>flags[s.id]).length:0;
+  if(nf)ab.append(el('div','warnbox',`⚠ ${nf} learned image${nf>1?'s':''} disagree${nf>1?'':'s'} with the others (marked ⚠). Open ${nf>1?'them':'it'} to check: a teaching mistake makes that defect accepted (or good parts rejected).`));
   $('teachState').className='state';$('teachState').textContent=P?`${P.samples.length} learned`:'—';
   // counters and processing time
-  const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
+  const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cMarg').textContent=U.c.marg?`⚠ ${U.c.marg} marginal`:'';$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
   const tm=U.times;
   if(tm.length){$('cTime').textContent=Math.round(tm[tm.length-1])+' ms';
     $('cTimeS').textContent=`max ${Math.round(Math.max(...tm))} · min ${Math.round(Math.min(...tm))} · avg ${Math.round(tm.reduce((s,v)=>s+v,0)/tm.length)}`}
   else{$('cTime').textContent='—';$('cTimeS').textContent=''}
+  renderRep();
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
   if(ok)drawHist();
@@ -1336,18 +1529,19 @@ $('roleCtl').onclick=()=>setRole('ctl');$('roleCam').onclick=()=>setRole('cam');
 $('srcPhone').onclick=()=>setSrc('phone');$('srcDemo').onclick=()=>setSrc('demo');$('srcFile').onclick=()=>setSrc('file');
 $('pairBtn').onclick=connectPhone;$('pairIn').onkeydown=e=>{if(e.key==='Enter')connectPhone()};
 $('newBtn').onclick=()=>{stopRun();newProg();render()};
-$('delBtn').onclick=async()=>{if(!P||!confirm(`Delete program "${P.name}"?`))return;const id=P.id;progs=progs.filter(p=>p.id!==id);try{await tx('readwrite',st=>st.delete(id))}catch(e){}
+$('delBtn').onclick=async()=>{if(!P||!await ask(`Delete program "${P.name}"? Its reference and learned images are deleted too.`,{ok:'Delete'}))return;const id=P.id;progs=progs.filter(p=>p.id!==id);try{await tx('readwrite',st=>st.delete(id))}catch(e){}
   P=null;if(progs.length)await loadProg(progs[progs.length-1].id);else newProg();render()};
 $('progSel').onchange=e=>loadProg(+e.target.value);
 $('progName').onchange=e=>{if(!P)return;P.name=e.target.value.trim()||P.name;save();render()};
 $('refBtn').onclick=takeRef;$('refOk').onclick=refValid;$('refNo').onclick=takeRef;
 $('zoomIn').oninput=e=>setCam('zoom',+e.target.value);$('panX').oninput=e=>setCam('ox',+e.target.value);$('panY').oninput=e=>setCam('oy',+e.target.value);
-$('zoomChange').onclick=()=>{if(!confirm('Changing the camera zoom needs a new reference. The reference and the learned images will be cleared (areas are kept). Continue?'))return;
+$('zoomChange').onclick=async()=>{if(!await ask('Changing the camera zoom needs a new reference. The reference and the learned images will be cleared (areas are kept). Continue?'))return;
   P.ref=null;P.samples=[];P.valid=false;U.mode='live';U.last=null;save();render()};
 $('editBtn').onclick=()=>{stopRun();U.mode='edit';U.only=null;resetView();render()};
 $('doneBtn').onclick=()=>{U.only=null;resetView();render()};
 $('addMeas').onclick=addMeasure;$('addRef').onclick=addRef;
 $('pageProg').onclick=()=>setPage('prog');$('pageRun').onclick=()=>setPage('run');
+$('repBtn').onclick=repStart;
 addEventListener('resize',()=>{if(U.page==='run')drawHist()});
 $('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
 $('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;

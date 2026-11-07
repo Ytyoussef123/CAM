@@ -46,6 +46,22 @@ Program flow on the PC:
      below the camera noise count as identical). Other parts score by how close they are to the
      examples; teaching OK examples never makes an area stricter. The Teach panel shows which learned
      picture each area matched ("same as learned 3", "closest: learned 2 (NG)").
+   - **Safeguards against mismatches**
+     - *Margin* per area: distance between the limit and the closest taught example (each judged
+       without itself) — green ≥ 20 points, orange ≥ 10, red below. "⇔" puts the limit half way
+       between the OK and the NG examples.
+     - *Marginal results*: a tool within 10 points of its limit (or a measure near a tolerance edge)
+       is marked ⚠ — a small change could flip it. Counted under the counters.
+     - *Teaching protection*: teaching against the sensor by 20 points or more (OK on a part that
+       scored very low, NG on one that scored very high) asks for a confirmation first.
+     - *Audit*: learned pictures that disagree with their label when judged by the others are marked
+       ⚠ (also a defective reference); open one to remove it.
+     - *Repeatability test*: N pictures of the same part (optionally re-placed between pictures),
+       no learning, counters untouched — spread, closest call to the limit and a verdict per tool;
+       for measures 6σ as a % of the tolerance (good < 10 %, too much > 30 %).
+     - *Sensitivity* per area: Low / Normal / High (High also finds faint differences; check it
+       with the repeatability test). The normal variation is estimated with a median, so one odd
+       or wrongly taught example cannot hide a defect.
 
 Programs are saved in the PC browser (IndexedDB, with the full-resolution pictures). The PC screen can be zoomed with the mouse wheel (drag to pan, double-click or Fit to reset).
 A **demo camera** (simulated parts) and **image files** can replace the phone for testing.
