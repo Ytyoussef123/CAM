@@ -176,6 +176,35 @@ input.pname{flex:1;min-width:10ch}
 .vz{display:inline-flex;align-items:center;gap:4px}
 .vz output{font-family:var(--f-mono);font-size:13px;min-width:6ch;text-align:center;color:var(--muted)}
 .screen canvas{touch-action:none}
+/* program / run pages */
+.page-run .prog-only{display:none!important}
+body:not(.page-run) .run-only{display:none!important}
+.page-run #srcStep{order:9}
+.msgbox{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14px}
+/* run screen: one line per tool */
+.tlist{display:flex;flex-direction:column;gap:6px}
+.trow{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto;gap:4px 8px;align-items:center;text-align:left;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+.trow:hover{border-color:var(--accent)}
+.trow.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.trow .tn{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.trow .ti{font-size:15px;width:1.3em;text-align:center}
+.trow .tname{font-family:var(--f-display);font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbadge{font-family:var(--f-display);font-weight:700;font-size:15px;padding:1px 8px;border-radius:4px;color:#fff;background:#46535c;min-width:3.2em;text-align:center}
+.tbadge.ok{background:var(--ok)} .tbadge.ng{background:var(--ng)}
+.trow .tval{font-family:var(--f-mono);font-size:15px;min-width:5ch;text-align:right;font-variant-numeric:tabular-nums}
+.tbar{grid-column:1/-1;position:relative;height:10px;background:var(--panel);border:1px solid var(--line);border-radius:3px}
+.tbar i{position:absolute;display:block}
+.tbar .tfill{left:0;top:0;bottom:0;background:var(--ok);border-radius:2px}
+.tbar .tfill.ng{background:var(--ng)}
+.tbar .tlim{top:-3px;bottom:-3px;width:2px;background:var(--fg)}
+.tbar .tband{top:0;bottom:0;background:var(--ok);opacity:.35}
+.tbar .tmark{top:-3px;bottom:-3px;width:4px;margin-left:-2px;background:var(--fg);border-radius:2px}
+.histo{display:flex;flex-direction:column;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px}
+.histo canvas{width:100%;height:130px;display:block}
+.histo .hs{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.count small{font-family:var(--f-mono);font-size:11px;line-height:1.3;color:var(--muted)}
+.line{grid-template-columns:repeat(5,minmax(0,1fr)) auto}
+@media (max-width:560px){.line{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -185,6 +214,8 @@ input.pname{flex:1;min-width:10ch}
     <div class="stat"><span class="lbl">Image source</span><b id="srcStat">—</b></div>
     <div class="stat ctl-only"><span class="lbl">Program</span><b id="progStat">—</b></div>
     <span class="spacer"></span>
+    <div class="stat ctl-only"><span class="lbl">Mode</span>
+      <div class="seg" role="group" aria-label="Mode"><button type="button" id="pageProg" aria-pressed="true">⚙ Program</button><button type="button" id="pageRun" aria-pressed="false">▶ Run</button></div></div>
     <div class="stat"><span class="lbl">This device is</span>
       <div class="seg" role="group" aria-label="Device role"><button type="button" id="roleCtl" aria-pressed="true">🖥 PC · controller</button><button type="button" id="roleCam" aria-pressed="false">📱 Camera</button></div></div>
     <div class="stat"><span class="lbl">Link</span><span class="link" id="linkStat">—</span></div>
@@ -224,6 +255,7 @@ input.pname{flex:1;min-width:10ch}
         <div class="count"><span class="lbl">OK</span><b id="cOk">0</b></div>
         <div class="count"><span class="lbl">NG</span><b id="cNg">0</b></div>
         <div class="count"><span class="lbl">NG rate</span><b id="cRate">0.0%</b></div>
+        <div class="count"><span class="lbl">Process</span><b id="cTime">—</b><small id="cTimeS"></small></div>
         <div class="lamps" aria-label="Output signals">
           <div class="lamp okl" id="lampOk"><i></i>OUT1 OK</div>
           <div class="lamp ngl" id="lampNg"><i></i>OUT2 NG</div>
@@ -232,6 +264,7 @@ input.pname{flex:1;min-width:10ch}
     </section>
 
     <aside class="setup">
+      <div class="msgbox ctl-only" id="msgBox" role="status" hidden></div>
       <!-- phone (camera) -->
       <section class="step cam-only" id="camPair">
         <div class="stephead"><span class="stepnum">⇄</span><h2>Link to the PC</h2><span class="state" id="camState">—</span></div>
@@ -257,7 +290,7 @@ input.pname{flex:1;min-width:10ch}
         <div class="row"><span class="lbl">Name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
       </section>
 
-      <section class="step ctl-only" id="refStep">
+      <section class="step ctl-only prog-only" id="refStep">
         <div class="stephead"><span class="stepnum">1</span><h2>Reference image</h2><span class="state" id="refState">—</span></div>
         <p class="hint">Put one <b>good</b> part in its exact position. Use the camera zoom to frame it, then take the reference from the live view. The zoom is saved in the program.</p>
         <div class="refbox" id="refBox"></div>
@@ -271,9 +304,9 @@ input.pname{flex:1;min-width:10ch}
         </div>
       </section>
 
-      <section class="step ctl-only" id="areaStep">
+      <section class="step ctl-only prog-only" id="areaStep">
         <div class="stephead"><span class="stepnum">2</span><h2>Control areas</h2><span class="state" id="areaState">—</span></div>
-        <p class="hint"><b>▭ / ◯</b> check an area against the good parts. <b>📏 Measure</b>: draw a line across a gap, the two edges are found and the distance checked. <b>⌖ Position reference</b>: a distinctive part of the piece that is searched in every picture so all other tools follow the part if it moves. On the image: ✋ drag to move, drag a corner or an end to resize. <b>✎</b> edits one tool alone, zoomed.</p>
+        <p class="hint"><b>▭ / ◯</b> check an area against the good parts. <b>📏 Measure</b>: draw a line across a gap, the two edges are found and the distance checked. <b>⌖ Position reference</b>: a distinctive part of the piece that is searched in every picture so all other tools follow the part if it moves. On the image: ✋ drag to move, drag a corner or an end to resize, turn an area with its round ↻ handle. <b>✎</b> edits one tool alone, zoomed; <b>⧉</b> copies a tool (for example one window per screw). Each area scores 0–100 and is OK at or above its <b>limit</b> (50 by default).</p>
         <div class="areas" id="areaList"></div>
         <div class="row">
           <button class="btn" id="editBtn" type="button">✎ Edit tools</button>
@@ -286,19 +319,31 @@ input.pname{flex:1;min-width:10ch}
         </div>
       </section>
 
-      <section class="step ctl-only" id="runStep">
-        <div class="stephead"><span class="stepnum">3</span><h2>Run &amp; teach</h2><span class="state" id="runState">—</span></div>
-        <p class="hint">Put a part and press <b>Trigger</b>: the image is taken from the live view and inspected. Then tell the sensor, area by area, if it is <b>OK</b> or <b>NG</b> and press <b>Learn</b>: the thresholds adjust to your examples.</p>
+      <section class="step ctl-only run-only" id="runStep">
+        <div class="stephead"><span class="stepnum">▶</span><h2>Run</h2><span class="state" id="runState">—</span></div>
+        <p class="hint" id="runHint" hidden>This program is not validated yet. Go to <b>⚙ Program</b>, finish steps 1 and 2 and press Validate.</p>
         <div class="row">
           <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
           <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
         </div>
+        <div class="tlist" id="toolList" aria-label="Results per tool"></div>
+        <div class="histo" id="histo">
+          <span class="lbl" id="histTitle">—</span>
+          <canvas id="histC" height="130" aria-label="Score histogram of the selected tool"></canvas>
+          <div class="hs" id="histStats">—</div>
+          <div id="histLim"></div>
+        </div>
+      </section>
+
+      <section class="step ctl-only run-only" id="teachStep">
+        <div class="stephead"><span class="stepnum">🎓</span><h2>Teach</h2><span class="state" id="teachState">—</span></div>
+        <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>: OK examples raise the scores of good parts, NG examples lower the scores of bad ones.</p>
         <div class="teach" id="teach" hidden></div>
         <span class="lbl">Learned images</span>
         <div class="thumbs" id="sampleList"></div>
       </section>
 
-      <div class="note ctl-only"><b>How it decides:</b> inside each control area the image is compared pixel by pixel with the good examples of that area. Each area has a threshold: above it the area is NG, and one NG area makes the part NG. When you teach OK and NG examples, the threshold is placed between the highest OK score and the lowest NG score. Parts must sit in the same place each time and the light must stay the same.</div>
+      <div class="note ctl-only prog-only"><b>How it decides:</b> each area gets a score from 0 to 100: 100 means it looks like the good examples. Below its <b>limit</b> (50 by default) the area is NG, and one NG area makes the part NG. When you teach OK and NG examples, good parts score higher and bad parts lower. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
     </aside>
   </div>
   <input type="file" id="fileIn" accept="image/*" hidden>
@@ -335,6 +380,29 @@ const checks=()=>P?P.areas.filter(isCheck):[];
 const measures=()=>P?P.areas.filter(a=>a.type==='measure'):[];
 const refTool=()=>P?P.areas.find(a=>a.type==='ref'):null;
 const shift=(a,o)=>o&&(o.dx||o.dy)?{...a,x0:a.x0+o.dx,x1:a.x1+o.dx,y0:a.y0+o.dy,y1:a.y1+o.dy}:a;
+function normTool(a){ // fill in what tools saved by older versions do not have
+  const b={type:'check',shape:'rect',detail:'auto',ang:0,...a};
+  if(b.type==='check'&&b.limit==null){b.limit=50;if(b.manual)b._legacyThr=b.thr}
+  delete b.manual;return b;
+}
+// a box is (x0,y0)-(x1,y1) before rotation, turned by ang (radians) around its centre
+const ctr=a=>[(a.x0+a.x1)/2,(a.y0+a.y1)/2];
+function rotP(x,y,ang){const c=Math.cos(ang),s=Math.sin(ang);return[x*c-y*s,x*s+y*c]}
+function corners(a){const[cx,cy]=ctr(a),hw=(a.x1-a.x0)/2,hh=(a.y1-a.y0)/2,g=a.ang||0;
+  return[[-hw,-hh],[hw,-hh],[-hw,hh],[hw,hh]].map(([u,v])=>{const[p,q]=rotP(u,v,g);return[cx+p,cy+q]})}
+function toolBox(a){ // upright box around any tool
+  if(a.type==='measure')return{x0:Math.min(a.x0,a.x1),y0:Math.min(a.y0,a.y1),x1:Math.max(a.x0,a.x1),y1:Math.max(a.y0,a.y1)};
+  if(!a.ang)return a;
+  const c=corners(a),xs=c.map(p=>p[0]),ys=c.map(p=>p[1]);
+  return{x0:Math.min(...xs),y0:Math.min(...ys),x1:Math.max(...xs),y1:Math.max(...ys)};
+}
+
+/* ---------- scores 0–100: 100 = looks like the good examples; a tool is OK at or above its limit (50 by default) ---------- */
+const limOf=a=>a.limit!=null?a.limit:50;
+const match=(d,s)=>100/(1+(d/Math.max(s,1e-6))**2);                      // deviation -> score
+const devAt=(lim,s)=>s*Math.sqrt(100/Math.min(99.5,Math.max(.5,lim))-1);  // score -> deviation
+const mTol=m=>m.tol!=null?m.tol:Math.max(2,(m.nom||0)*.05);
+function worstOf(res){let w=null;for(const r of res)if(!w||r.score-r.limit<w.score-w.limit)w=r;return w}
 
 /* ---------- per-area analysis at its own resolution ("zoom per area") ---------- */
 function blurWH(a,w,h,r){
@@ -353,13 +421,20 @@ function grid(a){
   return{gw,gh,k:k0*cap};
 }
 function refKey(){const r=refTool();return r?`${r.x0.toFixed(4)},${r.y0.toFixed(4)},${r.x1.toFixed(4)},${r.y1.toFixed(4)},${r.range}`:'none'}
-const gKey=a=>{const g=grid(a);return`${a.id}|${a.x0.toFixed(4)},${a.y0.toFixed(4)},${a.x1.toFixed(4)},${a.y1.toFixed(4)}|${g.gw}x${g.gh}|${refKey()}`};
+const gKey=a=>{const g=grid(a);return`${a.id}|${a.x0.toFixed(4)},${a.y0.toFixed(4)},${a.x1.toFixed(4)},${a.y1.toFixed(4)},${(a.ang||0).toFixed(3)}|${g.gw}x${g.gh}|${refKey()}`};
 const gC=canvas(8),gX=gC.getContext('2d',{willReadFrequently:true});
 function toGray(px,n){const g=new Float32Array(n);for(let i=0;i<n;i++)g[i]=.299*px[i*4]+.587*px[i*4+1]+.114*px[i*4+2];return g}
-function areaGray(src,size,a,o){ // crop the area (moved by the position offset) and resample it to its grid
-  const{gw,gh}=grid(a),b=shift(a,o);gC.width=gw;gC.height=gh;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
+function areaGray(src,size,a,o){ // cut the area (moved by the position offset, turned by its angle) and resample it to its grid
+  const{gw,gh}=grid(a),b=shift(a,o),ang=a.ang||0;gC.width=gw;gC.height=gh;gX.imageSmoothingEnabled=true;gX.imageSmoothingQuality='high';
   gX.fillStyle='#000';gX.fillRect(0,0,gw,gh);
-  gX.drawImage(src,b.x0*size,b.y0*size,(b.x1-b.x0)*size,(b.y1-b.y0)*size,0,0,gw,gh);
+  if(!ang)gX.drawImage(src,b.x0*size,b.y0*size,(b.x1-b.x0)*size,(b.y1-b.y0)*size,0,0,gw,gh);
+  else{
+    const[cx,cy]=ctr(b),w=(b.x1-b.x0)*size,h=(b.y1-b.y0)*size,bb=toolBox(b);
+    const sx=Math.max(0,Math.floor(bb.x0*size)-1),sy=Math.max(0,Math.floor(bb.y0*size)-1),ex=Math.min(size,Math.ceil(bb.x1*size)+1),ey=Math.min(size,Math.ceil(bb.y1*size)+1);
+    gX.translate(gw/2,gh/2);gX.scale(gw/w,gh/h);gX.rotate(-ang);gX.translate(-cx*size,-cy*size);
+    if(ex>sx&&ey>sy)gX.drawImage(src,sx,sy,ex-sx,ey-sy,sx,sy,ex-sx,ey-sy);
+    gX.setTransform(1,0,0,1,0,0);
+  }
   return blurWH(toGray(gX.getImageData(0,0,gw,gh).data,gw*gh),gw,gh,1);
 }
 const maskCache={};
@@ -447,7 +522,7 @@ function measureTool(src,size,m,o){
   else{e1=peaks[0];e2=peaks[peaks.length-1]}
   const value=(e2.i-e1.i)*(P.ref?P.ref.size/size:1); // in reference pixels
   const pt=t=>[(x0+ux*t)/size,(y0+uy*t)/size];
-  const ok=m.nom==null||Math.abs(value-m.nom)<=(m.tol!=null?m.tol:Math.max(2,m.nom*.05));
+  const ok=m.nom==null||Math.abs(value-m.nom)<=mTol(m);
   return{found:true,ok,value,e1:pt(e1.i),e2:pt(e2.i)};
 }
 
@@ -457,7 +532,7 @@ let P=null, progs=[];
 function refGray(a){const k=gKey(a);return P.ref.cache[k]||(P.ref.cache[k]=areaGray(P.ref.full,P.ref.size,a,null))}
 const sGray=(s,a)=>s.cache[gKey(a)];
 let learning=null;
-async function ensureGrays(){ // learned pictures are re-cut when tools move or change size
+async function ensureGrays(){ // learned pictures are re-cut when tools move, turn or change size
   const rk=refKey();
   for(const s of P.samples){
     const miss=checks().filter(a=>!s.cache[gKey(a)]);if(!miss.length)continue;
@@ -475,14 +550,17 @@ function learnArea(a){
   if(gl.length>=2){maxOk=0;for(let k=0;k<gl.length;k++){const m=areaModel(gl.filter((_,j)=>j!==k),n);maxOk=Math.max(maxOk,areaMap(a,m,gl[k]).score)}}
   const ngs=P.samples.filter(s=>s.labels[a.id]==='ng'&&sGray(s,a)).map(s=>areaMap(a,a._m,sGray(s,a)).score);
   const minNg=ngs.length?Math.min(...ngs):null;
-  let thr;
-  if(minNg!=null&&maxOk!=null)thr=minNg>maxOk?Math.min(Math.max((maxOk+minNg)/2,maxOk+2),minNg*.9):minNg*.95; // between OK and NG examples
-  else if(minNg!=null)thr=Math.min(DEF_THR,minNg*.6);
-  else if(maxOk!=null)thr=Math.max(maxOk*1.25,maxOk+2,3); // keep a margin over camera noise
-  else thr=DEF_THR;
-  a.auto=Math.max(1,Math.round(thr*10)/10);
-  a.stats={nOk:gl.length,nNg:ngs.length,maxOk,minNg,overlap:minNg!=null&&maxOk!=null&&minNg<=maxOk};
-  if(!a.manual)a.thr=a.auto;
+  // the scale is the deviation that scores 50: placed between the OK and the NG examples
+  let s;
+  if(minNg!=null&&maxOk!=null)s=minNg>maxOk?Math.min(Math.max((maxOk+minNg)/2,maxOk+2),minNg*.9):minNg*.95;
+  else if(minNg!=null)s=Math.min(DEF_THR,minNg*.6);
+  else if(maxOk!=null)s=Math.max(maxOk*1.25,maxOk+2,3); // keep a margin over camera noise
+  else s=DEF_THR;
+  a.thr=a.auto=Math.max(1,Math.round(s*10)/10);
+  if(a._legacyThr!=null){a.limit=Math.round(Math.max(0,Math.min(100,match(a._legacyThr,a.thr))));delete a._legacyThr}
+  if(a.limit==null)a.limit=50;
+  a.stats={nOk:gl.length,nNg:ngs.length,okLow:maxOk!=null?match(maxOk,a.thr):null,ngHigh:minNg!=null?match(minNg,a.thr):null,
+    overlap:minNg!=null&&maxOk!=null&&minNg<=maxOk};
 }
 function learnAll(){ // async because learned pictures may need to be decoded again
   if(!P||!P.ref)return Promise.resolve();
@@ -491,11 +569,18 @@ function learnAll(){ // async because learned pictures may need to be decoded ag
 }
 function inspect(f){
   const pos=findPos(f.full,f.size),o=pos.found?pos:{dx:0,dy:0};
-  const res=checks().map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);const g=areaGray(f.full,f.size,a,o),r=areaMap(a,a._m,g);
-    return{id:a.id,name:a.name,score:r.score,thr:a.thr,ng:r.score>a.thr,map:r.map,gw:r.gw,gh:r.gh,gray:g,key:a._k}});
+  const res=checks().map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);
+    const g=areaGray(f.full,f.size,a,o),r=areaMap(a,a._m,g),lim=limOf(a),sc=match(r.score,a.thr);
+    return{id:a.id,name:a.name,dev:r.score,score:sc,limit:lim,ng:sc<lim,dlim:devAt(lim,a.thr),map:r.map,gw:r.gw,gh:r.gh,gray:g,key:a._k}});
   const meas=measures().map(m=>({id:m.id,name:m.name,...measureTool(f.full,f.size,m,o)}));
-  let worst=null;for(const r of res)if(!worst||r.score/r.thr>worst.score/worst.thr)worst=r;
-  return{res,meas,pos,off:o,worst,ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok)};
+  return{res,meas,pos,off:o,worst:worstOf(res),ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok)};
+}
+function rejudge(R){ // apply changed limits to a result without measuring again
+  if(!R||!P)return;
+  const rt=refTool();if(rt&&R.pos&&!R.pos.none)R.pos.found=R.pos.score>=(rt.minScore||60)/100;
+  for(const x of R.res){const a=P.areas.find(t=>t.id===x.id);if(!a)continue;x.limit=limOf(a);x.ng=x.score<x.limit;x.dlim=devAt(x.limit,a.thr)}
+  for(const m of R.meas){const a=P.areas.find(t=>t.id===m.id);if(a)m.ok=!!m.found&&(a.nom==null||Math.abs(m.value-a.nom)<=mTol(a))}
+  R.worst=worstOf(R.res);R.ng=!R.pos.found||R.res.some(x=>x.ng)||R.meas.some(m=>!m.ok);
 }
 
 /* ---------- storage (IndexedDB: holds the full-resolution pictures) ---------- */
@@ -518,8 +603,8 @@ async function loadProg(id){
   const d=progs.find(p=>p.id===id);if(!d)return false;
   stopRun();
   P={id:d.id,name:d.name,valid:!!d.valid,scale:d.scale||null,cam:{zoom:1,ox:0,oy:0,...(d.cam||{})},ref:null,
-    areas:(d.areas||[]).map(a=>({type:'check',shape:'rect',detail:'auto',...a})),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
-  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;resetView();
+    areas:(d.areas||[]).map(normTool),samples:(d.samples||[]).map(s=>({...s,cache:{}}))};
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];U.selTool=null;resetView();
   if(d.ref&&d.ref.blob){try{const bmp=await createImageBitmap(d.ref.blob);const c=canvas(bmp.width);c.getContext('2d').drawImage(bmp,0,0);
     P.ref={full:c,size:bmp.width,blob:d.ref.blob,thumb:d.ref.thumb,cache:{}}}catch(e){P.ref=null;P.valid=false}}
   store('vs1-cur',String(id));sendCam();await learnAll();render();return true;
@@ -527,11 +612,11 @@ async function loadProg(id){
 function newProg(){
   const id=progs.reduce((m,p)=>Math.max(m,p.id),0)+1;
   P={id,name:`Program ${String(id).padStart(2,'0')}`,valid:false,scale:null,cam:{zoom:1,ox:0,oy:0},ref:null,areas:[],samples:[]};
-  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;resetView();sendCam();save();
+  U.cand=null;U.last=null;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];U.selTool=null;U.page='prog';resetView();sendCam();save();
 }
 
 /* ---------- UI state ---------- */
-const U={only:null,mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
+const U={only:null,page:'prog',hist:{},times:[],selTool:null,mode:'live',cand:null,last:null,selArea:null,drag:null,c:{ok:0,ng:0},timer:null,heat:true,live:null,lastLive:0,view:null,msg:''};
 let msgT=null;
 function flashMsg(t){U.msg=t;clearTimeout(msgT);msgT=setTimeout(()=>{U.msg='';render()},6000);render()}
 
@@ -604,18 +689,31 @@ async function refValid(){
   flashMsg(had?'New reference saved. Tools kept, learned images cleared.':'Reference saved. Step 2: move and resize Area 1, add more tools.');
 }
 const nextId=()=>P.areas.reduce((m,a)=>Math.max(m,a.id),0)+1;
+function nextName(name){ // "Screw 1" -> "Screw 2" (the next free number)
+  const names=new Set(P.areas.map(a=>a.name)),m=/^(.*?)(\d+)\s*$/.exec(name);
+  if(m){let n=+m[2]+1;while(names.has(m[1]+n))n++;return m[1]+n}
+  let n=2;while(names.has(`${name} ${n}`))n++;return`${name} ${n}`;
+}
 function addTool(a){P.areas.push(a);U.selArea=a.id;P.valid=false;U.mode='edit';U.only=null;resetView()}
 function addArea(shape,r=true){
   const id=nextId(),o=(P.areas.length%4)*.04,s=shape==='ellipse'?.2:.3;
-  addTool({id,type:'check',name:`Area ${id}`,shape,x0:.5-s/2+o,y0:.5-s/2+o,x1:.5+s/2+o,y1:.5+s/2+o,thr:DEF_THR,manual:false,detail:'auto'});
+  addTool({id,type:'check',name:`Area ${id}`,shape,x0:.5-s/2+o,y0:.5-s/2+o,x1:.5+s/2+o,y1:.5+s/2+o,ang:0,thr:DEF_THR,limit:50,detail:'auto'});
   if(r){save();learnAll()}
 }
 function addMeasure(){const id=nextId(),o=(P.areas.length%4)*.04;
   addTool({id,type:'measure',name:`Measure ${id}`,x0:.38,y0:.5+o,x1:.62,y1:.5+o,band:.03,contrast:25,edges:'outer',nom:null,tol:null});save();render()}
 function addRef(){const r=refTool();if(r){editOnly(r);return}
   addTool({id:nextId(),type:'ref',name:'Position',x0:.4,y0:.4,x1:.6,y1:.6,range:20,minScore:60});save();learnAll()}
-function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];if(U.only===a.id)U.only=null;P.valid=false;save();learnAll()}
-function toolBox(a){return a.type==='measure'?{x0:Math.min(a.x0,a.x1),y0:Math.min(a.y0,a.y1),x1:Math.max(a.x0,a.x1),y1:Math.max(a.y0,a.y1)}:a}
+function copyTool(a){ // a duplicate next to the original, e.g. one window per screw
+  if(a.type==='ref')return;
+  const c={};for(const k in a)if(k[0]!=='_'&&k!=='stats'&&k!=='auto')c[k]=a[k];
+  c.id=nextId();c.name=nextName(a.name);
+  const b=toolBox(a),dx=b.x1+.06<=1?.06:-.06;c.x0+=dx;c.x1+=dx;
+  P.areas.push(c);U.selArea=c.id;U.only=null;U.mode='edit';P.valid=false;save();
+  flashMsg(`${c.name} created next to ${a.name}. Drag it into place.`);
+  if(isCheck(c))learnAll();else render();
+}
+function delArea(a){P.areas=P.areas.filter(x=>x!==a);for(const s of P.samples)delete s.labels[a.id];delete U.hist[a.id];if(U.only===a.id)U.only=null;P.valid=false;save();learnAll()}
 function editOnly(a){ // edit one tool alone, zoomed on it
   if(U.only===a.id){U.only=null;resetView();render();return}
   stopRun();U.only=a.id;U.selArea=a.id;U.mode='edit';
@@ -629,42 +727,79 @@ function calibrate(m){const r=measRef(m);if(!r||!r.found){flashMsg(`${m.name}: n
   const v=prompt(`${m.name} measures ${r.value.toFixed(1)} px on the reference.\nReal length in mm?`,'');if(v==null)return;
   const mm=parseFloat(String(v).replace(',','.'));if(!(mm>0)){flashMsg('Calibration cancelled: type a length in mm.');return}
   P.scale=mm/r.value;save();render();flashMsg(`Calibrated: 1 px = ${(P.scale*1000).toFixed(1)} µm. All measures now in mm.`)}
-async function validate(){if(!P.ref||!(checks().length||measures().length))return;await learnAll();P.valid=true;U.mode='live';U.selArea=null;U.only=null;resetView();save();flashMsg('Program validated. Step 3: put a part and press Trigger.')}
+async function validate(){
+  if(!P.ref||!(checks().length||measures().length))return;
+  await learnAll();P.valid=true;U.mode='live';U.selArea=null;U.only=null;U.hist={};U.times=[];resetView();save();
+  setPage('run');flashMsg('Program validated. Put a part and press Trigger.');
+}
+function record(r,dt){ // history for the histograms, and the processing time
+  const push=(id,v)=>{const h=U.hist[id]||(U.hist[id]=[]);h.push(v);if(h.length>2000)h.shift()};
+  for(const x of r.res)push(x.id,x.score);
+  for(const m of r.meas)push(m.id,m.found?m.value:null);
+  const rt=refTool();if(rt&&!r.pos.none)push(rt.id,r.pos.score*100);
+  U.times.push(dt);if(U.times.length>2000)U.times.shift();
+}
 async function trigger(){
   if(!P||!P.valid)return;
   const f=await grab();if(!f)return;if(learning)await learning;
-  const r=inspect(f);r.ng?U.c.ng++:U.c.ok++;
-  U.last={frame:f,r,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
+  const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
+  r.ng?U.c.ng++:U.c.ok++;record(r,dt);
+  U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
   U.mode='result';U.view=null;flash();if(r.ng&&navigator.vibrate)navigator.vibrate(150);render();
 }
 async function learnLast(){
   const l=U.last;if(!l||l.learned)return;l.learned=true;render();
-  const before=Object.fromEntries(checks().map(a=>[a.id,a.thr]));
   const cache={};for(const r of l.r.res)cache[r.key]=r.gray;
   P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache,off:{key:refKey(),dx:l.r.off.dx,dy:l.r.off.dy}});
   await learnAll();save();
-  const ch=checks().filter(a=>Math.abs(a.thr-before[a.id])>=.05).map(a=>`${a.name}: ${before[a.id].toFixed(1)} → ${a.thr.toFixed(1)}`);
-  flashMsg('Learned.'+(ch.length?' New thresholds: '+ch.join(', '):' Thresholds unchanged.'));
+  const sum=checks().filter(a=>a.stats&&(a.stats.okLow!=null||a.stats.ngHigh!=null)).map(a=>`${a.name}: `+
+    (a.stats.okLow!=null?`OK from ${Math.round(a.stats.okLow)}`:'')+(a.stats.okLow!=null&&a.stats.ngHigh!=null?', ':'')+
+    (a.stats.ngHigh!=null?`NG up to ${Math.round(a.stats.ngHigh)}`:'')+(a.stats.overlap?' ⚠ overlap':'')).join(' · ');
+  flashMsg(`Learned (${P.samples.length} image${P.samples.length>1?'s':''}).`+(sum?` Scores of the examples — ${sum}. Limit: 50.`:''));
 }
 function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
 function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
 function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,3000);trigger()}
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
+function setPage(p){ // ⚙ Program (make and edit) or ▶ Run (inspect, statistics, teach)
+  U.page=p;store('vs1-page',p);
+  if(p==='run'){if(U.mode==='edit'||U.mode==='cand'){U.mode='live';U.cand=null}U.only=null;resetView()}
+  else stopRun();
+  render();
+}
+function afterLimit(){ // a limit or tolerance changed: judge the shown results again
+  if(U.last)rejudge(U.last.r);rejudge(U.live);drawScreen();renderRun();drawHist();save();
+}
 
 /* ---------- drawing ---------- */
 const REFC='#A07CF5';
-function areaPath(x,a){const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;x.beginPath();
-  if(a.shape==='ellipse')x.ellipse(X+w/2,Y+h/2,Math.max(1,Math.abs(w)/2),Math.max(1,Math.abs(h)/2),0,0,Math.PI*2);else x.rect(X,Y,w,h)}
+function areaPath(x,a){ // rectangle or ellipse, turned by its angle
+  const[cx,cy]=ctr(a),w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;x.beginPath();
+  if(a.shape==='ellipse'){x.ellipse(cx*D,cy*D,Math.max(1,Math.abs(w)/2),Math.max(1,Math.abs(h)/2),a.ang||0,0,Math.PI*2);return}
+  const c=corners(a);x.moveTo(c[0][0]*D,c[0][1]*D);x.lineTo(c[1][0]*D,c[1][1]*D);x.lineTo(c[3][0]*D,c[3][1]*D);x.lineTo(c[2][0]*D,c[2][1]*D);x.closePath();
+}
 function label(x,X,Y,color,text){const z=V.z,fs=26/z;x.font=`600 ${fs}px "Barlow Condensed",Arial,sans-serif`;const tw=x.measureText(text).width+12/z,ly=Y>fs*1.3?Y-fs*1.23:Y+3/z;
   x.fillStyle=color;x.fillRect(X,ly,tw,fs*1.15);x.fillStyle=color===SELC?'#222':'#fff';x.fillText(text,X+6/z,ly+fs*.88)}
 function handle(x,hx,hy,color){const hs=18/V.z;x.fillStyle=color;x.fillRect(hx-hs/2,hy-hs/2,hs,hs)}
+function rotHandle(a){ // where the round rotation handle sits, above the top edge (normalized)
+  const[cx,cy]=ctr(a),hh=(a.y1-a.y0)/2,[p,q]=rotP(0,-hh-.05/V.z,a.ang||0);return[cx+p,cy+q];
+}
 function strokeArea(x,a,color,text,handles,dash){
-  const X=a.x0*D,Y=a.y0*D,w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D,z=V.z;
+  const z=V.z,c=corners(a);
   x.lineWidth=3/z;x.strokeStyle=color;x.setLineDash(dash||color===EDC?[10/z,6/z]:[]);areaPath(x,a);x.stroke();x.setLineDash([]);
-  if(handles){if(a.shape==='ellipse'){x.lineWidth=1/z;x.setLineDash([4/z,4/z]);x.strokeRect(X,Y,w,h);x.setLineDash([])}
-    for(const[hx,hy]of[[X,Y],[X+w,Y],[X,Y+h],[X+w,Y+h]])handle(x,hx,hy,color)}
-  if(text)label(x,X,Y,color,text);
+  if(handles){
+    if(a.shape==='ellipse'){x.lineWidth=1/z;x.setLineDash([4/z,4/z]);x.beginPath();x.moveTo(c[0][0]*D,c[0][1]*D);x.lineTo(c[1][0]*D,c[1][1]*D);
+      x.lineTo(c[3][0]*D,c[3][1]*D);x.lineTo(c[2][0]*D,c[2][1]*D);x.closePath();x.stroke();x.setLineDash([])}
+    for(const[hx,hy]of c)handle(x,hx*D,hy*D,color);
+    if(a.type==='check'){ // rotation handle: a stem and a round knob with a turning arrow
+      const[rx,ry]=rotHandle(a),[cx,cy]=ctr(a),[tx,ty]=rotP(0,-(a.y1-a.y0)/2,a.ang||0);
+      x.strokeStyle=color;x.lineWidth=2/z;x.beginPath();x.moveTo((cx+tx)*D,(cy+ty)*D);x.lineTo(rx*D,ry*D);x.stroke();
+      x.beginPath();x.arc(rx*D,ry*D,11/z,0,Math.PI*2);x.fillStyle=color;x.fill();
+      x.strokeStyle=color===SELC?'#222':'#fff';x.lineWidth=2/z;x.beginPath();x.arc(rx*D,ry*D,5.5/z,-Math.PI*.95,Math.PI*.45);x.stroke();
+      const ex=rx*D+5.5/z*Math.cos(Math.PI*.45),ey=ry*D+5.5/z*Math.sin(Math.PI*.45);x.beginPath();x.moveTo(ex-4/z,ey+.5/z);x.lineTo(ex,ey);x.lineTo(ex+.5/z,ey-4/z);x.stroke()}
+  }
+  if(text){const xs=c.map(p=>p[0]),ys=c.map(p=>p[1]);label(x,Math.min(...xs)*D,Math.min(...ys)*D,color,text)}
 }
 function drawMeasure(x,m,o,r,sel,edit){
   const a=shift(m,o),z=V.z,X0=a.x0*D,Y0=a.y0*D,X1=a.x1*D,Y1=a.y1*D,L=Math.hypot(X1-X0,Y1-Y0)||1,nx=-(Y1-Y0)/L,ny=(X1-X0)/L,bw=(m.band||.02)*D/2;
@@ -682,7 +817,7 @@ function drawMeasure(x,m,o,r,sel,edit){
   label(x,Math.min(X0,X1),Math.min(Y0,Y1)-bw,color,txt);
 }
 function drawRef(x,a,pos,sel){
-  if(pos&&!pos.none){const f=pos.found?shift(a,pos):a;strokeArea(x,f,pos.found?REFC:NGC,`⌖ ${a.name} ${Math.round(pos.score*100)}%`,false,pos.found?null:[6,6])}
+  if(pos&&!pos.none){const f=pos.found?shift(a,pos):a;strokeArea(x,f,pos.found?REFC:NGC,`⌖ ${a.name} ${Math.round(pos.score*100)}`,false,pos.found?null:[6,6])}
   else strokeArea(x,a,sel?SELC:REFC,`⌖ ${a.name}`+(sel?` · search ±${a.range}%`:''),sel,[10/V.z,6/V.z]);
   if(sel){const R=(a.range||20)/100;x.strokeStyle=REFC;x.lineWidth=1/V.z;x.setLineDash([3/V.z,5/V.z]);
     x.strokeRect((a.x0-R)*D,(a.y0-R)*D,(a.x1-a.x0+2*R)*D,(a.y1-a.y0+2*R)*D);x.setLineDash([])}
@@ -693,32 +828,33 @@ function drawAreas(x,R,edit){
     const sel=edit&&U.selArea===a.id;x.globalAlpha=edit&&U.only&&U.only!==a.id?.3:1;
     if(a.type==='measure')drawMeasure(x,a,o,R&&R.meas.find(z=>z.id===a.id),sel,edit);
     else if(a.type==='ref')drawRef(x,a,R&&R.pos,sel);
-    else{const r=R&&R.res.find(z=>z.id===a.id);
-      strokeArea(x,shift(a,o),sel?SELC:r?(r.ng?NGC:OKC):EDC,a.name+(r?` ${r.score.toFixed(1)}/${r.thr.toFixed(1)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`:''),sel)}
+    else{const r=R&&R.res.find(z=>z.id===a.id),deg=Math.round((a.ang||0)*180/Math.PI);
+      strokeArea(x,shift(a,o),sel?SELC:r?(r.ng?NGC:OKC):EDC,
+        a.name+(r?` ${Math.round(r.score)}`:edit?` · ${grid(a).gw}×${grid(a).gh}`+(deg?` · ${deg}°`:''):''),sel)}
   }
   x.globalAlpha=1;
 }
 function heat(x,R){
   for(const r of R.res){const a0=P.areas.find(z=>z.id===r.id);if(!a0||!r.map)continue;const a=shift(a0,R.off);
-    const hm=canvas(r.gw,r.gh),hx=hm.getContext('2d'),id=hx.createImageData(r.gw,r.gh);
-    for(let i=0;i<r.gw*r.gh;i++){const q0=r.map[i]/r.thr;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
+    const hm=canvas(r.gw,r.gh),hx=hm.getContext('2d'),id=hx.createImageData(r.gw,r.gh),dl=r.dlim||1;
+    for(let i=0;i<r.gw*r.gh;i++){const q0=r.map[i]/dl;if(q0<.5)continue;const q=Math.min(1,(q0-.5)/1.5);
       id.data[i*4]=255;id.data[i*4+1]=Math.round(215-175*q);id.data[i*4+2]=Math.round(40*(1-q));id.data[i*4+3]=Math.round(255*(.22+.5*q))}
-    hx.putImageData(id,0,0);x.save();areaPath(x,a);x.clip();x.imageSmoothingEnabled=true;
-    x.drawImage(hm,a.x0*D,a.y0*D,(a.x1-a.x0)*D,(a.y1-a.y0)*D);x.restore()}
+    hx.putImageData(id,0,0);const[cx,cy]=ctr(a),w=(a.x1-a.x0)*D,h=(a.y1-a.y0)*D;
+    x.save();areaPath(x,a);x.clip();x.translate(cx*D,cy*D);x.rotate(a.ang||0);x.imageSmoothingEnabled=true;x.drawImage(hm,-w/2,-h/2,w,h);x.restore()}
 }
 function setLamps(ng){$('lampOk').classList.toggle('on',ng===false);$('lampNg').classList.toggle('on',ng===true)}
-function tolTxt(m){if(m.nom==null)return'no tolerance set';const t=m.tol!=null?m.tol:Math.max(2,m.nom*.05);return`${fmtLen(m.nom)} ± ${fmtLen(t)}`}
+function tolTxt(m){if(m.nom==null)return'no tolerance set';return`${fmtLen(m.nom)} ± ${fmtLen(mTol(m))}`}
 function readout(r,live){
   const v=$('verdict');
   if(!r){$('fill').style.width='0';setLamps(null);return}
   v.className='verdict '+(r.ng?'ng':'ok');v.textContent=(live?'LIVE · ':'')+(r.ng?'NG':'OK');
   let a='',b='',bar=null;const mf=r.meas.find(m=>!m.ok),w=r.worst;
-  if(!r.pos.found){a=`⌖ Reference not found · ${Math.round(r.pos.score*100)}%`;b=`min ${refTool().minScore}%`}
-  else if(w&&(w.ng||!mf)){a=`${w.name} · score ${w.score.toFixed(1)}`;b=`Threshold ${w.thr.toFixed(1)}`;bar=w}
+  if(!r.pos.found){const rt=refTool(),lim=rt?rt.minScore||60:60;a=`⌖ ${rt?rt.name:'Position'} not found · ${Math.round(r.pos.score*100)}`;b=`Limit ${lim}`;bar={score:r.pos.score*100,limit:lim,ng:true}}
+  else if(w&&(w.ng||!mf)){a=`${w.name} · ${Math.round(w.score)}`;b=`Limit ${w.limit}`;bar=w}
   else{const m=mf||r.meas[0];if(m){const t=measures().find(z=>z.id===m.id);a=`${m.name} · ${m.found?fmtLen(m.value):'no edges'}`;b=t?tolTxt(t):''}}
   $('roScore').textContent=a;$('roThr').textContent=b;
-  if(bar){const max=Math.max(bar.thr*2,bar.score*1.05);$('fill').style.width=(Math.min(1,bar.score/max)*100)+'%';$('fill').className='fill'+(bar.ng?' ng':'');
-    $('tick').style.left=`calc(${bar.thr/max*100}% - 1px)`;$('scaleMax').textContent=max.toFixed(1)}
+  if(bar){$('fill').style.width=Math.max(0,Math.min(100,bar.score))+'%';$('fill').className='fill'+(bar.ng?' ng':'');
+    $('tick').style.left=`calc(${bar.limit}% - 1px)`;$('scaleMax').textContent='100'}
   else{$('fill').style.width=r.ng?'100%':'0';$('fill').className='fill'+(r.ng?' ng':'');$('scaleMax').textContent='—'}
   setLamps(live?null:r.ng);
 }
@@ -743,7 +879,7 @@ function drawScreen(ts){
     if(U.drag&&U.drag.mode==='new'){const d=U.drag;strokeArea(x,{shape:'rect',x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)},SELC,'')}
     fin();const one=U.only&&P.areas.find(a=>a.id===U.only);
     if(one&&one.type==='measure'){const r=measRef(one);idle('EDIT · '+one.name,'reference · '+P.ref.size+' px',r&&r.found?`On reference: ${fmtLen(r.value)}`:'No two edges found',tolTxt(one))}
-    else idle(one?'EDIT · '+one.name:'EDIT TOOLS','reference · '+P.ref.size+' px'+(V.z>1.01?` · view ×${V.z.toFixed(1)}`:''),`${P.areas.length} tool${P.areas.length===1?'':'s'}`,one?'Only this tool moves':'Drag tool / corners');
+    else idle(one?'EDIT · '+one.name:'EDIT TOOLS','reference · '+P.ref.size+' px'+(V.z>1.01?` · view ×${V.z.toFixed(1)}`:''),`${P.areas.length} tool${P.areas.length===1?'':'s'}`,one?'Only this tool moves':'Drag · corners · ↻ handle');
     return}
   if(U.mode==='sample'&&U.view){const s=U.view;
     if(s._img&&s._img.complete&&s._img.naturalWidth)x.drawImage(s._img,0,0,D,D);
@@ -755,7 +891,8 @@ function drawScreen(ts){
   const src=liveSrc();
   if(!src){fin();idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
   drawSrc(x,src);
-  if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>400||!U.live){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900))}drawAreas(x,U.live,false);fin();$('imgName').textContent='LIVE';readout(U.live,true)}
+  if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>400||!U.live){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900));if(U.page==='run')renderRun()}
+    drawAreas(x,U.live,false);fin();$('imgName').textContent='LIVE';readout(U.live,true)}
   else{if(P.ref)drawAreas(x,null,false);fin();idle('LIVE',`LIVE · camera zoom ×${P.cam.zoom.toFixed(1)}`,P.ref?'Program not validated':'No reference yet','')}
 }
 function loop(ts){requestAnimationFrame(loop);if(L.role==='cam'||(U.mode==='live'&&liveSrc()))drawScreen(ts)}
@@ -767,33 +904,51 @@ function sliderRow(label,min,max,step,val,fmt,onInput,extra){
   const out=el('output',null,fmt(+val));inp.oninput=()=>{out.textContent=fmt(+inp.value);onInput(+inp.value)};inp.onchange=()=>render();
   sl.append(lb,inp,out);if(extra)sl.append(extra);return sl;
 }
+function tolInputs(a){ // nominal ± tolerance of a measure, in mm when calibrated
+  const tl=el('div','opts'),k=P.scale||1;
+  const ni=document.createElement('input');ni.type='number';ni.className='num';ni.step='any';ni.value=a.nom!=null?+(a.nom*k).toFixed(3):'';ni.setAttribute('aria-label','Nominal');
+  const ti=document.createElement('input');ti.type='number';ti.className='num';ti.step='any';ti.min=0;ti.value=a.nom!=null?+(mTol(a)*k).toFixed(3):'';ti.setAttribute('aria-label','Tolerance');
+  ni.onchange=()=>{const v=parseFloat(ni.value);a.nom=isFinite(v)?v/k:null;if(a.nom!=null&&a.tol==null)a.tol=Math.max(2,a.nom*.05);afterLimit();render()};
+  ti.onchange=()=>{const v=parseFloat(ti.value);a.tol=isFinite(v)&&v>=0?v/k:null;afterLimit();render()};
+  tl.append(el('span','lbl','Nominal'),ni,el('span','lbl','±'),ti,el('span','val',unit()));return tl;
+}
+function limitRow(a){ // the OK / NG limit of a tool, on the 0–100 score
+  if(a.type==='ref'){const r=sliderRow('Min match',0,100,1,a.minScore||60,v=>String(v),v=>{a.minScore=v;afterLimit()});
+    r.querySelector('input').onchange=()=>{if(U.last)U.last.r=inspect(U.last.frame);save();render()};return r}
+  const d=el('button','btn small','↺ 50');d.type='button';d.title='Back to the default limit (50)';d.onclick=()=>{a.limit=50;afterLimit();render()};
+  return sliderRow('Limit',0,100,1,limOf(a),v=>String(v),v=>{a.limit=v;afterLimit()},d);
+}
 function toolRow(a,res){
   const kind=a.type||'check';
   const row=el('div','area'+(U.selArea===a.id&&U.mode==='edit'?' sel':'')+(U.only&&U.only!==a.id&&U.mode==='edit'?' dim':''));
   const sw=el('span','sw');if(a.shape==='ellipse')sw.style.borderRadius='50%';
-  if(kind==='measure'){sw.style.border='0';sw.textContent='📏'}else if(kind==='ref'){sw.style.borderColor=REFC;sw.textContent=''}
+  if(kind==='measure'){sw.style.border='0';sw.textContent='📏'}else if(kind==='ref'){sw.style.borderColor=REFC}
+  if(kind==='check'&&a.ang)sw.style.transform=`rotate(${a.ang}rad)`;
   const nm=document.createElement('input');nm.type='text';nm.value=a.name;nm.maxLength=24;nm.setAttribute('aria-label','Tool name');
   nm.onfocus=()=>{U.selArea=a.id;if(P.ref&&U.mode!=='edit'){stopRun();U.mode='edit';render()}else drawScreen()};nm.onchange=()=>{a.name=nm.value.trim()||a.name;save();render()};
   const val=el('span','val');
   const tools=el('span','tools');
   const ed=el('button','ed'+(U.only===a.id?' on':''),'✎');ed.type='button';ed.title=U.only===a.id?'Stop editing this tool':'Edit only this tool (zoomed)';ed.onclick=()=>editOnly(a);ed.disabled=!P.ref;
-  const x=el('button','x','✕');x.type='button';x.title='Delete';x.onclick=()=>delArea(a);
-  tools.append(ed,x);row.append(sw,nm,val,tools);
+  tools.append(ed);
+  if(kind!=='ref'){const cp=el('button','ed','⧉');cp.type='button';cp.title='Copy this tool';cp.onclick=()=>copyTool(a);cp.disabled=!P.ref;tools.append(cp)}
+  const x=el('button','x','✕');x.type='button';x.title='Delete';x.onclick=()=>delArea(a);tools.append(x);
+  row.append(sw,nm,val,tools);
   const op=el('div','opts');
   if(kind==='check'){
-    const r=res&&res.res.find(z=>z.id===a.id);if(r){val.className='val '+(r.ng?'ng':'ok');val.textContent=`${r.ng?'NG':'OK'} ${r.score.toFixed(1)}`}
+    const r=res&&res.res.find(z=>z.id===a.id);if(r){val.className='val '+(r.ng?'ng':'ok');val.textContent=`${r.ng?'NG':'OK'} ${Math.round(r.score)}`}
     const sh=el('span','shape');
     for(const[k,t,ti]of[['rect','▭','Rectangle'],['ellipse','◯','Circle / ellipse']]){const b=el('button',a.shape===k?'on':'',t);b.type='button';b.title=ti;
       b.onclick=()=>{a.shape=k;P.valid=false;U.selArea=a.id;if(P.ref)U.mode='edit';save();learnAll()};sh.appendChild(b)}
     const ds=document.createElement('select');ds.setAttribute('aria-label',a.name+' detail');
     for(const[k,t]of[['auto','Auto'],['1','×1'],['2','×2'],['4','×4'],['8','×8']]){const o=document.createElement('option');o.value=k;o.textContent=t;if(String(a.detail||'auto')===k)o.selected=true;ds.appendChild(o)}
     ds.onchange=()=>{a.detail=ds.value;P.valid=false;save();learnAll()};
-    const g=grid(a);op.append(sh,el('span','lbl','Detail'),ds,el('span','val',`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`));row.append(op);
-    const au=el('button','btn small',a.manual?'Auto':'Auto ✓');au.type='button';au.title='Use the learned threshold';
-    au.onclick=()=>{a.manual=false;a.thr=a.auto||DEF_THR;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
-    row.append(sliderRow('Threshold',.5,Math.max(20,Math.ceil(a.thr*2)),.1,a.thr,v=>v.toFixed(1),v=>{a.thr=v;a.manual=true;if(U.last)U.last.r=inspect(U.last.frame);drawScreen();save()},au));
+    const g=grid(a);op.append(sh,el('span','lbl','Detail'),ds,el('span','val',`${g.gw}×${g.gh} pts · zoom ×${g.k.toFixed(1)}`));
+    const deg=Math.round((a.ang||0)*180/Math.PI);
+    if(deg){const rb=el('button','btn small',`⟲ ${deg}° → 0°`);rb.type='button';rb.title='Angle reset';rb.onclick=()=>{a.ang=0;P.valid=false;save();learnAll()};op.append(rb)}
+    row.append(op,limitRow(a));
     const st=a.stats;if(st){const s=el('div','stats'+(st.overlap?' warn':''));
-      s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.maxOk!=null?` (max ${st.maxOk.toFixed(1)})`:'')+` · ${st.nNg} NG`+(st.minNg!=null?` (min ${st.minNg.toFixed(1)})`:'')+(st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
+      s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.okLow!=null?` (lowest ${Math.round(st.okLow)})`:'')+` · ${st.nNg} NG`+(st.ngHigh!=null?` (highest ${Math.round(st.ngHigh)})`:'')+
+        (st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
   }
   else if(kind==='measure'){
     const r=res&&res.meas.find(z=>z.id===a.id);
@@ -807,21 +962,15 @@ function toolRow(a,res){
     op.append(el('span','lbl','Edges'),es,sn,cb);row.append(op);
     row.append(sliderRow('Edge contrast',5,120,1,a.contrast||25,v=>String(v),v=>{a.contrast=v;drawScreen();save()}));
     row.append(sliderRow('Line width',.005,.15,.005,a.band||.03,v=>(v*100).toFixed(1)+'%',v=>{a.band=v;drawScreen();save()}));
-    const tl=el('div','opts'),k=P.scale||1;
-    const ni=document.createElement('input');ni.type='number';ni.className='num';ni.step='any';ni.value=a.nom!=null?+(a.nom*k).toFixed(3):'';ni.setAttribute('aria-label','Nominal');
-    const ti=document.createElement('input');ti.type='number';ti.className='num';ti.step='any';ti.min=0;ti.value=a.nom!=null?+((a.tol!=null?a.tol:Math.max(2,a.nom*.05))*k).toFixed(3):'';ti.setAttribute('aria-label','Tolerance');
-    ni.onchange=()=>{const v=parseFloat(ni.value);a.nom=isFinite(v)?v/k:null;if(a.nom!=null&&a.tol==null)a.tol=Math.max(2,a.nom*.05);if(U.last)U.last.r=inspect(U.last.frame);save();render()};
-    ti.onchange=()=>{const v=parseFloat(ti.value);a.tol=isFinite(v)&&v>=0?v/k:null;if(U.last)U.last.r=inspect(U.last.frame);save();render()};
-    tl.append(el('span','lbl','Nominal'),ni,el('span','lbl','±'),ti,el('span','val',unit()));row.append(tl);
+    row.append(tolInputs(a));
   }
   else{ // position reference
-    const p=res&&res.pos;if(p&&!p.none){val.className='val '+(p.found?'ok':'ng');val.textContent=p.found?`found ${Math.round(p.score*100)}%`:`not found ${Math.round(p.score*100)}%`}
-    row.append(sliderRow('Search range ±',5,45,1,a.range||20,v=>v+'%',v=>{a.range=v;drawScreen()}));
-    row.append(sliderRow('Min match',30,95,1,a.minScore||60,v=>v+'%',v=>{a.minScore=v;save()}));
+    const p=res&&res.pos;if(p&&!p.none){val.className='val '+(p.found?'ok':'ng');val.textContent=`${p.found?'OK':'NG'} ${Math.round(p.score*100)}`}
+    const sr=sliderRow('Search range ±',5,45,1,a.range||20,v=>v+'%',v=>{a.range=v;drawScreen()});sr.querySelector('input').onchange=()=>{save();learnAll()};
+    row.append(sr,limitRow(a));
     const info=el('div','stats');
     info.textContent=p&&p.found&&!p.none?`Part moved by ${(p.dx*(P.ref?P.ref.size:0)).toFixed(1)} px, ${(p.dy*(P.ref?P.ref.size:0)).toFixed(1)} px → all tools follow`:'Draw it on a distinctive, sharp part of the piece (a hole, a corner, a logo). All other tools follow it.';
     row.append(info);
-    row.querySelectorAll('input[type=range]')[0].onchange=()=>{save();learnAll()};
   }
   return row;
 }
@@ -830,10 +979,106 @@ function renderProgSel(){
   for(const p of[...progs].sort((a,b)=>a.id-b.id)){const o=document.createElement('option');o.value=p.id;o.textContent=`P${String(p.id).padStart(2,'0')} · ${p.name}`;if(P&&P.id===p.id)o.selected=true;sel.appendChild(o)}
   if(!progs.length){const o=document.createElement('option');o.textContent='No program';sel.appendChild(o)}
 }
+
+/* ---------- run screen: one line per tool with its score bar, histogram of the selected tool ---------- */
+const runResult=()=>U.mode==='result'&&U.last?U.last.r:(U.mode==='live'?U.live:null);
+const tNum=a=>String(a.id).padStart(2,'0');
+const tIcon=a=>a.type==='ref'?'⌖':a.type==='measure'?'📏':a.shape==='ellipse'?'◯':'▭';
+const runOrder=()=>[...P.areas].sort((a,b)=>((a.type==='ref'?-1:0)-(b.type==='ref'?-1:0))||a.id-b.id);
+function toolStatus(a,R){ // what the run line of a tool shows
+  if(a.type==='ref'){const p=R&&R.pos,v=p&&!p.none?p.score*100:null;
+    return{txt:v==null?'—':String(Math.round(v)),ok:v==null?null:p.found,fill:v,lim:a.minScore||60}}
+  if(a.type==='measure'){const m=R&&R.meas.find(z=>z.id===a.id),st={txt:m?(m.found?fmtLen(m.value):'no edges'):'—',ok:m?m.ok:null};
+    if(a.nom!=null){const t=mTol(a),lo=a.nom-3*t,hi=a.nom+3*t,pc=v=>Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));
+      st.band=[pc(a.nom-t),pc(a.nom+t)];if(m&&m.found)st.mark=pc(m.value)}
+    return st}
+  const r=R&&R.res.find(z=>z.id===a.id);
+  return{txt:r?String(Math.round(r.score)):'—',ok:r?!r.ng:null,fill:r?r.score:null,lim:limOf(a)};
+}
+let runKey='';
+function renderRun(){
+  const box=$('toolList');if(!box||!P)return;
+  const tools=runOrder(),key=tools.map(a=>a.id+a.type+a.name+(a.shape||'')).join('|');
+  if(!tools.some(a=>a.id===U.selTool)){const t=tools.find(isCheck)||tools[0];U.selTool=t?t.id:null}
+  if(key!==runKey){runKey=key;box.innerHTML='';
+    for(const a of tools){const b=el('button','trow');b.type='button';b.dataset.id=a.id;
+      b.append(el('span','tn',tNum(a)),el('span','ti',tIcon(a)),el('span','tname',a.name),el('span','tbadge','—'),el('span','tval','—'));
+      const bar=el('div','tbar');bar.append(el('i','tband'),el('i','tfill'),el('i','tlim'),el('i','tmark'));b.append(bar);
+      b.onclick=()=>{U.selTool=a.id;renderRun();renderHistLim();drawHist()};box.appendChild(b)}}
+  const R=runResult();
+  for(const b of box.children){const a=tools.find(t=>t.id===+b.dataset.id);if(!a)continue;const s=toolStatus(a,R);
+    b.classList.toggle('sel',a.id===U.selTool);
+    const bd=b.querySelector('.tbadge');bd.textContent=s.ok==null?'—':s.ok?'OK':'NG';bd.className='tbadge'+(s.ok==null?'':s.ok?' ok':' ng');
+    b.querySelector('.tval').textContent=s.txt;
+    const f=b.querySelector('.tfill'),l=b.querySelector('.tlim'),bn=b.querySelector('.tband'),mk=b.querySelector('.tmark');
+    f.hidden=s.fill==null;if(s.fill!=null){f.style.width=Math.max(0,Math.min(100,s.fill))+'%';f.className='tfill'+(s.ok===false?' ng':'')}
+    l.hidden=s.lim==null;if(s.lim!=null)l.style.left=`calc(${s.lim}% - 1px)`;
+    bn.hidden=!s.band;if(s.band){bn.style.left=s.band[0]+'%';bn.style.width=(s.band[1]-s.band[0])+'%'}
+    mk.hidden=s.mark==null;if(s.mark!=null)mk.style.left=s.mark+'%';
+  }
+}
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888'}
+const histTool=()=>P?P.areas.find(t=>t.id===U.selTool)||null:null;
+function histSpec(a){ // range, OK test and limit lines of the selected tool's histogram
+  if(a.type==='measure'){
+    const vals=(U.hist[a.id]||[]).filter(v=>v!=null);let lo,hi,band=null;
+    if(a.nom!=null){const t=mTol(a);lo=a.nom-3*t;hi=a.nom+3*t;band=[a.nom-t,a.nom+t]}
+    else if(vals.length){lo=Math.min(...vals);hi=Math.max(...vals);const p=(hi-lo)*.15||1;lo-=p;hi+=p}
+    else{lo=0;hi=1}
+    return{lo,hi,band,ok:v=>v!=null&&(a.nom==null||Math.abs(v-a.nom)<=mTol(a)),fmt:v=>fmtLen(v)}}
+  const lim=a.type==='ref'?(a.minScore||60):limOf(a);
+  return{lo:0,hi:100,lim,ok:v=>v!=null&&v>=lim,fmt:v=>String(Math.round(v))};
+}
+function drawHist(){
+  const c=$('histC'),a=histTool();if(!c||U.page!=='run'||!P||!P.valid)return;
+  const W=c.clientWidth;if(!W)return;
+  const dpr=window.devicePixelRatio||1,H=130;
+  if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  if(!a){$('histTitle').textContent='—';$('histStats').textContent='';return}
+  $('histTitle').textContent=`${tNum(a)} · ${a.name} — results since the last reset`;
+  const vals=U.hist[a.id]||[],sp=histSpec(a),okC=cssv('--ok'),ngC=cssv('--ng'),fg=cssv('--fg'),mu=cssv('--muted');
+  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-sp.lo)/(sp.hi-sp.lo)*pw;
+  // zones: red = NG, green = OK
+  const zone=(v0,v1,col)=>{const a0=Math.max(sp.lo,v0),a1=Math.min(sp.hi,v1);if(a1>a0){x.fillStyle=col;x.fillRect(X(a0),pt,X(a1)-X(a0),ph)}};
+  x.globalAlpha=.16;
+  if(sp.band){zone(sp.lo,sp.band[0],ngC);zone(sp.band[0],sp.band[1],okC);zone(sp.band[1],sp.hi,ngC)}
+  else if(sp.lim!=null){zone(sp.lo,sp.lim,ngC);zone(sp.lim,sp.hi,okC)}
+  else zone(sp.lo,sp.hi,okC);
+  x.globalAlpha=1;
+  // bars: green part = OK results, red part = NG results
+  const NB=20,n=new Array(NB).fill(0),nok=new Array(NB).fill(0);let miss=0;
+  for(const v of vals){if(v==null){miss++;continue}const i=Math.min(NB-1,Math.max(0,Math.floor((v-sp.lo)/(sp.hi-sp.lo)*NB)));n[i]++;if(sp.ok(v))nok[i]++}
+  const mx=Math.max(1,...n),bw=pw/NB;
+  for(let i=0;i<NB;i++){if(!n[i])continue;const h=n[i]/mx*ph,ho=nok[i]/mx*ph;
+    x.fillStyle=ngC;x.fillRect(pl+i*bw+1,pt+ph-h,Math.max(1,bw-2),h-ho);x.fillStyle=okC;x.fillRect(pl+i*bw+1,pt+ph-ho,Math.max(1,bw-2),ho)}
+  // limit: solid line; tolerance: dashed lines
+  x.strokeStyle=fg;x.lineWidth=2;
+  if(sp.lim!=null){x.beginPath();x.moveTo(X(sp.lim),pt-4);x.lineTo(X(sp.lim),pt+ph);x.stroke()}
+  if(sp.band){x.setLineDash([4,3]);for(const v of sp.band){x.beginPath();x.moveTo(X(v),pt-4);x.lineTo(X(v),pt+ph);x.stroke()}x.setLineDash([])}
+  // axes
+  x.strokeStyle=mu;x.lineWidth=1;x.beginPath();x.moveTo(pl,pt+ph+.5);x.lineTo(pl+pw,pt+ph+.5);x.stroke();
+  x.fillStyle=mu;x.font='11px "IBM Plex Mono",ui-monospace,monospace';x.textBaseline='top';
+  const ticks=a.type==='measure'?[sp.lo,(sp.lo+sp.hi)/2,sp.hi]:[0,sp.lim,100];
+  ticks.forEach((v,i)=>{const t=a.type==='measure'?fmtLen(v).replace(/ (mm|px)$/,''):String(Math.round(v));x.textAlign=i===0?'left':i===2?'right':'center';x.fillText(t,X(v),pt+ph+5)});
+  x.textAlign='right';x.fillText(String(mx),pl-5,pt);x.fillText('0',pl-5,pt+ph-11);
+  // numbers
+  const nums=vals.filter(v=>v!=null),ok=vals.filter(sp.ok).length;
+  $('histStats').textContent=vals.length?`${vals.length} trigger${vals.length>1?'s':''} · OK ${ok} · NG ${vals.length-ok}`+
+    (nums.length?` · max ${sp.fmt(Math.max(...nums))} · min ${sp.fmt(Math.min(...nums))} · avg ${sp.fmt(nums.reduce((s,v)=>s+v,0)/nums.length)}`:'')+(miss?` · no edges ${miss}`:''):'No trigger yet for this tool.';
+}
+function renderHistLim(){ // "limit adjustment" for the selected tool, right under its histogram
+  const box=$('histLim'),a=histTool();if(!box)return;box.innerHTML='';if(!a)return;
+  box.append(a.type==='measure'?tolInputs(a):limitRow(a));
+}
+
 function render(){
   document.body.classList.toggle('role-cam',L.role==='cam');
+  document.body.classList.toggle('page-run',U.page==='run');
   $('roleCtl').setAttribute('aria-pressed',L.role==='ctl');$('roleCam').setAttribute('aria-pressed',L.role==='cam');
+  $('pageProg').setAttribute('aria-pressed',U.page!=='run');$('pageRun').setAttribute('aria-pressed',U.page==='run');
   if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('modeTag').textContent='CAMERA';drawScreen();return}
+  const mb=$('msgBox');mb.hidden=!U.msg;mb.textContent=U.msg||'';
   for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
   $('phoneRow').hidden=SRC.kind!=='phone';
   const ss=$('srcState'),sh=$('srcHint');
@@ -841,7 +1086,6 @@ function render(){
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
   else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, slightly shifted, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
   else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Take reference asks you for an image file.'}
-  if(U.msg)sh.textContent=U.msg;
   $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind];
   // program
   $('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
@@ -862,25 +1106,29 @@ function render(){
   $('areaStep').classList.toggle('locked',!(P&&P.ref));
   const al=$('areaList');al.innerHTML='';
   const lr=(U.mode==='result'&&U.last?U.last.r:null)||(U.mode==='live'&&U.live)||null;
-  if(P){const order=[...P.areas].sort((a,b)=>(a.type==='ref'?-1:0)-(b.type==='ref'?-1:0));order.forEach(a=>al.appendChild(toolRow(a,lr)))}
+  if(P)runOrder().forEach(a=>al.appendChild(toolRow(a,lr)));
   if(P&&!P.areas.length)al.appendChild(el('div','empty','No tool yet. Add a rectangle, a circle, a measure or a position reference.'));
   $('areaState').className='state'+(P&&P.areas.length?' good':'');$('areaState').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'}`:'—';
-  $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Validated':'✔ Validate program';
+  $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Validated · ▶ Run':'✔ Validate program';
   $('editBtn').hidden=!(P&&P.ref)||U.mode==='edit';$('doneBtn').hidden=!U.only||U.mode!=='edit';
   $('addRef').textContent=refTool()?'⌖ Edit position reference':'+ ⌖ Position reference';
-  // 3 run & teach
-  $('runStep').classList.toggle('locked',!(P&&P.valid));
+  // run
+  const ok=!!(P&&P.valid);
+  $('runHint').hidden=ok;$('toolList').hidden=$('histo').hidden=!ok;$('trigBtn').disabled=$('runBtn').disabled=!ok;
   $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
-  $('modeTag').textContent=U.timer?'RUN':P&&P.valid?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
+  $('modeTag').textContent=U.timer?'RUN':ok?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
+  $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not validated';
+  if(ok){runKey='';renderRun();renderHistLim()}
+  // teach
   const te=$('teach');te.innerHTML='';
   if(U.mode==='result'&&U.last&&P){te.hidden=false;const R=U.last.r;
     te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':'Teach this image — is each area OK or NG?'));
-    if(!R.pos.none){const t=el('div','t');t.append(el('span',null,'⌖ '+(refTool()||{}).name),el('small',null,R.pos.found?`found · ${Math.round(R.pos.score*100)}%`:`NOT FOUND · ${Math.round(R.pos.score*100)}%`),el('span'));te.appendChild(t)}
+    if(!R.pos.none){const t=el('div','t');t.append(el('span',null,'⌖ '+(refTool()||{}).name),el('small',null,R.pos.found?`found · ${Math.round(R.pos.score*100)}`:`NOT FOUND · ${Math.round(R.pos.score*100)}`),el('span'));te.appendChild(t)}
     for(const a of checks()){const r=R.res.find(z=>z.id===a.id);const t=el('div','t');
       const g=el('div','okng');
       for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=el('button',cls+(U.last.labels[a.id]===v?' on':''),lbl);b.type='button';b.disabled=U.last.learned;
         b.onclick=()=>{U.last.labels[a.id]=v;render()};g.appendChild(b)}
-      t.append(el('span',null,a.name),el('small',null,r?`score ${r.score.toFixed(1)} · ${r.ng?'NG':'OK'}`:''),g);te.appendChild(t)}
+      t.append(el('span',null,a.name),el('small',null,r?`score ${Math.round(r.score)} · ${r.ng?'NG':'OK'}`:''),g);te.appendChild(t)}
     for(const m of measures()){const r=R.meas.find(z=>z.id===m.id);const t=el('div','t');
       t.append(el('span',null,'📏 '+m.name),el('small',null,r?(r.found?`${fmtLen(r.value)} · ${r.ok?'OK':'NG'}`:'no edges · NG'):''),el('small',null,tolTxt(m)));te.appendChild(t)}
     if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb)}
@@ -892,23 +1140,34 @@ function render(){
     const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK'));
     b.onclick=()=>{if(U.view===s&&U.mode==='sample'){if(confirm('Remove this image from learning?'))forget(s);return}U.view=s;U.mode='sample';render()};
     b.title='Click to view, click again to remove';sl.appendChild(b)}
-  $('runState').className='state';$('runState').textContent=P?`${P.samples.length} learned`:'—';
+  $('teachState').className='state';$('teachState').textContent=P?`${P.samples.length} learned`:'—';
+  // counters and processing time
   const tot=U.c.ok+U.c.ng;$('cTotal').textContent=tot;$('cOk').textContent=U.c.ok;$('cNg').textContent=U.c.ng;$('cRate').textContent=(tot?U.c.ng/tot*100:0).toFixed(1)+'%';
+  const tm=U.times;
+  if(tm.length){$('cTime').textContent=Math.round(tm[tm.length-1])+' ms';
+    $('cTimeS').textContent=`max ${Math.round(Math.max(...tm))} · min ${Math.round(Math.min(...tm))} · avg ${Math.round(tm.reduce((s,v)=>s+v,0)/tm.length)}`}
+  else{$('cTime').textContent='—';$('cTimeS').textContent=''}
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
+  if(ok)drawHist();
 }
 
-/* ---------- pointer: move / resize tools, pan the zoomed screen, hand cursors ---------- */
+/* ---------- pointer: move, resize and turn tools, pan the zoomed screen, hand cursors ---------- */
 function ptr(e){const r=$('view').getBoundingClientRect();return toImg(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),Math.min(1,Math.max(0,(e.clientY-r.top)/r.height)))}
-const inside=(a,px,py)=>a.shape==='ellipse'?((px-(a.x0+a.x1)/2)/((a.x1-a.x0)/2))**2+((py-(a.y0+a.y1)/2)/((a.y1-a.y0)/2))**2<=1:px>=a.x0&&px<=a.x1&&py>=a.y0&&py<=a.y1;
+function localP(a,px,py){const[cx,cy]=ctr(a);return rotP(px-cx,py-cy,-(a.ang||0))} // point in the tool's own (unturned) frame
+function inside(a,px,py){const[u,v]=localP(a,px,py),hw=(a.x1-a.x0)/2,hh=(a.y1-a.y0)/2;
+  return a.shape==='ellipse'?(u/hw)**2+(v/hh)**2<=1:Math.abs(u)<=hw&&Math.abs(v)<=hh}
 function segDist(a,px,py){const dx=a.x1-a.x0,dy=a.y1-a.y0,l2=dx*dx+dy*dy||1e-9,t=Math.max(0,Math.min(1,((px-a.x0)*dx+(py-a.y0)*dy)/l2));return Math.hypot(px-(a.x0+t*dx),py-(a.y0+t*dy))}
+const ROT_CURSOR='url("data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12A7 7 0 1 1 12 5M9 2l3 3-3 3" stroke="#fff" stroke-width="5"/><path d="M19 12A7 7 0 1 1 12 5M9 2l3 3-3 3" stroke="#000" stroke-width="2"/></g></svg>')+'") 12 12, crosshair';
 function hit(px,py){
   if(U.mode!=='edit'||L.role!=='ctl'||!P)return null;const tol=.03/V.z;
   const list=[...P.areas].reverse().filter(a=>!U.only||a.id===U.only);
+  const sel=list.find(a=>a.id===U.selArea&&isCheck(a)); // the round rotation handle of the selected area
+  if(sel){const[rx,ry]=rotHandle(sel);if(Math.hypot(px-rx,py-ry)<tol*.9)return{mode:'rot',a:sel}}
   for(const a of list){
     if(a.type==='measure'){for(const k of[0,1])if(Math.hypot(px-a['x'+k],py-a['y'+k])<tol)return{mode:'end',a,k};continue}
-    const cs=[['x0','y0'],['x1','y0'],['x0','y1'],['x1','y1']].find(([cx,cy])=>Math.abs(px-a[cx])<tol&&Math.abs(py-a[cy])<tol);
-    if(cs)return{mode:'corner',a,cx:cs[0],cy:cs[1]};
+    const c=corners(a),k=c.findIndex(([cx,cy])=>Math.abs(px-cx)<tol&&Math.abs(py-cy)<tol);
+    if(k>=0)return{mode:'corner',a,k,F:c[3-k]};
   }
   for(const a of list){
     if(a.type==='measure'){if(segDist(a,px,py)<Math.max(tol*.6,(a.band||.02)/2))return{mode:'move',a};continue}
@@ -916,9 +1175,14 @@ function hit(px,py){
   }
   return null;
 }
+function resizeCursor(a,k){ // the resize arrow that matches the corner's direction on screen
+  const[cx,cy]=ctr(a),c=corners(a)[k];let d=Math.atan2(c[1]-cy,c[0]-cx)*180/Math.PI;d=((d%180)+180)%180;
+  return d<22.5||d>=157.5?'ew-resize':d<67.5?'nwse-resize':d<112.5?'ns-resize':'nesw-resize';
+}
 function cursorFor(px,py){
   const h=hit(px,py);
-  if(h&&h.mode==='corner')return(h.cx==='x0')===(h.cy==='y0')?'nwse-resize':'nesw-resize';
+  if(h&&h.mode==='rot')return ROT_CURSOR;
+  if(h&&h.mode==='corner')return resizeCursor(h.a,h.k);
   if(h&&h.mode==='end')return'move';
   if(h)return'grab';
   if(V.z>1.01)return'grab';
@@ -943,7 +1207,13 @@ cv.addEventListener('pointermove',e=>{
   else if(d.mode==='end'){a['x'+d.k]=px;a['y'+d.k]=py}
   else if(d.mode==='move'){const b=toolBox(d.o),ddx=Math.min(1-b.x1,Math.max(-b.x0,px-d.sx)),ddy=Math.min(1-b.y1,Math.max(-b.y0,py-d.sy));
     Object.assign(a,{x0:d.o.x0+ddx,y0:d.o.y0+ddy,x1:d.o.x1+ddx,y1:d.o.y1+ddy})}
-  else{a[d.cx]=px;a[d.cy]=py}
+  else if(d.mode==='rot'){ // turn around the centre; snaps to 0°, 90°, 180°, 270°
+    const[cx,cy]=ctr(a);let g=Math.atan2(py-cy,px-cx)+Math.PI/2;g=Math.atan2(Math.sin(g),Math.cos(g));
+    const q=Math.round(g/(Math.PI/2))*(Math.PI/2);if(Math.abs(g-q)<.07)g=q;a.ang=Math.abs(g)<1e-9?0:g}
+  else{ // corner: the opposite corner stays where it is, also when the box is turned
+    const g=a.ang||0,F=d.F,[u,v]=rotP(px-F[0],py-F[1],-g),w=Math.max(.01,Math.abs(u)),h=Math.max(.01,Math.abs(v));
+    const[ox,oy]=rotP((u<0?-1:1)*w/2,(v<0?-1:1)*h/2,g),cx=F[0]+ox,cy=F[1]+oy;
+    Object.assign(a,{x0:cx-w/2,x1:cx+w/2,y0:cy-h/2,y1:cy+h/2})}
   drawScreen();
 });
 function endDrag(e){
@@ -951,10 +1221,10 @@ function endDrag(e){
   if(e&&e.clientX!=null){const[px,py]=ptr(e);cv.style.cursor=cursorFor(px,py)}
   if(d.mode==='pan')return;
   if(d.mode==='new'){const a={x0:Math.min(d.sx,d.cx),y0:Math.min(d.sy,d.cy),x1:Math.max(d.sx,d.cx),y1:Math.max(d.sy,d.cy)};
-    if(a.x1-a.x0>.02&&a.y1-a.y0>.02){const id=nextId();P.areas.push({id,type:'check',name:`Area ${id}`,shape:'rect',...a,thr:DEF_THR,manual:false,detail:'auto'});U.selArea=id}else{render();return}}
+    if(a.x1-a.x0>.02&&a.y1-a.y0>.02){const id=nextId();P.areas.push({id,type:'check',name:`Area ${id}`,shape:'rect',...a,ang:0,thr:DEF_THR,limit:50,detail:'auto'});U.selArea=id}else{render();return}}
   else{const a=d.a;
-    if(a.type!=='measure'){if(a.x0>a.x1)[a.x0,a.x1]=[a.x1,a.x0];if(a.y0>a.y1)[a.y0,a.y1]=[a.y1,a.y0];if(a.x1-a.x0<.02)a.x1=Math.min(1,a.x0+.02);if(a.y1-a.y0<.02)a.y1=Math.min(1,a.y0+.02)}
-    if(d.o.x0===a.x0&&d.o.y0===a.y0&&d.o.x1===a.x1&&d.o.y1===a.y1){render();return}}
+    if(a.type!=='measure'){if(a.x1-a.x0<.02){const c=(a.x0+a.x1)/2;a.x0=c-.01;a.x1=c+.01}if(a.y1-a.y0<.02){const c=(a.y0+a.y1)/2;a.y0=c-.01;a.y1=c+.01}}
+    if(d.o.x0===a.x0&&d.o.y0===a.y0&&d.o.x1===a.x1&&d.o.y1===a.y1&&(d.o.ang||0)===(a.ang||0)){render();return}}
   P.valid=false;save();
   if(d.a&&d.a.type==='measure')render();else learnAll();
 }
@@ -1058,10 +1328,12 @@ $('zoomChange').onclick=()=>{if(!confirm('Changing the camera zoom needs a new r
 $('editBtn').onclick=()=>{stopRun();U.mode='edit';U.only=null;resetView();render()};
 $('doneBtn').onclick=()=>{U.only=null;resetView();render()};
 $('addMeas').onclick=addMeasure;$('addRef').onclick=addRef;
+$('pageProg').onclick=()=>setPage('prog');$('pageRun').onclick=()=>setPage('run');
+addEventListener('resize',()=>{if(U.page==='run')drawHist()});
 $('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
 $('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;
 $('liveBtn').onclick=()=>{U.mode='live';U.view=null;render()};
-$('resetBtn').onclick=()=>{U.c={ok:0,ng:0};render()};
+$('resetBtn').onclick=()=>{U.c={ok:0,ng:0};U.hist={};U.times=[];render()};
 $('heatT').onchange=e=>{U.heat=e.target.checked;drawScreen()};
 $('vzIn').onclick=()=>zoomAt(1.5);$('vzOut').onclick=()=>zoomAt(1/1.5);$('vzFit').onclick=()=>{resetView();render()};
 $('camBtn').onclick=()=>C.stream?stopCam():startCam();
@@ -1070,11 +1342,12 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},measureTool,findPos,inspect,measRef}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},measureTool,findPos,inspect,measRef}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');
   if(!(cur&&await loadProg(cur))&&!(progs.length&&await loadProg(progs[progs.length-1].id)))newProg();
+  U.page=P&&P.valid&&stored('vs1-page')!=='prog'?'run':'prog';
   if(SRC.kind==='demo'){demoNext();SRC.demoT=setInterval(demoNext,2500)}
   render();requestAnimationFrame(loop);
   // inside claude.ai the camera and the peer link are not available: demo camera and files still work
