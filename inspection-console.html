@@ -337,13 +337,13 @@ body:not(.page-run) .run-only{display:none!important}
 
       <section class="step ctl-only run-only" id="teachStep">
         <div class="stephead"><span class="stepnum">🎓</span><h2>Teach</h2><span class="state" id="teachState">—</span></div>
-        <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>: OK examples raise the scores of good parts, NG examples lower the scores of bad ones.</p>
+        <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
         <div class="teach" id="teach" hidden></div>
         <span class="lbl">Learned images</span>
         <div class="thumbs" id="sampleList"></div>
       </section>
 
-      <div class="note ctl-only prog-only"><b>How it decides:</b> each area gets a score from 0 to 100: 100 means it looks like the good examples. Below its <b>limit</b> (50 by default) the area is NG, and one NG area makes the part NG. When you teach OK and NG examples, good parts score higher and bad parts lower. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
+      <div class="note ctl-only prog-only"><b>How it decides:</b> each area remembers the pictures you taught it. A new picture is compared with the closest one: the same as a taught OK picture scores <b>100</b>, the same as a taught NG picture scores <b>0</b>, other parts score by how close they are. Below its <b>limit</b> (50 by default) the area is NG, and one NG area makes the part NG. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
     </aside>
   </div>
   <input type="file" id="fileIn" accept="image/*" hidden>
@@ -443,19 +443,6 @@ function maskOf(a,gw,gh){ // circle / ellipse: only pixels inside count
   const m=new Uint8Array(gw*gh);for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const u=(x+.5)/gw-.5,v=(y+.5)/gh-.5;m[y*gw+x]=u*u+v*v<=.25?1:0}
   return maskCache[k]=m;
 }
-function areaModel(list,n){
-  const k=list.length,mean=new Float32Array(n),sd=new Float32Array(n).fill(FLOOR);
-  for(let i=0;i<n;i++){let m=0;for(const g of list)m+=g[i];m/=k;mean[i]=m;
-    if(k>1){let v=0;for(const g of list){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(k-1)),FLOOR)}}
-  return{mean,sd};
-}
-function areaMap(a,m,g){
-  const{gw,gh}=grid(a),n=gw*gh,d=new Float32Array(n);
-  for(let i=0;i<n;i++)d[i]=Math.abs(g[i]-m.mean[i])/m.sd[i];
-  const b=blurWH(d,gw,gh,1),mk=maskOf(a,gw,gh);let mx=0;
-  for(let i=0;i<n;i++)if((!mk||mk[i])&&b[i]>mx)mx=b[i];
-  return{map:b,score:mx,gw,gh};
-}
 
 /* ---------- position reference: find the reference pattern (normalized cross-correlation) ---------- */
 function grayRect(src,size,x0,y0,x1,y1,G){
@@ -493,7 +480,7 @@ function findPos(src,size){
     if(b2.s>-2){nx=fx0+b2.x/I2.kx;ny=fy0+b2.y/I2.ky;score=b2.s}
   }
   score=Math.max(0,score);
-  return{dx:nx-r.x0,dy:ny-r.y0,score,found:score>=(r.minScore||60)/100};
+  return{dx:nx-r.x0,dy:ny-r.y0,score,found:Math.round(score*100)>=(r.minScore||60)};
 }
 
 /* ---------- measure: find two edges along a line and their distance ---------- */
@@ -542,25 +529,53 @@ async function ensureGrays(){ // learned pictures are re-cut when tools move, tu
     bmp.close&&bmp.close();
   }
 }
+/* ---------- learning by examples ----------
+   Each area remembers its taught OK and NG pictures. A new picture is compared with every example:
+   the closest OK example gives the score, so a picture identical to a taught OK example scores 100
+   (differences below the camera noise count as identical). When NG examples exist, a picture closer
+   to an NG example than to any OK example is pulled down: identical to a taught NG example scores 0. */
+const NOISE=1; // differences under this (in noise units) count as "the same picture"
+const eff=d=>Math.max(0,d-NOISE);
+function devMap(g,e,sd,gw,gh){const n=gw*gh,d=new Float32Array(n);for(let i=0;i<n;i++)d[i]=Math.abs(g[i]-e[i])/sd[i];return blurWH(d,gw,gh,1)}
+function devMax(m,mk){let mx=0;for(let i=0;i<m.length;i++)if((!mk||mk[i])&&m[i]>mx)mx=m[i];return mx}
+function relScore(dOk,dNg,s){let sc=match(dOk,s);if(dNg!=null)sc=Math.min(sc,dOk+dNg>0?100*dNg/(dOk+dNg):50);return sc}
+function scoreArea(a,g){ // a new picture against the learned examples of the area
+  const M=a._m,{gw,gh}=grid(a),mk=maskOf(a,gw,gh);
+  let bi=-1,bd=Infinity,bm=null;
+  M.ok.forEach((e,i)=>{const m=devMap(g,e,M.sd,gw,gh),d=devMax(m,mk);if(d<bd){bd=d;bi=i;bm=m}});
+  let dNg=null,ni=-1;M.ng.forEach((e,i)=>{const d=eff(devMax(devMap(g,e,M.sd,gw,gh),mk));if(dNg==null||d<dNg){dNg=d;ni=i}});
+  const dOk=eff(bd),byNg=dNg!=null&&dNg<dOk; // closer to a taught NG picture than to any OK one
+  return{score:Math.round(relScore(dOk,dNg,a.thr)),dev:byNg?dNg:dOk,map:bm,near:byNg?M.ngSrc[ni]:M.okSrc[bi],nearNg:byNg};
+}
 function learnArea(a){
-  const{gw,gh}=grid(a),n=gw*gh;
-  const gl=[refGray(a)];for(const s of P.samples)if(s.labels[a.id]==='ok'&&sGray(s,a))gl.push(sGray(s,a));
-  a._m=areaModel(gl,n);a._k=gKey(a);
-  let maxOk=null;
-  if(gl.length>=2){maxOk=0;for(let k=0;k<gl.length;k++){const m=areaModel(gl.filter((_,j)=>j!==k),n);maxOk=Math.max(maxOk,areaMap(a,m,gl[k]).score)}}
-  const ngs=P.samples.filter(s=>s.labels[a.id]==='ng'&&sGray(s,a)).map(s=>areaMap(a,a._m,sGray(s,a)).score);
-  const minNg=ngs.length?Math.min(...ngs):null;
-  // the scale is the deviation that scores 50: placed between the OK and the NG examples
+  const{gw,gh}=grid(a),n=gw*gh,mk=maskOf(a,gw,gh);
+  const ok=[refGray(a)],okSrc=['ref'],ng=[],ngSrc=[];
+  for(const s of P.samples){const g=sGray(s,a);if(!g)continue;if(s.labels[a.id]==='ok'){ok.push(g);okSrc.push(s.id)}else if(s.labels[a.id]==='ng'){ng.push(g);ngSrc.push(s.id)}}
+  // camera noise per pixel, from the OK examples (never below FLOOR)
+  const sd=new Float32Array(n).fill(FLOOR);
+  if(ok.length>1)for(let i=0;i<n;i++){let m=0;for(const g of ok)m+=g[i];m/=ok.length;let v=0;for(const g of ok){const d=g[i]-m;v+=d*d}sd[i]=Math.max(Math.sqrt(v/(ok.length-1)),FLOOR)}
+  // distance between every pair of examples (each pair once)
+  const all=ok.concat(ng),N=all.length,nO=ok.length,Dm=Array.from({length:N},()=>new Float32Array(N));
+  for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const d=eff(devMax(devMap(all[i],all[j],sd,gw,gh),mk));Dm[i][j]=Dm[j][i]=d}
+  const minOver=(i,from,to)=>{let m=null;for(let j=from;j<to;j++)if(j!==i&&(m==null||Dm[i][j]<m))m=Dm[i][j];return m};
+  const looOk=nO>1?ok.map((_,k)=>minOver(k,0,nO)):[];   // each OK example against the other OK examples
+  const ngToOk=ng.map((_,k)=>minOver(nO+k,0,nO));          // each NG example against the OK examples
+  const maxOk=looOk.length?Math.max(...looOk):null,minNg=ngToOk.length?Math.min(...ngToOk):null;
+  // the scale is the distance that scores 50: placed between the OK and the NG examples
   let s;
   if(minNg!=null&&maxOk!=null)s=minNg>maxOk?Math.min(Math.max((maxOk+minNg)/2,maxOk+2),minNg*.9):minNg*.95;
   else if(minNg!=null)s=Math.min(DEF_THR,minNg*.6);
-  else if(maxOk!=null)s=Math.max(maxOk*1.25,maxOk+2,3); // keep a margin over camera noise
+  else if(maxOk!=null)s=Math.max(maxOk*1.25,maxOk+2,DEF_THR); // teaching OK examples never makes the area stricter
   else s=DEF_THR;
   a.thr=a.auto=Math.max(1,Math.round(s*10)/10);
-  if(a._legacyThr!=null){a.limit=Math.round(Math.max(0,Math.min(100,match(a._legacyThr,a.thr))));delete a._legacyThr}
+  if(a._legacyThr!=null){a.limit=Math.round(Math.max(0,Math.min(100,match(eff(a._legacyThr),a.thr))));delete a._legacyThr}
   if(a.limit==null)a.limit=50;
-  a.stats={nOk:gl.length,nNg:ngs.length,okLow:maxOk!=null?match(maxOk,a.thr):null,ngHigh:minNg!=null?match(minNg,a.thr):null,
-    overlap:minNg!=null&&maxOk!=null&&minNg<=maxOk};
+  a._m={ok,ng,sd,okSrc,ngSrc};a._k=gKey(a);
+  // how the examples score when each one is judged without itself (how well the area tells OK from NG)
+  const okSc=looOk.map((d,k)=>relScore(d,ng.length?minOver(k,nO,N):null,a.thr));
+  const ngSc=ng.map((_,k)=>relScore(ngToOk[k],ng.length>1?minOver(nO+k,nO,N):null,a.thr));
+  const okLow=okSc.length?Math.min(...okSc):null,ngHigh=ngSc.length?Math.max(...ngSc):null;
+  a.stats={nOk:nO,nNg:ng.length,okLow,ngHigh,overlap:okLow!=null&&ngHigh!=null&&okLow<=ngHigh};
 }
 function learnAll(){ // async because learned pictures may need to be decoded again
   if(!P||!P.ref)return Promise.resolve();
@@ -570,15 +585,15 @@ function learnAll(){ // async because learned pictures may need to be decoded ag
 function inspect(f){
   const pos=findPos(f.full,f.size),o=pos.found?pos:{dx:0,dy:0};
   const res=checks().map(a=>{if(!a._m||a._k!==gKey(a))learnArea(a);
-    const g=areaGray(f.full,f.size,a,o),r=areaMap(a,a._m,g),lim=limOf(a),sc=match(r.score,a.thr);
-    return{id:a.id,name:a.name,dev:r.score,score:sc,limit:lim,ng:sc<lim,dlim:devAt(lim,a.thr),map:r.map,gw:r.gw,gh:r.gh,gray:g,key:a._k}});
+    const g=areaGray(f.full,f.size,a,o),r=scoreArea(a,g),lim=limOf(a),{gw,gh}=grid(a);
+    return{id:a.id,name:a.name,dev:r.dev,score:r.score,limit:lim,ng:r.score<lim,dlim:devAt(lim,a.thr)+NOISE,map:r.map,gw,gh,gray:g,key:a._k,near:r.near,nearNg:r.nearNg}});
   const meas=measures().map(m=>({id:m.id,name:m.name,...measureTool(f.full,f.size,m,o)}));
   return{res,meas,pos,off:o,worst:worstOf(res),ng:!pos.found||res.some(r=>r.ng)||meas.some(r=>!r.ok)};
 }
 function rejudge(R){ // apply changed limits to a result without measuring again
   if(!R||!P)return;
-  const rt=refTool();if(rt&&R.pos&&!R.pos.none)R.pos.found=R.pos.score>=(rt.minScore||60)/100;
-  for(const x of R.res){const a=P.areas.find(t=>t.id===x.id);if(!a)continue;x.limit=limOf(a);x.ng=x.score<x.limit;x.dlim=devAt(x.limit,a.thr)}
+  const rt=refTool();if(rt&&R.pos&&!R.pos.none)R.pos.found=Math.round(R.pos.score*100)>=(rt.minScore||60);
+  for(const x of R.res){const a=P.areas.find(t=>t.id===x.id);if(!a)continue;x.limit=limOf(a);x.ng=x.score<x.limit;x.dlim=devAt(x.limit,a.thr)+NOISE}
   for(const m of R.meas){const a=P.areas.find(t=>t.id===m.id);if(a)m.ok=!!m.found&&(a.nom==null||Math.abs(m.value-a.nom)<=mTol(a))}
   R.worst=worstOf(R.res);R.ng=!R.pos.found||R.res.some(x=>x.ng)||R.meas.some(m=>!m.ok);
 }
@@ -752,10 +767,12 @@ async function learnLast(){
   const cache={};for(const r of l.r.res)cache[r.key]=r.gray;
   P.samples.push({id:Date.now(),blob:await toBlob(l.frame.full),thumb:thumbOf(l.frame.full),labels:{...l.labels},cache,off:{key:refKey(),dx:l.r.off.dx,dy:l.r.off.dy}});
   await learnAll();save();
+  const n=P.samples.length,warn=checks().filter(a=>a.stats&&a.stats.overlap).map(a=>a.name);
   const sum=checks().filter(a=>a.stats&&(a.stats.okLow!=null||a.stats.ngHigh!=null)).map(a=>`${a.name}: `+
-    (a.stats.okLow!=null?`OK from ${Math.round(a.stats.okLow)}`:'')+(a.stats.okLow!=null&&a.stats.ngHigh!=null?', ':'')+
-    (a.stats.ngHigh!=null?`NG up to ${Math.round(a.stats.ngHigh)}`:'')+(a.stats.overlap?' ⚠ overlap':'')).join(' · ');
-  flashMsg(`Learned (${P.samples.length} image${P.samples.length>1?'s':''}).`+(sum?` Scores of the examples — ${sum}. Limit: 50.`:''));
+    (a.stats.okLow!=null?`OK ≥ ${Math.round(a.stats.okLow)}`:'')+(a.stats.okLow!=null&&a.stats.ngHigh!=null?', ':'')+
+    (a.stats.ngHigh!=null?`NG ≤ ${Math.round(a.stats.ngHigh)}`:'')).join(' · ');
+  flashMsg(`Learned as image ${n}. It now scores 100 where you said OK and 0 where you said NG; a new picture of the same part in the same place scores the same.`+
+    (sum?` Other parts — ${sum}.`:'')+(warn.length?` ⚠ ${warn.join(', ')}: an OK and an NG example look alike — move or shrink the area.`:''));
 }
 function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
 function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
@@ -946,7 +963,7 @@ function toolRow(a,res){
     const deg=Math.round((a.ang||0)*180/Math.PI);
     if(deg){const rb=el('button','btn small',`⟲ ${deg}° → 0°`);rb.type='button';rb.title='Angle reset';rb.onclick=()=>{a.ang=0;P.valid=false;save();learnAll()};op.append(rb)}
     row.append(op,limitRow(a));
-    const st=a.stats;if(st){const s=el('div','stats'+(st.overlap?' warn':''));
+    const st=a.stats;if(st){const s=el('div','stats'+(st.overlap?' warn':''));s.title='Lowest / highest: how the examples score when each one is judged without itself — how well this area tells OK from NG';
       s.textContent=`${st.nOk} OK example${st.nOk>1?'s':''}`+(st.okLow!=null?` (lowest ${Math.round(st.okLow)})`:'')+` · ${st.nNg} NG`+(st.ngHigh!=null?` (highest ${Math.round(st.ngHigh)})`:'')+
         (st.overlap?' · OK and NG overlap: move or shrink the area, or raise the detail':'');row.append(s)}
   }
@@ -981,6 +998,8 @@ function renderProgSel(){
 }
 
 /* ---------- run screen: one line per tool with its score bar, histogram of the selected tool ---------- */
+const nearTxt=r=>{if(!r||r.near==null||!P.samples.length)return'';const nm=r.near==='ref'?'the reference':`learned ${P.samples.findIndex(s=>s.id===r.near)+1}`;
+  const k=r.nearNg?' (NG)':'';return r.dev===0?` · same as ${nm}${k}`:` · closest: ${nm}${k}`};
 const runResult=()=>U.mode==='result'&&U.last?U.last.r:(U.mode==='live'?U.live:null);
 const tNum=a=>String(a.id).padStart(2,'0');
 const tIcon=a=>a.type==='ref'?'⌖':a.type==='measure'?'📏':a.shape==='ellipse'?'◯':'▭';
@@ -1128,16 +1147,16 @@ function render(){
       const g=el('div','okng');
       for(const[v,lbl,cls]of[['ok','OK','k'],['ng','NG','g']]){const b=el('button',cls+(U.last.labels[a.id]===v?' on':''),lbl);b.type='button';b.disabled=U.last.learned;
         b.onclick=()=>{U.last.labels[a.id]=v;render()};g.appendChild(b)}
-      t.append(el('span',null,a.name),el('small',null,r?`score ${Math.round(r.score)} · ${r.ng?'NG':'OK'}`:''),g);te.appendChild(t)}
+      t.append(el('span',null,a.name),el('small',null,r?`score ${Math.round(r.score)} · ${r.ng?'NG':'OK'}${nearTxt(r)}`:''),g);te.appendChild(t)}
     for(const m of measures()){const r=R.meas.find(z=>z.id===m.id);const t=el('div','t');
       t.append(el('span',null,'📏 '+m.name),el('small',null,r?(r.found?`${fmtLen(r.value)} · ${r.ok?'OK':'NG'}`:'no edges · NG'):''),el('small',null,tolTxt(m)));te.appendChild(t)}
     if(checks().length){const lb=el('button','btn primary',U.last.learned?'✓ Learned':'🎓 Learn this image');lb.type='button';lb.disabled=U.last.learned;lb.onclick=learnLast;te.appendChild(lb)}
   }else te.hidden=true;
   const sl=$('sampleList');sl.innerHTML='';
   if(!P||!P.samples.length){const e=el('div','empty','Nothing learned yet: only the reference is used.');e.style.gridColumn='1/-1';sl.appendChild(e)}
-  else for(const s of P.samples){const b=el('button','thumb'+(U.view===s&&U.mode==='sample'?' sel':''));b.type='button';
+  else for(const[si,s]of P.samples.entries()){const b=el('button','thumb'+(U.view===s&&U.mode==='sample'?' sel':''));b.type='button';
     const im=document.createElement('img');im.src=s.thumb;im.alt='Learned image';b.appendChild(im);
-    const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK'));
+    const ngA=checks().filter(a=>s.labels[a.id]==='ng');b.appendChild(el('span','chip '+(ngA.length?'ng':'ok'),`${si+1} · `+(ngA.length?'NG '+ngA.map(a=>a.id).join(','):'OK')));
     b.onclick=()=>{if(U.view===s&&U.mode==='sample'){if(confirm('Remove this image from learning?'))forget(s);return}U.view=s;U.mode='sample';render()};
     b.title='Click to view, click again to remove';sl.appendChild(b)}
   $('teachState').className='state';$('teachState').textContent=P?`${P.samples.length} learned`:'—';
@@ -1342,7 +1361,7 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},measureTool,findPos,inspect,measRef}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');

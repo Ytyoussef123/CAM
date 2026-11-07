@@ -40,8 +40,12 @@ Program flow on the PC:
      Click a line to see the **histogram** of that tool's results since the last reset, with the limit
      line, OK/NG counts and max / min / average, and adjust the limit right under it.
    - Processing time (last, max, min, average) is shown with the counters.
-   - **Teach**: mark each area OK or NG and press Learn; each area learns from its examples so good
-     parts score higher and bad parts lower.
+   - **Teach**: mark each area OK or NG and press Learn. Each area remembers its taught pictures and
+     compares every new picture with the closest one: a taught OK picture scores **100**, a taught NG
+     picture **0**, and a new picture of the same part in the same place scores the same (differences
+     below the camera noise count as identical). Other parts score by how close they are to the
+     examples; teaching OK examples never makes an area stricter. The Teach panel shows which learned
+     picture each area matched ("same as learned 3", "closest: learned 2 (NG)").
 
 Programs are saved in the PC browser (IndexedDB, with the full-resolution pictures). The PC screen can be zoomed with the mouse wheel (drag to pan, double-click or Fit to reset).
 A **demo camera** (simulated parts) and **image files** can replace the phone for testing.
