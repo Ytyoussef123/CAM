@@ -17,7 +17,16 @@ block (LIVE / MASTER / OK / NG), the image with its zoom bar, TIME / TRIGGER / O
 status bar. **⚙ PROGRAM** has four steps — **1 Image** (source, camera zoom), **2 Master** (master
 image), **3 Tools** (＋ Add tool, Edit, Copy, Delete, settings of the selected tool), **4 Outputs**
 (what OUT1 / OUT2 signal) — and **Finish** goes to **▶ RUN** (tool list, then tabs *Limit & histogram*,
-*Additional learning*, *Repeatability*).
+*Additional learning*, *Repeatability*, *Test a folder*).
+
+**Test a folder** (RUN): choose or drop a folder of pictures; each one is inspected with the program
+(nothing learned, counters untouched). The expected result is read from the folder names
+(good / ok / normal → OK; defect / ng / anomaly, or any folder under `test/` → NG, as in MVTec, VisA and
+the Kaggle casting set; mask folders are skipped), or set by hand. You get good parts accepted / false
+alarms / defects caught / defects missed, scores by folder per tool with the limit line, the limit that
+would work best on that folder, and the list of wrong results (show or teach each one). Pictures that
+are practically identical to a taught picture or the master are not counted. Teach good pictures from
+a dataset's `train/good` folder, test on its `test` folder.
 
 Open `https://ytyoussef123.github.io/CAM/inspection-console.html` on both devices
 (GitHub Pages must be enabled for the branch).

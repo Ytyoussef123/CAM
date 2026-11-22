@@ -312,7 +312,24 @@ body{padding-block:10px 0}
 .rtabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--fg)}
 .rtabs button:hover{color:var(--fg)}
 #runStep .pbody>.rt{display:none}
-#runStep[data-rt="hist"] .rt-hist,#runStep[data-rt="teach"] .rt-teach,#runStep[data-rt="rep"] .rt-rep{display:flex}
+#runStep[data-rt="hist"] .rt-hist,#runStep[data-rt="teach"] .rt-teach,#runStep[data-rt="rep"] .rt-rep,#runStep[data-rt="folder"] .rt-folder{display:flex}
+/* test a folder */
+.ftprog{height:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.ftprog i{display:block;height:100%;width:0;background:var(--accent)}
+.ftgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:560px){.ftgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ftc{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.ftc b{font-family:var(--f-mono);font-size:20px;font-weight:500}
+.ftc span{font-size:12px;color:var(--muted)}
+.ftc.warn b{color:var(--warn)} .ftc.bad{border-color:var(--ng)} .ftc.bad b{color:var(--ng)}
+.ftrow{display:grid;grid-template-columns:48px minmax(0,1fr) auto auto;gap:8px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+.ftrow img,.ftnoimg{width:48px;height:48px;object-fit:cover;border-radius:4px;background:var(--imgbg);display:grid;place-items:center}
+.ftname{display:flex;flex-direction:column;min-width:0}
+.ftname b,.ftname small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ftname b{font-family:var(--f-mono);font-size:12px;font-weight:500}
+.ftname small{font-size:12px;color:var(--muted)}
+#ftC{width:100%;height:140px;display:block}
+#ftStep.drag{outline:2px dashed var(--accent);outline-offset:4px}
 .rt{flex-direction:column;gap:10px}
 /* outputs */
 .outrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
@@ -471,6 +488,7 @@ body{padding-block:10px 0}
             <button type="button" role="tab" id="rtHist" data-rt="hist" aria-selected="true">Limit &amp; histogram</button>
             <button type="button" role="tab" id="rtTeach" data-rt="teach" aria-selected="false">Additional learning</button>
             <button type="button" role="tab" id="rtRep" data-rt="rep" aria-selected="false">Repeatability</button>
+            <button type="button" role="tab" id="rtFolder" data-rt="folder" aria-selected="false">Test a folder</button>
           </div>
           <div class="rt rt-hist histo" id="histo">
             <span class="lbl" id="histTitle">—</span>
@@ -495,6 +513,25 @@ body{padding-block:10px 0}
               <button class="btn primary" id="repBtn" type="button">⟳ Start the test</button>
             </div>
             <div class="areas" id="repOut"></div>
+          </div>
+          <div class="rt rt-folder" id="ftStep">
+            <div class="row"><span class="lbl">Test a folder</span><span class="spacer"></span><span class="state" id="ftState">—</span></div>
+            <p class="hint">Choose a folder of pictures, or drop it here. Every picture is inspected with this program: nothing is learned and the counters are not changed. If the folder names say <b>good / ok / normal</b> or <b>defect / ng / anomaly</b> (like the MVTec, VisA and Kaggle casting datasets), you also see how many pictures were judged right.</p>
+            <div class="row">
+              <label class="btn primary">📁 Choose a folder<input type="file" id="ftDir" webkitdirectory multiple></label>
+              <label class="btn">🖼 Choose pictures<input type="file" id="ftFiles" accept="image/*" multiple></label>
+              <button class="btn" id="ftStop" type="button" hidden>■ Stop</button>
+            </div>
+            <div class="row"><label class="toggle">Expected result <select id="ftExp" aria-label="Expected result"><option value="auto" selected>from the folder names</option><option value="ok">all pictures are good</option><option value="ng">all pictures are defective</option><option value="none">unknown</option></select></label></div>
+            <div class="ftprog" id="ftProg" hidden><i id="ftBar"></i></div>
+            <div class="areas" id="ftOut"></div>
+            <div class="sec" id="ftHistBox" hidden>
+              <div class="row"><span class="lbl">Scores by folder</span><span class="spacer"></span><select id="ftTool" aria-label="Tool to show"></select></div>
+              <canvas id="ftC" height="140" aria-label="Scores of the tested pictures, by folder"></canvas>
+              <div class="hs" id="ftLegend"></div>
+              <div id="ftBest"></div>
+            </div>
+            <div class="areas" id="ftMist"></div>
           </div>
         </div>
       </section>
@@ -946,7 +983,7 @@ function record(r,dt){ // history for the histograms, and the processing time
   U.times.push(dt);if(U.times.length>2000)U.times.shift();
 }
 async function trigger(){
-  if(!P||!P.valid)return;
+  if(!P||!P.valid||FT.run)return;
   const f=await grab();if(!f)return;if(learning)await learning;
   const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
   r.ng?U.c.ng++:U.c.ok++;if(r.marg)U.c.marg=(U.c.marg||0)+1;record(r,dt);
@@ -956,6 +993,7 @@ async function trigger(){
 const CONFLICT=20; // teaching against the sensor by this much asks for a confirmation
 async function learnLast(force){
   const l=U.last;if(!l||l.learned)return;
+  if(FT.run){flashMsg('Wait for the folder test to finish (or stop it) before teaching.');return}
   if(force!==true){ // a label far from what the sensor sees is often a teaching mistake: ask first
     const w=l.r.res.filter(r=>{const lab=l.labels[r.id];return lab==='ok'&&r.score<=r.limit-CONFLICT||lab==='ng'&&r.score>=r.limit+CONFLICT});
     if(w.length){l.warn=w.map(r=>({name:r.name,score:r.score,limit:r.limit,lab:l.labels[r.id]}));render();return}}
@@ -986,7 +1024,7 @@ function demoShot(move){ // the demo part again: fresh camera noise, and a small
 }
 async function repStart(){
   if(REP.run){REP.run=false;render();return} // second press: stop
-  if(!P||!P.valid)return;
+  if(!P||!P.valid||FT.run)return;
   if(SRC.kind==='file'){flashMsg('The repeatability test needs a live picture: use the phone camera or the demo camera.');return}
   stopRun();
   Object.assign(REP,{run:true,shots:[],i:0,n:+$('repN').value||20,move:$('repMove').checked,res:null});
@@ -1037,7 +1075,7 @@ function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)retur
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
 function setPage(p){ // ⚙ PROGRAM (4 steps: image, master, tools, outputs) or ▶ RUN (inspect, statistics, teach)
-  U.page=p;store('vs1-page',p);
+  U.page=p;store('vs1-page',p);if(p!=='run')FT.run=false;
   if(p==='run'){if(U.mode==='edit'||U.mode==='cand'||U.mode==='master'){U.mode='live';U.cand=null}U.only=null;U.drag=null;resetView();render()}
   else{stopRun();setStep(U.step||(P&&P.ref?3:1))}
 }
@@ -1056,7 +1094,7 @@ function stepBack(){setStep((U.step||1)-1)}
 async function delSel(){const a=selTool3();if(a&&await ask(`Delete ${a.name}?`,{ok:'Delete'}))delArea(a)}
 function toggleAddMenu(open){const m=$('addMenu'),o=open==null?m.hidden:open;m.hidden=!o;$('addBtn').setAttribute('aria-expanded',o);if(o){const f=m.querySelector('button');if(f)f.focus()}}
 function afterLimit(){ // a limit or tolerance changed: judge the shown results again
-  if(U.last)rejudge(U.last.r);rejudge(U.live);drawScreen();renderRun();drawHist();save();
+  if(U.last)rejudge(U.last.r);rejudge(U.live);drawScreen();renderRun();drawHist();if(FT.res)renderFT();save();
 }
 
 /* ---------- drawing ---------- */
@@ -1512,7 +1550,7 @@ function render(){
   $('modeTag').textContent=U.timer?'RUN':ok?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
   $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not finished';
   $('runStep').dataset.rt=U.rtab||'hist';
-  for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep']])$(id).setAttribute('aria-selected',(U.rtab||'hist')===k);
+  for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep'],['rtFolder','folder']])$(id).setAttribute('aria-selected',(U.rtab||'hist')===k);
   $('rtTeach').textContent='Additional learning'+(U.mode==='result'&&U.last&&!U.last.learned?' •':'');
   if(ok){$('toolList').dataset.key='';renderRun();renderHistLim()}
   // teach
@@ -1526,7 +1564,7 @@ function render(){
     cl.onclick=()=>{U.view=null;U.mode='live';render()};row.append(rm,cl);te.append(row);
   }
   else if(U.mode==='result'&&U.last&&P){te.hidden=false;const R=U.last.r;
-    te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':(U.last.test?'Repeatability test picture — ':'')+'Teach this image — is each area OK or NG?'));
+    te.appendChild(el('span','lbl',U.last.learned?'Learned ✓ — trigger the next part':(U.last.ft?`Folder picture ${U.last.ft.split('/').pop()} — `:U.last.test?'Repeatability test picture — ':'')+'Teach this image — is each area OK or NG?'));
     if(!R.pos.none){const t=el('div','t');t.append(el('span',null,'⌖ '+(refTool()||{}).name),el('small',null,R.pos.found?`found · ${Math.round(R.pos.score*100)}`:`NOT FOUND · ${Math.round(R.pos.score*100)}`),el('span'));te.appendChild(t)}
     for(const a of checks()){const r=R.res.find(z=>z.id===a.id);const t=el('div','t');
       const g=el('div','okng');
@@ -1563,10 +1601,208 @@ function render(){
   else{$('cTime').textContent='—';$('cTimeS').textContent='max · min · avg'}
   $('sbZoom').textContent=P?`Camera zoom ×${(+P.cam.zoom).toFixed(1)}`:'';
   $('sbLearn').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'} · ${P.samples.length} learned image${P.samples.length===1?'':'s'}`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:''):'';
-  renderRep();
+  renderRep();renderFT();
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
   if(ok&&(U.rtab||'hist')==='hist')drawHist();
+}
+/* ---------- test a folder: inspect many pictures and compare with what the folder names say ---------- */
+const FT={run:false,items:[],done:0,total:0,t0:0,res:null,tool:null,lastShow:0,cur:'',stamp:null};
+const OKW=new Set(['good','ok','oks','okay','normal','pass','passed','accept','accepted','conforming']);
+const NGW=new Set(['ng','nok','def','defect','defects','defective','bad','anomaly','anomalies','anomalous','abnormal','fail','failed','reject','rejected','faulty','damaged','broken']);
+const IMG_EXT=/\.(png|jpe?g|bmp|webp|gif)$/i;
+function ftLabel(path){ // expected result read from the folder names; the deepest folder that tells wins
+  const segs=path.split('/').slice(0,-1);
+  for(let i=segs.length-1;i>=0;i--){
+    const t=segs[i].toLowerCase().split(/[^a-z]+/).filter(Boolean);
+    if(t.some(w=>OKW.has(w)))return'ok';
+    if(t.some(w=>NGW.has(w)))return'ng';
+    if(i>0&&/^test$/i.test(segs[i-1]))return'ng'; // MVTec style: test/<name of the defect>
+  }
+  return null;
+}
+function ftCollect(list){ // pictures only; defect masks of the datasets are skipped
+  const out=[];
+  for(const f of list){const path=f._path||f.webkitRelativePath||f.name;
+    if(!IMG_EXT.test(f.name))continue;
+    if(/(^|\/)(ground[_ -]?truth|masks?|gt)(\/|$)/i.test(path)||/_mask\.[a-z]+$/i.test(f.name))continue;
+    out.push({file:f,path})}
+  return out.sort((a,b)=>a.path.localeCompare(b.path,undefined,{numeric:true}));
+}
+async function ftDropFiles(dt){ // a folder dropped on the panel: read it with its sub-folders
+  const out=[],roots=[...(dt.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  if(!roots.length)return[...(dt.files||[])];
+  const walk=async(ent,pre)=>{
+    if(ent.isFile){try{const f=await new Promise((ok,bad)=>ent.file(ok,bad));f._path=pre+f.name;out.push(f)}catch(e){}}
+    else if(ent.isDirectory){const rd=ent.createReader();for(;;){const b=await new Promise((ok,bad)=>rd.readEntries(ok,bad));if(!b.length)break;for(const e of b)await walk(e,pre+ent.name+'/')}}
+  };
+  for(const r of roots)await walk(r,'');
+  return out;
+}
+function ftTools(r){ // what is kept of a result: enough to judge it again when a limit changes
+  const t=[];
+  for(const x of r.res)t.push({id:x.id,v:x.score});
+  for(const m of r.meas)t.push({id:m.id,v:m.found?m.value:null});
+  const rt=refTool();if(rt&&!r.pos.none)t.push({id:rt.id,v:Math.round(r.pos.score*100)});
+  return t;
+}
+const toolLim=a=>a.type==='ref'?(a.minScore||60):limOf(a);
+function toolOk(a,v){ // OK / NG of one tool value with today's limits (null: the tool no longer exists)
+  if(!a)return null;
+  if(a.type==='measure')return v!=null&&(a.nom==null||Math.abs(v-a.nom)<=mTol(a));
+  return v!=null&&v>=toolLim(a);
+}
+function toolMarg(a,v){if(!a||v==null)return false;if(a.type==='measure')return measMarg(a,{found:true,value:v});return Math.abs(v-toolLim(a))<BAND}
+const ftOk=it=>it.tools.every(t=>toolOk(P.areas.find(a=>a.id===t.id),t.v)!==false);
+async function ftStart(list){
+  if(FT.run)return;
+  if(!P||!P.valid){flashMsg('Finish the program first: ⚙ PROGRAM → step 4 → Finish.');return}
+  const items=ftCollect(list);
+  if(!items.length){flashMsg('No pictures found (PNG, JPG, BMP or WebP). Defect masks in "ground_truth" or "mask" folders are skipped.');return}
+  stopRun();REP.run=false;
+  const exp=$('ftExp').value;
+  Object.assign(FT,{run:true,items:[],done:0,total:items.length,t0:performance.now(),res:null,lastShow:0,cur:'',stamp:{id:P.id,n:P.samples.length}});
+  U.rtab='folder';render();
+  for(const it of items){
+    if(!FT.run)break;
+    FT.cur=it.path;
+    let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){FT.items.push({path:it.path,file:it.file,err:true,tools:[]});FT.done++;continue}
+    const f=makeFrame(bmp);if(bmp.close)bmp.close();
+    if(learning)await learning;
+    const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
+    const expect=exp==='auto'?ftLabel(it.path):exp==='none'?null:exp;
+    const known=r.res.length>0&&r.res.every(x=>x.dev===0); // the same as a taught picture or the master: says nothing about accuracy
+    const item={path:it.path,file:it.file,expect,tools:ftTools(r),dt,known,size:f.size};
+    item.ok=ftOk(item);
+    if(expect&&expect!==(item.ok?'ok':'ng'))item.thumb=thumbOf(f.full,96,.7);
+    FT.items.push(item);FT.done++;
+    const now=performance.now();
+    if(now-FT.lastShow>500){FT.lastShow=now;
+      U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false,test:true,ft:it.path};U.mode='result';render()}
+    else ftProgress();
+    await sleep(0);
+  }
+  FT.run=false;FT.res=true;render();
+  const s=ftStats();
+  flashMsg(`Folder test finished: ${s.total} picture${s.total===1?'':'s'}`+(s.n?`, ${Math.round(s.acc*100)} % judged right on the ${s.n} with a label from the folder names.`:'.'));
+}
+function ftStats(){ // counts with today's limits
+  const it=FT.items.filter(x=>!x.err),use=it.filter(x=>!x.known);
+  const c={okok:0,okng:0,ngng:0,ngok:0,uok:0,ung:0};
+  for(const x of it){x.ok=ftOk(x);if(x.known)continue;
+    if(x.expect==='ok')x.ok?c.okok++:c.okng++;else if(x.expect==='ng')x.ok?c.ngok++:c.ngng++;else x.ok?c.uok++:c.ung++}
+  const n=c.okok+c.okng+c.ngng+c.ngok;
+  const marg=use.filter(x=>x.tools.some(t=>toolMarg(P.areas.find(a=>a.id===t.id),t.v))).length;
+  const sz=P.ref?it.filter(x=>x.size&&(x.size/P.ref.size>1.5||x.size/P.ref.size<.67)).length:0;
+  return{c,n,acc:n?(c.okok+c.ngng)/n:null,known:it.length-use.length,err:FT.items.length-it.length,marg,sz,
+    avg:it.length?it.reduce((s,x)=>s+x.dt,0)/it.length:0,total:it.length};
+}
+function ftBest(a){ // the limit that would judge the most labelled pictures right if this tool alone decided
+  const xs=FT.items.filter(x=>!x.err&&!x.known&&x.expect).map(x=>{const t=x.tools.find(t=>t.id===a.id);return t&&t.v!=null?{v:t.v,ok:x.expect==='ok'}:null}).filter(Boolean);
+  if(xs.length<4||!xs.some(x=>x.ok)||!xs.some(x=>!x.ok))return null;
+  let best=-1,lo=0,hi=0;
+  for(let L=0;L<=100;L++){const r=xs.reduce((s,x)=>s+((x.v>=L)===x.ok?1:0),0);if(r>best){best=r;lo=hi=L}else if(r===best)hi=L}
+  return{L:Math.round((lo+hi)/2),lo,hi,acc:best/xs.length,n:xs.length};
+}
+function worstTxt(x){ // the tool closest to failing (or failing most) on one tested picture
+  let w=null,wm=Infinity;
+  for(const t of x.tools){const a=P.areas.find(z=>z.id===t.id);if(!a)continue;
+    const m=a.type==='measure'?(t.v==null?-1e9:(a.nom==null?1e9:mTol(a)-Math.abs(t.v-a.nom))):(t.v==null?-1e9:t.v-toolLim(a));
+    if(m<wm){wm=m;w=[a,t.v]}}
+  if(!w)return'';const[a,v]=w;return a.type==='measure'?`${a.name} ${v==null?'no edges':fmtLen(v)}`:`${a.name} ${v}`;
+}
+async function ftOpen(item,teach){ // show one tested picture on the screen (and teach it if asked)
+  let bmp=null;try{bmp=await createImageBitmap(item.file)}catch(e){flashMsg('Could not read '+item.path);return}
+  const f=makeFrame(bmp);if(bmp.close)bmp.close();
+  const r=inspect(f);
+  const labels=Object.fromEntries(r.res.map(x=>[x.id,item.expect==='ok'?'ok':x.ng?'ng':'ok']));
+  U.last={frame:f,r,dt:0,labels,ts:Date.now(),learned:false,test:true,ft:item.path};U.mode='result';U.view=null;
+  if(teach)U.rtab='teach';
+  render();
+  if(teach)flashMsg(item.expect==='ok'?'This picture comes from a good folder: every area is set to OK. Press Learn if it really is good.':
+    'This picture comes from a defect folder: set the area(s) with the defect to NG, then press Learn.');
+}
+function ftProgress(){
+  const p=$('ftProg');if(!p)return;p.hidden=!FT.run;
+  if(FT.run){$('ftBar').style.width=(FT.total?FT.done/FT.total*100:0)+'%';$('ftState').className='state';$('ftState').textContent=`${FT.done}/${FT.total}`}
+}
+function ftDraw(a){ // scores of the tested pictures for one tool: green = good folders, red = defect folders, grey = no label
+  const c=$('ftC');if(!c||!a)return;const W=c.clientWidth;if(!W)return;
+  const dpr=window.devicePixelRatio||1,H=140;
+  if(c.width!==Math.round(W*dpr)||c.height!==Math.round(H*dpr)){c.width=Math.round(W*dpr);c.height=Math.round(H*dpr)}
+  const x=c.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  const pts=FT.items.filter(i=>!i.err&&!i.known).map(i=>{const t=i.tools.find(t=>t.id===a.id);return t&&t.v!=null?{v:t.v,e:i.expect}:null}).filter(Boolean);
+  let lo=0,hi=100,lim=null,band=null;
+  if(a.type==='measure'){const vs=pts.map(p=>p.v);
+    if(a.nom!=null){const t=mTol(a);lo=Math.min(a.nom-3*t,...vs);hi=Math.max(a.nom+3*t,...vs);band=[a.nom-t,a.nom+t]}
+    else if(vs.length){lo=Math.min(...vs);hi=Math.max(...vs);const p=(hi-lo)*.1||1;lo-=p;hi+=p}}
+  else lim=toolLim(a);
+  const okC=cssv('--ok'),ngC=cssv('--ng'),fg=cssv('--fg'),mu=cssv('--muted');
+  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-lo)/(hi-lo||1)*pw;
+  const NB=25,b={ok:new Array(NB).fill(0),ng:new Array(NB).fill(0),un:new Array(NB).fill(0)};
+  for(const p of pts){const i=Math.min(NB-1,Math.max(0,Math.floor((p.v-lo)/(hi-lo||1)*NB)));b[p.e==='ok'?'ok':p.e==='ng'?'ng':'un'][i]++}
+  const mx=Math.max(1,...b.ok,...b.ng,...b.un),bw=pw/NB,sw=Math.max(1,(bw-2)/3);
+  for(let i=0;i<NB;i++)[['ok',okC],['ng',ngC],['un',mu]].forEach(([k,col],j)=>{const n=b[k][i];if(!n)return;const h=n/mx*ph;x.fillStyle=col;x.fillRect(pl+i*bw+1+j*sw,pt+ph-h,sw,h)});
+  x.strokeStyle=fg;x.lineWidth=2;
+  if(lim!=null){x.beginPath();x.moveTo(X(lim),pt-4);x.lineTo(X(lim),pt+ph);x.stroke()}
+  if(band){x.setLineDash([4,3]);for(const v of band){x.beginPath();x.moveTo(X(v),pt-4);x.lineTo(X(v),pt+ph);x.stroke()}x.setLineDash([])}
+  x.strokeStyle=mu;x.lineWidth=1;x.beginPath();x.moveTo(pl,pt+ph+.5);x.lineTo(pl+pw,pt+ph+.5);x.stroke();
+  x.fillStyle=mu;x.font='11px "IBM Plex Mono",ui-monospace,monospace';x.textBaseline='top';
+  const ticks=a.type==='measure'?[lo,(lo+hi)/2,hi]:[0,lim,100];
+  ticks.forEach((v,i)=>{const t=a.type==='measure'?fmtLen(v).replace(/ (mm|px)$/,''):String(Math.round(v));x.textAlign=i===0?'left':i===2?'right':'center';x.fillText(t,X(v),pt+ph+5)});
+  x.textAlign='right';x.fillText(String(mx),pl-5,pt);x.fillText('0',pl-5,pt+ph-11);
+}
+function renderFT(){
+  const out=$('ftOut'),st=$('ftState');if(!out)return;
+  if(FT.stamp&&P&&FT.stamp.id!==P.id&&!FT.run){FT.res=null;FT.items=[];FT.stamp=null}
+  const ok=!!(P&&P.valid);
+  $('ftStop').hidden=!FT.run;$('ftDir').disabled=$('ftFiles').disabled=FT.run||!ok;$('ftExp').disabled=FT.run;
+  $('rtFolder').textContent='Test a folder'+(FT.run?` ${FT.done}/${FT.total}`:'');
+  ftProgress();out.innerHTML='';$('ftMist').innerHTML='';
+  if(FT.run){$('ftHistBox').hidden=true;out.append(el('p','hint',`Picture ${Math.min(FT.done+1,FT.total)} of ${FT.total}: ${FT.cur}`));return}
+  if(!FT.res){$('ftHistBox').hidden=true;st.className='state';st.textContent='—';return}
+  const s=ftStats(),c=s.c;
+  st.className='state'+(s.n?(c.ngok?' warn':c.okng?'':' good'):'');st.textContent=s.n?`${Math.round(s.acc*100)} % right`:`${s.total} tested`;
+  const card=(n,txt,cls)=>{const d=el('div','ftc'+(cls?' '+cls:''));d.append(el('b',null,n),el('span',null,txt));return d};
+  if(s.n){const g=el('div','ftgrid');
+    g.append(card(`${c.okok}/${c.okok+c.okng}`,'good parts accepted'),card(String(c.okng),'good parts rejected (false alarms)',c.okng?'warn':''),
+      card(`${c.ngng}/${c.ngng+c.ngok}`,'defects caught'),card(String(c.ngok),'defects missed',c.ngok?'bad':''));out.append(g)}
+  const lines=[];
+  lines.push(`${s.total} picture${s.total===1?'':'s'} tested · ${s.avg.toFixed(0)} ms each`);
+  if(s.n)lines.push(`${Math.round(s.acc*100)} % judged right on ${s.n} picture${s.n===1?'':'s'} with a label from the folder names`);
+  if(c.uok+c.ung)lines.push(`${c.uok+c.ung} without a label: ${c.uok} OK, ${c.ung} NG`);
+  if(s.marg)lines.push(`⚠ ${s.marg} marginal (within ${BAND} points of a limit)`);
+  out.append(el('div','stats',lines.join(' · ')));
+  if(s.known)out.append(el('div','warnbox',`${s.known} picture${s.known===1?' is':'s are'} practically identical (within camera noise) to a taught picture or the master: not counted, because the sensor remembers ${s.known===1?'it':'them'}. To judge the sensor fairly, test pictures you did not teach (for example the MVTec "test" folder, not "train").`));
+  const nOkTaught=P.samples.filter(x=>Object.values(x.labels).includes('ok')).length;
+  if(c.okng>c.okok&&nOkTaught<5)out.append(el('div','warnbox',`Most good parts are rejected: the sensor knows only ${nOkTaught?nOkTaught+' taught good picture'+(nOkTaught>1?'s':'')+' and the master':'the master'}. Teach some good pictures first (Additional learning) — for a dataset, take them from its "train/good" folder, not from the folder you test.`));
+  if(s.err)out.append(el('div','warnbox',`${s.err} file${s.err===1?'':'s'} could not be read.`));
+  if(s.sz)out.append(el('div','warnbox',`${s.sz} picture${s.sz===1?' has':'s have'} a very different size than the master image: did you register the master from this same set of pictures?`));
+  if(FT.stamp&&P.samples.length!==FT.stamp.n)out.append(el('div','warnbox','You taught pictures after this test: run it again to see the new scores.'));
+  // scores by folder for one tool
+  const tools=runOrder();$('ftHistBox').hidden=!tools.length;
+  if(!tools.some(a=>a.id===FT.tool)){const t=tools.find(isCheck)||tools[0];FT.tool=t?t.id:null}
+  const sel=$('ftTool');if(document.activeElement!==sel){sel.innerHTML='';for(const a of tools){const o=document.createElement('option');o.value=a.id;o.textContent=`${tNum(a)} · ${a.name}`;if(a.id===FT.tool)o.selected=true;sel.appendChild(o)}}
+  const a=tools.find(t=>t.id===FT.tool);
+  $('ftLegend').textContent='green: pictures from good folders · red: from defect folders · grey: no label · line: limit (dashed: tolerance)';
+  const bb=$('ftBest');bb.innerHTML='';
+  if(a&&a.type!=='measure'){const best=ftBest(a);
+    if(best){const row=el('div','row');
+      row.append(el('span','stats',`If ${a.name} alone decided: limit ${best.lo===best.hi?best.L:`${best.lo}–${best.hi} (middle ${best.L})`} judges ${Math.round(best.acc*100)} % of ${best.n} labelled pictures right.`));
+      if(best.L!==toolLim(a)){const u=el('button','btn small',`Use ${best.L}`);u.type='button';u.title='Set this limit; it is tuned on this folder only, check it on other pictures too';
+        u.onclick=()=>{if(a.type==='ref')a.minScore=best.L;else a.limit=best.L;afterLimit();render();flashMsg(`${a.name}: limit ${best.L}. It was tuned on this folder only: check it on other pictures too.`)};row.append(u)}
+      bb.append(row)}}
+  if(a&&(U.rtab||'hist')==='folder')ftDraw(a);
+  // the wrong results, missed defects first
+  const mist=FT.items.filter(x=>!x.err&&!x.known&&x.expect&&x.expect!==(x.ok?'ok':'ng')).sort((p,q)=>(p.expect==='ng'?0:1)-(q.expect==='ng'?0:1));
+  if(mist.length){const box=$('ftMist');box.append(el('span','lbl',`Wrong results (${mist.length}) — missed defects first`));
+    for(const x of mist.slice(0,40)){const row=el('div','ftrow');
+      const im=x.thumb?Object.assign(document.createElement('img'),{src:x.thumb,alt:''}):el('span','ftnoimg','🖼');
+      const nm=el('div','ftname');nm.append(el('b',null,x.path.split('/').slice(-3).join('/')),el('small',null,(x.expect==='ng'?'defect folder → judged OK':'good folder → judged NG')+` · ${worstTxt(x)}`));
+      nm.title=x.path;
+      const b1=el('button','btn small','Show'),b2=el('button','btn small','Teach');b1.type=b2.type='button';b1.onclick=()=>ftOpen(x,false);b2.onclick=()=>ftOpen(x,true);
+      row.append(im,nm,b1,b2);box.append(row)}
+    if(mist.length>40)box.append(el('p','hint',`… and ${mist.length-40} more.`))}
 }
 
 /* ---------- pointer: move, resize and turn tools, pan the zoomed screen, hand cursors ---------- */
@@ -1754,10 +1990,16 @@ document.addEventListener('click',e=>{if(!$('addMenu').hidden&&!e.target.closest
 $('pageProg').onclick=()=>setPage('prog');$('pageRun').onclick=()=>setPage('run');
 for(let n=1;n<=4;n++)$('st'+n).onclick=()=>setStep(n);
 $('stepNext').onclick=stepNext;$('stepBack').onclick=stepBack;
-for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep']])$(id).onclick=()=>{U.rtab=k;render()};
+for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep'],['rtFolder','folder']])$(id).onclick=()=>{U.rtab=k;render()};
+$('ftDir').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
+$('ftFiles').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
+$('ftStop').onclick=()=>{FT.run=false};
+$('ftTool').onchange=e=>{FT.tool=+e.target.value;renderFT()};
+{const z=$('ftStep');z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+ z.addEventListener('drop',async e=>{e.preventDefault();z.classList.remove('drag');if(!FT.run)ftStart(await ftDropFiles(e.dataTransfer))})}
 for(const k of['o1','o2'])$(k+'Sel').onchange=e=>{if(!P)return;P.out={...(P.out||{o1:'ok',o2:'ng'}),[k]:e.target.value};save();render()};
 $('repBtn').onclick=repStart;
-addEventListener('resize',()=>{if(U.page==='run')drawHist()});
+addEventListener('resize',()=>{if(U.page==='run'){drawHist();if(FT.res&&U.rtab==='folder')renderFT()}});
 $('addRect').onclick=()=>addArea('rect');$('addCirc').onclick=()=>addArea('ellipse');$('validBtn').onclick=validate;
 $('trigBtn').onclick=trigger;$('runBtn').onclick=toggleRun;
 $('liveBtn').onclick=()=>{U.mode='live';U.view=null;render()};
@@ -1770,7 +2012,7 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage,ftLabel,get FT(){return FT}}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');
