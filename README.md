@@ -28,6 +28,17 @@ would work best on that folder, and the list of wrong results (show or teach eac
 are practically identical to a taught picture or the master are not counted. Teach good pictures from
 a dataset's `train/good` folder, test on its `test` folder.
 
+**Teach a folder as good** (RUN → Additional learning): every picture of the folder is looked at; per
+area, pictures much farther from the typical one than the others are left out and listed (possible
+defects hidden in the folder), and up to 50 pictures that cover the variety are kept (farthest-first
+selection) and taught as OK. Pictures in defect folders are skipped.
+
+**Folder playback** (PROGRAM → 1 Image → 🎞 Folder playback): a folder used as the camera — each trigger
+takes the next picture (mixed or in folder order); **▶ Auto every 1 / 3 / 5 s** in RUN plays them like
+parts on a line, with the usual OK/NG, lamps, counters and histogram, and ✓ / ✗ when the folder name
+says good or defect. Stops at the end of the folder; ↺ Restart plays it again. The folder must be chosen
+again after a page reload.
+
 Open `https://ytyoussef123.github.io/CAM/inspection-console.html` on both devices
 (GitHub Pages must be enabled for the branch).
 

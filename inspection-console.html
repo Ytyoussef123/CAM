@@ -421,8 +421,11 @@ body{padding-block:10px 0}
             <div class="sec"><span class="lbl">Program name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
             <div class="sec">
               <div class="row"><span class="lbl">Image source</span><span class="spacer"></span><span class="state" id="srcState">—</span></div>
-              <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button></div>
+              <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button><button type="button" id="srcPlay" aria-pressed="false">🎞 Folder playback</button></div>
               <div class="row" id="phoneRow"><span class="hint">Code shown on the phone:</span><input class="codein" type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Phone code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
+              <div class="row" id="playRow" hidden><label class="btn primary">📁 Choose the folder<input type="file" id="playDir" webkitdirectory multiple></label>
+                <label class="toggle">Order <select id="playOrder" aria-label="Playback order"><option value="mixed" selected>mixed, like a line</option><option value="order">in folder order</option></select></label>
+                <button class="btn small" id="playRestart2" type="button">↺ Restart</button></div>
               <p class="hint" id="srcHint"></p>
             </div>
             <div class="sec">
@@ -482,7 +485,9 @@ body{padding-block:10px 0}
           <div class="row">
             <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
             <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
+            <label class="toggle">every <select id="runPer" aria-label="Auto trigger period"><option value="1">1 s</option><option value="3" selected>3 s</option><option value="5">5 s</option></select></label>
           </div>
+          <div class="row" id="playBar" hidden><span class="hint" id="playTxt"></span><span class="spacer"></span><button class="btn small" id="playRestart" type="button">↺ Restart</button></div>
           <div class="tlist" id="toolList" aria-label="Results per tool"></div>
           <div class="rtabs" role="tablist" aria-label="Run tools">
             <button type="button" role="tab" id="rtHist" data-rt="hist" aria-selected="true">Limit &amp; histogram</button>
@@ -499,6 +504,10 @@ body{padding-block:10px 0}
           <div class="rt rt-teach" id="teachStep">
             <div class="row"><span class="lbl">Teach</span><span class="spacer"></span><span class="state" id="teachState">—</span></div>
             <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
+            <div class="row"><label class="btn">📁 Teach a folder as good<input type="file" id="tfDir" webkitdirectory multiple></label><button class="btn" id="tfStop" type="button" hidden>■ Stop</button>
+              <span class="hint">Every picture is looked at; up to 50 per area that cover the variety are kept. Pictures in defect folders are skipped.</span></div>
+            <div class="ftprog" id="tfProg" hidden><i id="tfBar"></i></div>
+            <div class="areas" id="tfOut"></div>
             <div class="teach" id="teach" hidden></div>
             <span class="lbl">Learned images</span>
             <div class="thumbs" id="sampleList"></div>
@@ -722,7 +731,7 @@ let learning=null;
 async function ensureGrays(){ // learned pictures are re-cut when tools move, turn or change size
   const rk=refKey();
   for(const s of P.samples){
-    const miss=checks().filter(a=>!s.cache[gKey(a)]);if(!miss.length)continue;
+    const miss=checks().filter(a=>s.labels[a.id]&&!s.cache[gKey(a)]);if(!miss.length)continue; // only the areas this picture teaches
     let bmp=null;try{bmp=await createImageBitmap(s.blob)}catch(e){continue}
     if(!s.off||s.off.key!==rk){const f=findPos(bmp,bmp.width);s.off={key:rk,dx:f.found?f.dx:0,dy:f.found?f.dy:0}}
     for(const a of miss)s.cache[gKey(a)]=areaGray(bmp,bmp.width,a,s.off);
@@ -910,6 +919,7 @@ function liveSrc(){
   return null;
 }
 function grab(){ // one full-resolution picture from the source, with the program's camera zoom
+  if(SRC.kind==='play')return playNext();
   if(SRC.kind==='demo')return Promise.resolve(makeFrame(SRC.demo));
   if(SRC.kind==='file')return new Promise(ok=>{const f=$('fileIn');f.value='';f.onchange=async()=>{const file=f.files[0];if(!file)return ok(null);try{ok(makeFrame(await createImageBitmap(file)))}catch(e){ok(null)}};f.click()});
   if(!(L.conn&&L.conn.open&&L.camOn)){flashMsg('No live image: connect the phone (Image source) and start its camera.');return Promise.resolve(null)}
@@ -983,17 +993,18 @@ function record(r,dt){ // history for the histograms, and the processing time
   U.times.push(dt);if(U.times.length>2000)U.times.shift();
 }
 async function trigger(){
-  if(!P||!P.valid||FT.run)return;
+  if(!P||!P.valid||FT.run||TF.run)return;
   const f=await grab();if(!f)return;if(learning)await learning;
   const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
   r.ng?U.c.ng++:U.c.ok++;if(r.marg)U.c.marg=(U.c.marg||0)+1;record(r,dt);
   U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
+  if(f.meta){U.last.meta={...f.meta};if(f.meta.expect){const ag=(f.meta.expect==='ng')===!!r.ng;ag?SRC.play.agree++:SRC.play.disagree++;U.last.meta.agree=ag}}
   U.mode='result';U.view=null;flash();if(r.ng&&navigator.vibrate)navigator.vibrate(150);render();
 }
 const CONFLICT=20; // teaching against the sensor by this much asks for a confirmation
 async function learnLast(force){
   const l=U.last;if(!l||l.learned)return;
-  if(FT.run){flashMsg('Wait for the folder test to finish (or stop it) before teaching.');return}
+  if(FT.run||TF.run){flashMsg('Wait for the folder test or the folder teaching to finish (or stop it) before teaching.');return}
   if(force!==true){ // a label far from what the sensor sees is often a teaching mistake: ask first
     const w=l.r.res.filter(r=>{const lab=l.labels[r.id];return lab==='ok'&&r.score<=r.limit-CONFLICT||lab==='ng'&&r.score>=r.limit+CONFLICT});
     if(w.length){l.warn=w.map(r=>({name:r.name,score:r.score,limit:r.limit,lab:l.labels[r.id]}));render();return}}
@@ -1024,8 +1035,8 @@ function demoShot(move){ // the demo part again: fresh camera noise, and a small
 }
 async function repStart(){
   if(REP.run){REP.run=false;render();return} // second press: stop
-  if(!P||!P.valid||FT.run)return;
-  if(SRC.kind==='file'){flashMsg('The repeatability test needs a live picture: use the phone camera or the demo camera.');return}
+  if(!P||!P.valid||FT.run||TF.run)return;
+  if(SRC.kind==='file'||SRC.kind==='play'){flashMsg('The repeatability test needs a live picture of the same part: use the phone camera or the demo camera.');return}
   stopRun();
   Object.assign(REP,{run:true,shots:[],i:0,n:+$('repN').value||20,move:$('repMove').checked,res:null});
   const demo=SRC.kind==='demo';if(demo)clearInterval(SRC.demoT);
@@ -1071,7 +1082,7 @@ function repSummary(shots){ // per tool: spread of the results and how close the
 }
 function forget(s){P.samples=P.samples.filter(x=>x!==s);U.view=null;U.mode='live';save();learnAll();flashMsg('Image removed from learning.')}
 function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
-function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,3000);trigger()}
+function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,(U.period||3)*1000);trigger()}
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
 function setPage(p){ // ⚙ PROGRAM (4 steps: image, master, tools, outputs) or ▶ RUN (inspect, statistics, teach)
@@ -1225,8 +1236,9 @@ function drawScreen(ts){
     drawAreas(x,null,false);fin();
     idle('LEARNED IMAGE','learned picture',checks().map(a=>`${a.name} ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'—'}`).join(' · '),'');return}
   if(U.mode==='result'&&U.last){x.drawImage(U.last.frame.full,0,0,D,D);if(U.heat)heat(x,U.last.r);drawAreas(x,U.last.r,false);fin();
-    $('imgName').textContent='triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
+    const mt=U.last.meta;$('imgName').textContent=(mt?`${mt.idx}/${mt.n} · ${mt.path.split('/').slice(-2).join('/')}`+(mt.expect?(mt.agree?` · ✓ folder: ${mt.expect.toUpperCase()}`:` · ✗ folder says ${mt.expect.toUpperCase()}`):''):'triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`)+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
   const src=liveSrc();
+  if(!src&&SRC.kind==='play'){const pl=SRC.play;fin();idle('PLAYBACK',pl.items.length?`${pl.i}/${pl.items.length} pictures played`:'no folder chosen',pl.items.length?(pl.i>=pl.items.length?'End of the folder: ↺ Restart':'Press Trigger or ▶ Auto'):'Choose it in ⚙ PROGRAM → 1 Image','');return}
   if(!src){fin();idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
   drawSrc(x,src);
   if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>400||!U.live){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900));if(U.page==='run')renderRun()}
@@ -1504,14 +1516,16 @@ function render(){
   if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('progStat').textContent='VS-1 camera';$('modeTag').textContent='CAMERA';drawScreen();return}
   const mb=$('msgBox');mb.hidden=!U.msg;mb.textContent=U.msg||'';
   // step 1: image source and camera zoom
-  for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
-  $('phoneRow').hidden=SRC.kind!=='phone';
+  for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile'],['play','srcPlay']])$(id).setAttribute('aria-pressed',SRC.kind===k);
+  $('phoneRow').hidden=SRC.kind!=='phone';$('playRow').hidden=SRC.kind!=='play';
   const ss=$('srcState'),sh=$('srcHint');
   if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
   else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, slightly shifted, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
+  else if(SRC.kind==='play'){const pl=SRC.play;ss.className='state'+(pl.items.length?' good':' warn');ss.textContent=pl.items.length?`${pl.items.length} pictures`:'No folder';
+    sh.textContent='Each Trigger takes the next picture of the folder, like parts arriving on a line; ▶ Auto in RUN plays them every few seconds. After a page reload, choose the folder again.'}
   else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Register master asks you for an image file.'}
-  $('srcStat').textContent={phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind]+(P&&P.ref?` · ${P.ref.size} px`:'');
+  $('srcStat').textContent=({phone:'Phone camera',demo:'Demo camera',file:'Image files',play:'Folder playback'}[SRC.kind]||'')+(SRC.kind==='play'&&SRC.play.items.length?` ${SRC.play.i}/${SRC.play.items.length}`:'')+(P&&P.ref?` · ${P.ref.size} px`:'');
   const cam=P?P.cam:{zoom:1,ox:0,oy:0},locked=!!(P&&P.ref);
   $('zoomIn').value=cam.zoom;$('zoomOut').textContent='×'+(+cam.zoom).toFixed(1);$('panX').value=cam.ox;$('panY').value=cam.oy;
   $('zoomIn').disabled=$('panX').disabled=$('panY').disabled=locked;$('panRow').hidden=cam.zoom<=1.01;
@@ -1546,7 +1560,8 @@ function render(){
   // RUN
   const ok=!!(P&&P.valid);
   $('runHint').hidden=ok;$('toolList').hidden=$('histo').hidden=!ok;$('trigBtn').disabled=$('runBtn').disabled=!ok;
-  $('runBtn').textContent=U.timer?'■ Stop auto':'▶ Auto every 3 s';
+  $('runBtn').textContent=U.timer?'■ Stop auto':`▶ Auto every ${U.period||3} s`;$('runPer').value=String(U.period||3);
+  $('playBar').hidden=SRC.kind!=='play';$('playTxt').textContent=playTxt();$('playOrder').value=SRC.play.order;
   $('modeTag').textContent=U.timer?'RUN':ok?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
   $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not finished';
   $('runStep').dataset.rt=U.rtab||'hist';
@@ -1557,7 +1572,7 @@ function render(){
   const te=$('teach');te.innerHTML='';const flags=P?audit():{};
   if(U.mode==='sample'&&U.view&&P){te.hidden=false;const s=U.view,si=P.samples.indexOf(s);
     te.append(el('span','lbl',`Learned image ${si+1}`));
-    for(const a of checks())te.append(el('div','stats',`${a.name}: taught ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'— (area added later)'}`));
+    for(const a of checks())te.append(el('div','stats',`${a.name}: taught ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'— (not used for this area)'}`));
     for(const f of flags[s.id]||[])te.append(el('div','warnbox',flagTxt(f)));
     const row=el('div','row'),rm=el('button','btn','🗑 Remove from learning'),cl=el('button','btn small','Close');rm.type=cl.type='button';
     rm.onclick=async()=>{if(await ask(`Remove learned image ${si+1}? The areas will be learned again without it.`,{ok:'Remove'}))forget(s)};
@@ -1601,7 +1616,7 @@ function render(){
   else{$('cTime').textContent='—';$('cTimeS').textContent='max · min · avg'}
   $('sbZoom').textContent=P?`Camera zoom ×${(+P.cam.zoom).toFixed(1)}`:'';
   $('sbLearn').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'} · ${P.samples.length} learned image${P.samples.length===1?'':'s'}`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:''):'';
-  renderRep();renderFT();
+  renderRep();renderFT();renderTF();
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
   if(ok&&(U.rtab||'hist')==='hist')drawHist();
@@ -1655,7 +1670,7 @@ function toolOk(a,v){ // OK / NG of one tool value with today's limits (null: th
 function toolMarg(a,v){if(!a||v==null)return false;if(a.type==='measure')return measMarg(a,{found:true,value:v});return Math.abs(v-toolLim(a))<BAND}
 const ftOk=it=>it.tools.every(t=>toolOk(P.areas.find(a=>a.id===t.id),t.v)!==false);
 async function ftStart(list){
-  if(FT.run)return;
+  if(FT.run||TF.run)return;
   if(!P||!P.valid){flashMsg('Finish the program first: ⚙ PROGRAM → step 4 → Finish.');return}
   const items=ftCollect(list);
   if(!items.length){flashMsg('No pictures found (PNG, JPG, BMP or WebP). Defect masks in "ground_truth" or "mask" folders are skipped.');return}
@@ -1803,6 +1818,121 @@ function renderFT(){
       const b1=el('button','btn small','Show'),b2=el('button','btn small','Teach');b1.type=b2.type='button';b1.onclick=()=>ftOpen(x,false);b2.onclick=()=>ftOpen(x,true);
       row.append(im,nm,b1,b2);box.append(row)}
     if(mist.length>40)box.append(el('p','hint',`… and ${mist.length-40} more.`))}
+}
+/* ---------- teach a folder as good: look at every picture, keep a representative selection per area ---------- */
+const TF={run:false,phase:'',done:0,total:0,out:null};
+const TF_KEEP=50; // at most this many good examples per area (learning time grows with the square of the examples)
+function small(g,gw,gh){ // a coarse copy (long side ≤ 48 points) used to compare many pictures quickly
+  const k=Math.max(1,Math.ceil(Math.max(gw,gh)/48)),w=Math.ceil(gw/k),h=Math.ceil(gh/k),o=new Float32Array(w*h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;
+    for(let j=y*k;j<Math.min(gh,(y+1)*k);j++)for(let i=x*k;i<Math.min(gw,(x+1)*k);i++){s+=g[j*gw+i];n++}o[y*w+x]=s/n}
+  return o;
+}
+function tfProgress(){
+  const p=$('tfProg');if(!p)return;p.hidden=!TF.run;
+  if(TF.run){$('tfBar').style.width=(TF.total?TF.done/TF.total*100:0)+'%';const o=$('tfOut');if(o&&o.firstChild)o.firstChild.textContent=`${TF.phase}… ${TF.done}/${TF.total}`}
+}
+async function tfStart(list){
+  if(TF.run||FT.run||REP.run)return;
+  if(!P||!P.ref||!checks().length){flashMsg('Register the master and add at least one area first (⚙ PROGRAM, steps 2 and 3).');return}
+  let items=ftCollect(list);const skipped=items.filter(x=>ftLabel(x.path)==='ng').length;items=items.filter(x=>ftLabel(x.path)!=='ng');
+  if(!items.length){flashMsg(skipped?'All these pictures are in defect folders: choose a folder of good pictures.':'No pictures found in that folder.');return}
+  stopRun();
+  Object.assign(TF,{run:true,phase:'Reading the pictures',done:0,total:items.length,out:null});render();
+  const A=checks(),rt=refTool(),cand=[];
+  for(const it of items){ // 1. every picture: where the part is, and a coarse copy of each area
+    if(!TF.run)break;
+    let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){TF.done++;continue}
+    const f=makeFrame(bmp);if(bmp.close)bmp.close();
+    const pos=findPos(f.full,f.size),off=pos.found?{dx:pos.dx,dy:pos.dy}:{dx:0,dy:0},sm={};
+    for(const a of A){const{gw,gh}=grid(a);sm[a.id]=small(areaGray(f.full,f.size,a,off),gw,gh)}
+    cand.push({it,off,sm,found:pos.found});TF.done++;
+    if(TF.done%4===0){tfProgress();await sleep(0)}
+  }
+  if(!TF.run){TF.out={cancel:true};render();return}
+  TF.phase='Choosing a representative selection';TF.done=0;TF.total=A.length;tfProgress();await sleep(0);
+  const use=cand.filter(c=>c.found||!rt),keep=new Map(),odd=new Set(),perArea={};
+  for(const a of A){ // 2. per area: leave out the odd pictures, then keep the most different ones (farthest first)
+    const{gw,gh}=grid(a),k=Math.max(1,Math.ceil(Math.max(gw,gh)/48)),w=Math.ceil(gw/k),h=Math.ceil(gh/k),mk=maskOf(a,w,h),len=w*h;
+    const dist=(x,y)=>{let m=0;for(let i=0;i<len;i++){if(mk&&!mk[i])continue;const d=Math.abs(x[i]-y[i]);if(d>m)m=d}return m/FLOOR};
+    const n=use.length,med=new Float32Array(len),buf=new Float32Array(n);
+    for(let i=0;i<len;i++){for(let j=0;j<n;j++)buf[j]=use[j].sm[a.id][i];buf.sort();med[i]=n%2?buf[n>>1]:(buf[(n>>1)-1]+buf[n>>1])/2}
+    const dm=use.map(c=>dist(c.sm[a.id],med)),srt=[...dm].sort((p,q)=>p-q),m=srt[n>>1]||0,mad=srt.map(v=>Math.abs(v-m)).sort((p,q)=>p-q)[n>>1]||0;
+    const lim=m+Math.max(4*1.4826*mad,3); // much farther from the typical picture than the others: probably not a good part
+    const ok=[];use.forEach((c,i)=>{if(n>=8&&dm[i]>lim)odd.add(c);else ok.push(c)});
+    const known=[small(refGray(a),gw,gh)];for(const s of P.samples)if(s.labels[a.id]==='ok'&&sGray(s,a))known.push(small(sGray(s,a),gw,gh));
+    const dmin=ok.map(c=>Math.min(...known.map(g=>dist(c.sm[a.id],g)))),sel=[],room=Math.max(0,TF_KEEP-(known.length-1));
+    while(sel.length<room){let bi=-1,bd=noiseOf(a);for(let i=0;i<ok.length;i++)if(dmin[i]>bd){bd=dmin[i];bi=i}
+      if(bi<0)break; // every remaining picture is within camera noise of one already kept: nothing new to learn
+      const c=ok[bi];sel.push(c);dmin[bi]=-1;for(let i=0;i<ok.length;i++)if(dmin[i]>0)dmin[i]=Math.min(dmin[i],dist(ok[i].sm[a.id],c.sm[a.id]))}
+    perArea[a.id]=sel.length;for(const c of sel){if(!keep.has(c))keep.set(c,new Set());keep.get(c).add(a.id)}
+    TF.done++;tfProgress();await sleep(0);
+  }
+  TF.phase='Saving the selected pictures';TF.done=0;TF.total=keep.size;tfProgress();
+  const added=[];
+  for(const[c,areas]of keep){ // 3. store the kept pictures (full resolution, so areas can still be moved later)
+    if(!TF.run)break;
+    let bmp=null;try{bmp=await createImageBitmap(c.it.file)}catch(e){continue}
+    const f=makeFrame(bmp);if(bmp.close)bmp.close();
+    const labels={},cache={};for(const a of A)if(areas.has(a.id)){labels[a.id]='ok';cache[gKey(a)]=areaGray(f.full,f.size,a,c.off)}
+    added.push({id:Date.now()*1000+added.length,blob:await toBlob(f.full),thumb:thumbOf(f.full),labels,cache,off:{key:refKey(),dx:c.off.dx,dy:c.off.dy}});
+    TF.done++;tfProgress();await sleep(0);
+  }
+  if(!TF.run){TF.out={cancel:true};render();return}
+  P.samples.push(...added);
+  TF.phase='Learning';tfProgress();
+  await learnAll();save();
+  TF.run=false;
+  TF.out={seen:cand.length,kept:added.length,perArea,odd:[...odd].map(c=>c.it),skipped,notFound:cand.length-use.length};
+  render();
+  flashMsg(`Folder taught: ${cand.length} pictures looked at, ${added.length} kept as good examples.`+(odd.size?` ⚠ ${odd.size} looked very different and were not taught: see Additional learning.`:''));
+}
+function renderTF(){
+  const out=$('tfOut');if(!out)return;
+  $('tfStop').hidden=!TF.run;$('tfDir').disabled=TF.run||FT.run||!(P&&P.ref&&checks().length);
+  out.innerHTML='';
+  if(TF.run){out.append(el('p','hint',`${TF.phase}… ${TF.done}/${TF.total}`));tfProgress();return}
+  tfProgress();
+  const o=TF.out;if(!o)return;
+  if(o.cancel){out.append(el('div','stats','Stopped: nothing was taught.'));return}
+  out.append(el('div','stats',`Looked at ${o.seen} picture${o.seen===1?'':'s'} · kept ${o.kept} as good examples (`+checks().map(a=>`${a.name}: ${o.perArea[a.id]||0}`).join(', ')+')'+
+    (o.skipped?` · ${o.skipped} in defect folders skipped`:'')+(o.notFound?` · ${o.notFound} where the position reference was not found, not taught`:'')));
+  if(o.odd.length){const w=el('div','warnbox');
+    w.append(el('b',null,`${o.odd.length} picture${o.odd.length===1?'':'s'} looked very different from the others and ${o.odd.length===1?'was':'were'} not taught:`));
+    w.append(el('div',null,o.odd.slice(0,12).map(it=>it.path.split('/').slice(-2).join('/')).join(' · ')+(o.odd.length>12?` … and ${o.odd.length-12} more`:'')));
+    w.append(el('div',null,'Check them: a defective part may be hidden in the folder. If one is really good, teach it alone (Trigger it with 📁 Image files, then Learn).'));
+    out.append(w)}
+}
+
+/* ---------- folder playback: a folder used as the camera, one picture per trigger ---------- */
+SRC.play={all:null,items:[],i:0,order:'mixed',name:'',agree:0,disagree:0};
+U.period=+stored('vs1-per')||3;
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+function playLoad(list){
+  const items=ftCollect(list).map(x=>({...x,expect:ftLabel(x.path)}));
+  if(!items.length){flashMsg('No pictures found in that folder.');return}
+  const pl=SRC.play;pl.all=items;pl.name=items[0].path.includes('/')?items[0].path.split('/')[0]:'pictures';
+  playRestart(true);
+  const nOk=items.filter(x=>x.expect==='ok').length,nNg=items.filter(x=>x.expect==='ng').length;
+  flashMsg(`${items.length} pictures loaded`+(nOk+nNg?` (${nOk} in good folders, ${nNg} in defect folders)`:'')+'. In ▶ RUN, press Trigger or ▶ Auto.');
+}
+function playRestart(quiet){
+  const pl=SRC.play;if(!pl.all)return;
+  pl.items=pl.order==='mixed'?shuffle([...pl.all]):[...pl.all];pl.i=0;pl.agree=pl.disagree=0;
+  if(!quiet)flashMsg('Playback starts again from the first picture.');render();
+}
+async function playNext(){ // the next picture of the folder, as a camera frame
+  const pl=SRC.play;
+  if(!pl.items.length){stopRun();flashMsg('Choose the folder to play first (⚙ PROGRAM → 1 Image → 🎞 Folder playback).');render();return null}
+  if(pl.i>=pl.items.length){stopRun();flashMsg(`End of the folder: ${pl.items.length} pictures played. Press ↺ Restart to play it again.`);render();return null}
+  const it=pl.items[pl.i++];
+  let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){flashMsg('Could not read '+it.path);return null}
+  const f=makeFrame(bmp);if(bmp.close)bmp.close();
+  f.meta={path:it.path,expect:it.expect,idx:pl.i,n:pl.items.length};return f;
+}
+function playTxt(){
+  const pl=SRC.play;if(!pl.items.length)return'No folder chosen yet: ⚙ PROGRAM → 1 Image → 🎞 Folder playback.';
+  return`🎞 ${pl.name}: ${pl.i}/${pl.items.length} played`+(pl.agree+pl.disagree?` · ✓ ${pl.agree} agree · ✗ ${pl.disagree} disagree with the folder names`:'')+` · ${pl.order==='mixed'?'mixed order':'in order'}`;
 }
 
 /* ---------- pointer: move, resize and turn tools, pan the zoomed screen, hand cursors ---------- */
@@ -1994,6 +2124,13 @@ for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep'],['rtFold
 $('ftDir').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
 $('ftFiles').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
 $('ftStop').onclick=()=>{FT.run=false};
+$('srcPlay').onclick=()=>setSrc('play');
+$('playDir').onchange=e=>{const f=[...e.target.files];e.target.value='';playLoad(f)};
+$('playOrder').onchange=e=>{SRC.play.order=e.target.value;playRestart(true)};
+$('playRestart').onclick=()=>playRestart();$('playRestart2').onclick=()=>playRestart();
+$('runPer').onchange=e=>{U.period=+e.target.value||3;store('vs1-per',String(U.period));if(U.timer){stopRun();toggleRun()}render()};
+$('tfDir').onchange=e=>{const f=[...e.target.files];e.target.value='';tfStart(f)};
+$('tfStop').onclick=()=>{TF.run=false};
 $('ftTool').onchange=e=>{FT.tool=+e.target.value;renderFT()};
 {const z=$('ftStep');z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});z.addEventListener('dragleave',()=>z.classList.remove('drag'));
  z.addEventListener('drop',async e=>{e.preventDefault();z.classList.remove('drag');if(!FT.run)ftStart(await ftDropFiles(e.dataTransfer))})}
@@ -2012,7 +2149,7 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage,ftLabel,get FT(){return FT}}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage,ftLabel,get FT(){return FT},get TF(){return TF}}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');
