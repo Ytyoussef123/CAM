@@ -14,30 +14,38 @@ Prototype of an industrial vision sensor (OK / NG part inspection) built on a Ra
 The **phone is only a live camera**; the **PC is the controller**, laid out like an industrial vision
 sensor console (VS-1 look): toolbar with **▶ RUN / ⚙ PROGRAM** and the program selector, a big status
 block (LIVE / MASTER / OK / NG), the image with its zoom bar, TIME / TRIGGER / OUT boxes under it and a
-status bar. **⚙ PROGRAM** has four steps — **1 Image** (source, camera zoom), **2 Master** (master
-image), **3 Tools** (＋ Add tool, Edit, Copy, Delete, settings of the selected tool), **4 Outputs**
-(what OUT1 / OUT2 signal) — and **Finish** goes to **▶ RUN** (tool list, then tabs *Limit & histogram*,
-*Additional learning*, *Repeatability*, *Test a folder*).
+status bar. **⚙ PROGRAM** has five steps — **1 Image** (source, camera zoom), **2 Master** (master
+image), **3 Tools** (＋ Add tool, Edit, Copy, Delete, settings of the selected tool), **4 Learn** (folders
+of OK and NG pictures, optional), **5 Outputs** (what OUT1 / OUT2 signal) — and **Finish** goes to
+**▶ RUN** (tool list, then tabs *Limit & histogram*, *Additional learning*, *Repeatability*, *Test a folder*).
 
-**Test a folder** (RUN): choose or drop a folder of pictures; each one is inspected with the program
-(nothing learned, counters untouched). The expected result is read from the folder names
+**4 Learn** (PROGRAM): an **OK** block and an **NG** block, each with its count, the last learned pictures,
+**📁 Add OK / NG folder(s)** and **🖼 pictures**. Each picture is triggered like a part on the line — one
+every **1 / 3 / 5 s** or *fast* (3 s by default): it appears on the screen with its judgment, then it is
+learned, and the image line says what happened ("learned as OK ✓ (Area 1)", "like pictures already
+learned", "⚠ looks very different…"). ■ Stop keeps what was learned so far.
+- *OK folders*: every picture is looked at quickly first; per area, pictures much farther from the
+  typical one than the others are shown but **not learned** and listed (possible defects hidden in the
+  folder — needs 8 pictures or more), and only pictures that bring something new are kept, at most 50 per
+  area (farthest-first selection).
+- *NG folders*: a picture is learned as NG only in the area(s) where the defect is seen (score below the
+  limit), or in the area chosen in "Learn NG in"; when no area sees it, it is not learned and is listed.
+  At most 50 NG pictures per area. Learning NG while an area knows fewer than 4 good pictures asks first.
+- Pictures in folders named good are skipped when learning NG, and the other way round. Several folders
+  wait in line (OK folders before NG folders); several folders can be dropped on a block at once.
+- Single pictures are still taught in RUN → *Additional learning*.
+
+**Test a folder** (RUN): choose or drop a folder of pictures; each one is triggered in turn — one every
+1 / 3 / 5 s or *fast* — and shown with its judgment and ✓ / ✗ against the folder name (nothing learned,
+counters untouched); the summary, chart and wrong results fill in while it runs and stay at the end.
+The expected result is read from the folder names
 (good / ok / normal → OK; defect / ng / anomaly, or any folder under `test/` → NG, as in MVTec, VisA and
 the Kaggle casting set; mask folders are skipped), or set by hand. You get good parts accepted / false
-alarms / defects caught / defects missed, scores by folder per tool with the limit line, the limit that
+alarms / defects caught / defects missed, scores by folder per tool (one thin bar per score point,
+stacked green / red / grey by folder) with the limit line, the limit that
 would work best on that folder, and the list of wrong results (show or teach each one). Pictures that
-are practically identical to a taught picture or the master are not counted. Teach good pictures from
-a dataset's `train/good` folder, test on its `test` folder.
-
-**Teach a folder as good** (RUN → Additional learning): every picture of the folder is looked at; per
-area, pictures much farther from the typical one than the others are left out and listed (possible
-defects hidden in the folder), and up to 50 pictures that cover the variety are kept (farthest-first
-selection) and taught as OK. Pictures in defect folders are skipped.
-
-**Folder playback** (PROGRAM → 1 Image → 🎞 Folder playback): a folder used as the camera — each trigger
-takes the next picture (mixed or in folder order); **▶ Auto every 1 / 3 / 5 s** in RUN plays them like
-parts on a line, with the usual OK/NG, lamps, counters and histogram, and ✓ / ✗ when the folder name
-says good or defect. Stops at the end of the folder; ↺ Restart plays it again. The folder must be chosen
-again after a page reload.
+are practically identical to a taught picture or the master are not counted. Learn good pictures from
+a dataset's `train/good` folder (PROGRAM → 4 Learn), test on its `test` folder.
 
 Open `https://ytyoussef123.github.io/CAM/inspection-console.html` on both devices
 (GitHub Pages must be enabled for the branch).
@@ -63,8 +71,9 @@ Program flow on the PC:
    - Every tool gets a **score from 0 to 100** (100 = like the good examples) and is OK at or above its
      **limit**, 50 by default. Measures show their value against nominal ± tolerance.
    - The run list shows one line per tool (number, OK/NG, score, bar with the limit mark).
-     Click a line to see the **histogram** of that tool's results since the last reset, with the limit
-     line, OK/NG counts and max / min / average, and adjust the limit right under it.
+     Click a line to see the **histogram** of that tool's results since the last reset — one thin bar per
+     score point (0 … 100; 100 bars across the range for measures) — with the limit line, OK/NG counts
+     and max / min / average, and adjust the limit right under it.
    - Processing time (last, max, min, average) is shown with the counters.
    - **Teach**: mark each area OK or NG and press Learn. Each area remembers its taught pictures and
      compares every new picture with the closest one: a taught OK picture scores **100**, a taught NG

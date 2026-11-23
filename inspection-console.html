@@ -263,6 +263,7 @@ body{padding-block:10px 0}
 .statusrow .verdict.master{background:var(--accent);color:var(--accent-fg);font-size:30px}
 .sinfo{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .sinfo>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sinfo>#imgName{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .sinfo .pname{font-family:var(--f-display);font-size:19px;font-weight:600;color:var(--fg)}
 .imgbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;border-top:1px solid var(--line);padding-top:8px}
 .screenwrap{background:var(--imgbg);border-radius:6px;padding:8px;display:flex;justify-content:center}
@@ -287,7 +288,7 @@ body{padding-block:10px 0}
 .pnl>.hint{padding:8px 14px 0;margin:0}
 .pbody{padding:10px 14px 14px;display:flex;flex-direction:column;gap:12px}
 .sp{display:none;flex-direction:column;gap:14px}
-#progPanel[data-step="1"] .sp1,#progPanel[data-step="2"] .sp2,#progPanel[data-step="3"] .sp3,#progPanel[data-step="4"] .sp4{display:flex}
+#progPanel[data-step="1"] .sp1,#progPanel[data-step="2"] .sp2,#progPanel[data-step="3"] .sp3,#progPanel[data-step="4"] .sp4,#progPanel[data-step="5"] .sp5{display:flex}
 .sp.locked{opacity:.5;pointer-events:none}
 .sec{display:flex;flex-direction:column;gap:8px}
 .sec>.lbl,.sec>.row:first-child{border-bottom:1px solid var(--line);padding-bottom:4px}
@@ -331,6 +332,19 @@ body{padding-block:10px 0}
 #ftC{width:100%;height:140px;display:block}
 #ftStep.drag{outline:2px dashed var(--accent);outline-offset:4px}
 .rt{flex-direction:column;gap:10px}
+/* step 4 learn: OK and NG blocks */
+.lblock{border:1px solid var(--line);border-left:5px solid var(--ok);border-radius:6px;background:var(--panel-2);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.lblock.ng{border-left-color:var(--ng)}
+.lblock.drag{outline:2px dashed var(--accent);outline-offset:3px}
+.lbh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lbh>b{font-family:var(--f-display);font-size:26px;line-height:1;color:var(--ok)}
+.lblock.ng .lbh>b{color:var(--ng)}
+.lbh .lcount{font-family:var(--f-mono);font-size:24px;line-height:1}
+.lthumbs{display:flex;flex-wrap:wrap;gap:4px;min-height:40px;align-items:center}
+.lthumbs img{width:40px;height:40px;object-fit:cover;border-radius:4px;background:var(--imgbg)}
+.lsum{display:flex;flex-direction:column;gap:6px;border-left:3px solid var(--ok);padding:2px 0 2px 10px}
+.lsum.ng{border-left-color:var(--ng)}
+.lnow{font-family:var(--f-mono);font-size:12px;margin:0;overflow-wrap:anywhere}
 /* outputs */
 .outrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
 .outrow b{font-family:var(--f-display);font-size:20px}
@@ -362,7 +376,8 @@ body{padding-block:10px 0}
     <button class="stab" type="button" id="st1" data-step="1"><b>1</b>Image</button><span class="sarr" aria-hidden="true">▶</span>
     <button class="stab" type="button" id="st2" data-step="2"><b>2</b>Master</button><span class="sarr" aria-hidden="true">▶</span>
     <button class="stab" type="button" id="st3" data-step="3"><b>3</b>Tools</button><span class="sarr" aria-hidden="true">▶</span>
-    <button class="stab" type="button" id="st4" data-step="4"><b>4</b>Outputs</button>
+    <button class="stab" type="button" id="st4" data-step="4"><b>4</b>Learn</button><span class="sarr" aria-hidden="true">▶</span>
+    <button class="stab" type="button" id="st5" data-step="5"><b>5</b>Outputs</button>
   </nav>
 
   <main class="work">
@@ -412,7 +427,7 @@ body{padding-block:10px 0}
         <p class="hint" id="camHint">Keep this page open, the screen on, and the phone fixed. The PC takes the pictures.</p>
       </section>
 
-      <!-- PROGRAM: 4 steps -->
+      <!-- PROGRAM: 5 steps -->
       <section class="pnl ctl-only prog-only" id="progPanel" data-step="1" aria-labelledby="pStepTitle">
         <header class="pnlh"><span class="pstep" id="pStepNo">STEP 1</span><h2 id="pStepTitle">Image</h2><span class="state" id="progState">—</span></header>
         <p class="hint" id="pStepHint"></p>
@@ -421,11 +436,8 @@ body{padding-block:10px 0}
             <div class="sec"><span class="lbl">Program name</span><input class="pname" type="text" id="progName" maxlength="40" aria-label="Program name"></div>
             <div class="sec">
               <div class="row"><span class="lbl">Image source</span><span class="spacer"></span><span class="state" id="srcState">—</span></div>
-              <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button><button type="button" id="srcPlay" aria-pressed="false">🎞 Folder playback</button></div>
+              <div class="seg" role="group" aria-label="Image source"><button type="button" id="srcPhone" aria-pressed="false">📱 Phone camera</button><button type="button" id="srcDemo" aria-pressed="false">🎲 Demo camera</button><button type="button" id="srcFile" aria-pressed="false">📁 Image files</button></div>
               <div class="row" id="phoneRow"><span class="hint">Code shown on the phone:</span><input class="codein" type="text" id="pairIn" maxlength="6" autocomplete="off" spellcheck="false" aria-label="Phone code"><button class="btn primary" id="pairBtn" type="button">Connect</button></div>
-              <div class="row" id="playRow" hidden><label class="btn primary">📁 Choose the folder<input type="file" id="playDir" webkitdirectory multiple></label>
-                <label class="toggle">Order <select id="playOrder" aria-label="Playback order"><option value="mixed" selected>mixed, like a line</option><option value="order">in folder order</option></select></label>
-                <button class="btn small" id="playRestart2" type="button">↺ Restart</button></div>
               <p class="hint" id="srcHint"></p>
             </div>
             <div class="sec">
@@ -467,7 +479,30 @@ body{padding-block:10px 0}
             <div class="note"><b>How it decides:</b> each area remembers the pictures you taught it. A new picture is compared with the closest one: the same as a taught OK picture scores <b>100</b>, the same as a taught NG picture scores <b>0</b>, other parts score by how close they are. Below its <b>limit</b> (50 by default) the area is NG, and one NG tool makes the part NG. Parts must sit in the same place each time (or use a ⌖ position reference) and the light must stay the same.</div>
           </div>
 
-          <div class="sp sp4" id="outStep">
+          <div class="sp sp4" id="learnStep">
+            <div class="row"><span class="lbl">Learn from folders of pictures</span><span class="spacer"></span><span class="state" id="learnState">—</span></div>
+            <div class="lblock ok" id="lbOk">
+              <div class="lbh"><b>OK</b><span class="hint">good parts</span><span class="spacer"></span><span class="lcount" id="lnOk">0</span><span class="hint">learned</span></div>
+              <div class="hs" id="lsOk"></div>
+              <div class="lthumbs" id="ltOk"></div>
+              <div class="row"><label class="btn primary">📁 Add OK folder(s)<input type="file" id="lOkDir" webkitdirectory multiple></label><label class="btn">🖼 OK pictures<input type="file" id="lOkFiles" accept="image/*" multiple></label></div>
+            </div>
+            <div class="lblock ng" id="lbNg">
+              <div class="lbh"><b>NG</b><span class="hint">defective parts</span><span class="spacer"></span><span class="lcount" id="lnNg">0</span><span class="hint">learned</span></div>
+              <div class="hs" id="lsNg"></div>
+              <div class="lthumbs" id="ltNg"></div>
+              <div class="row"><label class="btn primary">📁 Add NG folder(s)<input type="file" id="lNgDir" webkitdirectory multiple></label><label class="btn">🖼 NG pictures<input type="file" id="lNgFiles" accept="image/*" multiple></label></div>
+              <label class="toggle">Learn NG in <select id="lNgArea" aria-label="Where NG pictures are learned"><option value="auto">the area(s) where the defect is seen</option></select></label>
+              <p class="hint" id="lNgHint" hidden>Learn good pictures first: with only the master image, normal differences between good parts look like defects.</p>
+            </div>
+            <div class="row"><label class="toggle">One picture every <select id="lPer" aria-label="Time per picture"><option value="1">1 s</option><option value="3" selected>3 s</option><option value="5">5 s</option><option value="0">fast</option></select></label>
+              <span class="spacer"></span><button class="btn" id="lStop" type="button" hidden>■ Stop</button></div>
+            <div class="ftprog" id="lProg" hidden><i id="lBar"></i></div>
+            <div class="areas" id="lOut"></div>
+            <div class="note"><b>How it learns:</b> each picture is triggered like a part on the line: you see it and its judgment, then it is learned. From an <b>OK</b> folder only the pictures that bring something new are kept (at most 50 per area), and pictures that look very different from the others are shown but not learned. From an <b>NG</b> folder a picture is learned as NG only in the area(s) where the defect is seen. Pictures in folders named <i>good</i> are skipped when learning NG, and the other way round. Learn the OK folders first. To add several folders, add them one after the other (they wait in line) or drag them onto the block. This step is optional: single pictures can also be taught in ▶ RUN → Additional learning.</div>
+          </div>
+
+          <div class="sp sp5" id="outStep">
             <div class="outrow"><b>OUT1</b><select id="o1Sel" aria-label="What OUT1 signals"></select></div>
             <div class="outrow"><b>OUT2</b><select id="o2Sel" aria-label="What OUT2 signals"></select></div>
             <p class="hint">On the VS-1 sensor these are the two isolated outputs to the PLC. In this prototype they are the two lamps under the image.</p>
@@ -481,13 +516,12 @@ body{padding-block:10px 0}
       <section class="pnl ctl-only run-only" id="runStep" data-rt="hist" aria-labelledby="runTitle">
         <header class="pnlh"><span class="pstep">RUN</span><h2 id="runTitle">Inspection</h2><span class="state" id="runState">—</span></header>
         <div class="pbody">
-          <p class="hint" id="runHint" hidden>This program is not finished yet. Go to <b>⚙ PROGRAM</b>, complete the 4 steps and press Finish.</p>
+          <p class="hint" id="runHint" hidden>This program is not finished yet. Go to <b>⚙ PROGRAM</b>, complete the steps and press Finish.</p>
           <div class="row">
             <button class="btn primary big" id="trigBtn" type="button">📷 Trigger</button>
             <button class="btn" id="runBtn" type="button">▶ Auto every 3 s</button>
             <label class="toggle">every <select id="runPer" aria-label="Auto trigger period"><option value="1">1 s</option><option value="3" selected>3 s</option><option value="5">5 s</option></select></label>
           </div>
-          <div class="row" id="playBar" hidden><span class="hint" id="playTxt"></span><span class="spacer"></span><button class="btn small" id="playRestart" type="button">↺ Restart</button></div>
           <div class="tlist" id="toolList" aria-label="Results per tool"></div>
           <div class="rtabs" role="tablist" aria-label="Run tools">
             <button type="button" role="tab" id="rtHist" data-rt="hist" aria-selected="true">Limit &amp; histogram</button>
@@ -504,10 +538,7 @@ body{padding-block:10px 0}
           <div class="rt rt-teach" id="teachStep">
             <div class="row"><span class="lbl">Teach</span><span class="spacer"></span><span class="state" id="teachState">—</span></div>
             <p class="hint">After a trigger, tell the sensor, area by area, if the part is <b>OK</b> or <b>NG</b> and press <b>Learn</b>. A taught picture then scores 100 where you said OK and 0 where you said NG, and so does a new picture of the same part in the same place.</p>
-            <div class="row"><label class="btn">📁 Teach a folder as good<input type="file" id="tfDir" webkitdirectory multiple></label><button class="btn" id="tfStop" type="button" hidden>■ Stop</button>
-              <span class="hint">Every picture is looked at; up to 50 per area that cover the variety are kept. Pictures in defect folders are skipped.</span></div>
-            <div class="ftprog" id="tfProg" hidden><i id="tfBar"></i></div>
-            <div class="areas" id="tfOut"></div>
+            <div class="row"><button class="btn" id="goLearn" type="button">📁 Learn from folders…</button><span class="hint">in ⚙ PROGRAM → 4 Learn: each picture is shown, judged, then learned.</span></div>
             <div class="teach" id="teach" hidden></div>
             <span class="lbl">Learned images</span>
             <div class="thumbs" id="sampleList"></div>
@@ -525,13 +556,14 @@ body{padding-block:10px 0}
           </div>
           <div class="rt rt-folder" id="ftStep">
             <div class="row"><span class="lbl">Test a folder</span><span class="spacer"></span><span class="state" id="ftState">—</span></div>
-            <p class="hint">Choose a folder of pictures, or drop it here. Every picture is inspected with this program: nothing is learned and the counters are not changed. If the folder names say <b>good / ok / normal</b> or <b>defect / ng / anomaly</b> (like the MVTec, VisA and Kaggle casting datasets), you also see how many pictures were judged right.</p>
+            <p class="hint">Choose a folder of pictures, or drop it here. Every picture is triggered in turn and judged with this program, like parts on the line: nothing is learned and the counters are not changed. If the folder names say <b>good / ok / normal</b> or <b>defect / ng / anomaly</b> (like the MVTec, VisA and Kaggle casting datasets), you also see how many pictures were judged right.</p>
             <div class="row">
               <label class="btn primary">📁 Choose a folder<input type="file" id="ftDir" webkitdirectory multiple></label>
               <label class="btn">🖼 Choose pictures<input type="file" id="ftFiles" accept="image/*" multiple></label>
               <button class="btn" id="ftStop" type="button" hidden>■ Stop</button>
             </div>
-            <div class="row"><label class="toggle">Expected result <select id="ftExp" aria-label="Expected result"><option value="auto" selected>from the folder names</option><option value="ok">all pictures are good</option><option value="ng">all pictures are defective</option><option value="none">unknown</option></select></label></div>
+            <div class="row"><label class="toggle">Expected result <select id="ftExp" aria-label="Expected result"><option value="auto" selected>from the folder names</option><option value="ok">all pictures are good</option><option value="ng">all pictures are defective</option><option value="none">unknown</option></select></label>
+              <label class="toggle">One picture every <select id="ftPer" aria-label="Time per picture"><option value="1">1 s</option><option value="3" selected>3 s</option><option value="5">5 s</option><option value="0">fast</option></select></label></div>
             <div class="ftprog" id="ftProg" hidden><i id="ftBar"></i></div>
             <div class="areas" id="ftOut"></div>
             <div class="sec" id="ftHistBox" hidden>
@@ -881,7 +913,7 @@ const toImg=(sx,sy)=>[V.cx+(sx-.5)/V.z,V.cy+(sy-.5)/V.z];
 function applyView(x){x.setTransform(V.z,0,0,V.z,D*(.5-V.cx*V.z),D*(.5-V.cy*V.z))}
 
 /* ---------- image sources: phone (peer link), demo, files ---------- */
-const SRC={kind:stored('vs1-src')||'demo',demo:null,demoT:null,demoSeed:1};
+const SRC={kind:['phone','demo','file'].includes(stored('vs1-src'))?stored('vs1-src'):'demo',demo:null,demoT:null,demoSeed:1};
 function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function grey(v){v=Math.max(0,Math.min(255,Math.round(v)));return`rgb(${v},${v},${v+4})`}
 function samplePart(seed,defect,S=1280,mx=0,my=0){
@@ -919,7 +951,6 @@ function liveSrc(){
   return null;
 }
 function grab(){ // one full-resolution picture from the source, with the program's camera zoom
-  if(SRC.kind==='play')return playNext();
   if(SRC.kind==='demo')return Promise.resolve(makeFrame(SRC.demo));
   if(SRC.kind==='file')return new Promise(ok=>{const f=$('fileIn');f.value='';f.onchange=async()=>{const file=f.files[0];if(!file)return ok(null);try{ok(makeFrame(await createImageBitmap(file)))}catch(e){ok(null)}};f.click()});
   if(!(L.conn&&L.conn.open&&L.camOn)){flashMsg('No live image: connect the phone (Image source) and start its camera.');return Promise.resolve(null)}
@@ -989,22 +1020,21 @@ function record(r,dt){ // history for the histograms, and the processing time
   const push=(id,v)=>{const h=U.hist[id]||(U.hist[id]=[]);h.push(v);if(h.length>2000)h.shift()};
   for(const x of r.res)push(x.id,x.score);
   for(const m of r.meas)push(m.id,m.found?m.value:null);
-  const rt=refTool();if(rt&&!r.pos.none)push(rt.id,r.pos.score*100);
+  const rt=refTool();if(rt&&!r.pos.none)push(rt.id,Math.round(r.pos.score*100));
   U.times.push(dt);if(U.times.length>2000)U.times.shift();
 }
 async function trigger(){
-  if(!P||!P.valid||FT.run||TF.run)return;
+  if(!P||!P.valid||FT.run||LB.run)return;
   const f=await grab();if(!f)return;if(learning)await learning;
   const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
   r.ng?U.c.ng++:U.c.ok++;if(r.marg)U.c.marg=(U.c.marg||0)+1;record(r,dt);
   U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false};
-  if(f.meta){U.last.meta={...f.meta};if(f.meta.expect){const ag=(f.meta.expect==='ng')===!!r.ng;ag?SRC.play.agree++:SRC.play.disagree++;U.last.meta.agree=ag}}
   U.mode='result';U.view=null;flash();if(r.ng&&navigator.vibrate)navigator.vibrate(150);render();
 }
 const CONFLICT=20; // teaching against the sensor by this much asks for a confirmation
 async function learnLast(force){
   const l=U.last;if(!l||l.learned)return;
-  if(FT.run||TF.run){flashMsg('Wait for the folder test or the folder teaching to finish (or stop it) before teaching.');return}
+  if(FT.run||LB.run){flashMsg('Wait for the folder test or the learning from folders to finish (or stop it) before teaching.');return}
   if(force!==true){ // a label far from what the sensor sees is often a teaching mistake: ask first
     const w=l.r.res.filter(r=>{const lab=l.labels[r.id];return lab==='ok'&&r.score<=r.limit-CONFLICT||lab==='ng'&&r.score>=r.limit+CONFLICT});
     if(w.length){l.warn=w.map(r=>({name:r.name,score:r.score,limit:r.limit,lab:l.labels[r.id]}));render();return}}
@@ -1035,8 +1065,8 @@ function demoShot(move){ // the demo part again: fresh camera noise, and a small
 }
 async function repStart(){
   if(REP.run){REP.run=false;render();return} // second press: stop
-  if(!P||!P.valid||FT.run||TF.run)return;
-  if(SRC.kind==='file'||SRC.kind==='play'){flashMsg('The repeatability test needs a live picture of the same part: use the phone camera or the demo camera.');return}
+  if(!P||!P.valid||FT.run||LB.run)return;
+  if(SRC.kind==='file'){flashMsg('The repeatability test needs a live picture of the same part: use the phone camera or the demo camera.');return}
   stopRun();
   Object.assign(REP,{run:true,shots:[],i:0,n:+$('repN').value||20,move:$('repMove').checked,res:null});
   const demo=SRC.kind==='demo';if(demo)clearInterval(SRC.demoT);
@@ -1085,20 +1115,23 @@ function stopRun(){if(U.timer){clearInterval(U.timer);U.timer=null}}
 function toggleRun(){if(U.timer){stopRun();render();return}if(!P||!P.valid)return;U.timer=setInterval(trigger,(U.period||3)*1000);trigger()}
 function flash(){document.querySelector('.screen').animate([{filter:'brightness(1.8)'},{filter:'none'}],{duration:180})}
 function setCam(k,v){P.cam[k]=v;sendCam();save();render()}
-function setPage(p){ // ⚙ PROGRAM (4 steps: image, master, tools, outputs) or ▶ RUN (inspect, statistics, teach)
-  U.page=p;store('vs1-page',p);if(p!=='run')FT.run=false;
+function setPage(p){ // ⚙ PROGRAM (5 steps: image, master, tools, learn, outputs) or ▶ RUN (inspect, statistics, teach)
+  U.page=p;store('vs1-page',p);if(p!=='run')FT.run=false;else lbStop(); // leaving a page stops what runs on it
   if(p==='run'){if(U.mode==='edit'||U.mode==='cand'||U.mode==='master'){U.mode='live';U.cand=null}U.only=null;U.drag=null;resetView();render()}
   else{stopRun();setStep(U.step||(P&&P.ref?3:1))}
 }
-function setStep(n){ // what the image shows follows the step: live to frame, master, tools to edit, master with outputs
-  n=Math.max(1,Math.min(4,n||1));while(n>1&&!stepOk(n))n--;
+function setStep(n){ // what the image shows follows the step: live to frame, master, tools to edit, learned pictures, master with outputs
+  if(LB.run)return; // the steps stay put while folders are learned
+  n=Math.max(1,Math.min(5,n||1));while(n>1&&!stepOk(n))n--;
   U.step=n;stopRun();U.only=null;U.drag=null;$('addMenu').hidden=true;
-  if(n===2)U.mode=U.cand?'cand':'live';else if(n===3)U.mode='edit';else if(n===4)U.mode='master';else U.mode='live';
+  if(n===2)U.mode=U.cand?'cand':'live';else if(n===3)U.mode='edit';
+  else if(n===4)U.mode=U.last&&U.last.meta&&U.last.meta.learn?'result':'master';else if(n===5)U.mode='master';else U.mode='live';
   resetView();render();
 }
 function stepNext(){
   const n=(U.step||1)+1;
   if(!stepOk(n)){flashMsg(n===3?'Register the master image first (press 📷 Register master).':'Add at least one area or measure first (＋ Add tool).');return}
+  if(LB.run)return;
   setStep(n);
 }
 function stepBack(){setStep((U.step||1)-1)}
@@ -1217,7 +1250,7 @@ function drawScreen(ts){
     else idle('CAMERA OFF','—','Press Start camera','');
     return;
   }
-  applyView(x);
+  applyView(x);$('imgName').title='';
   const fin=()=>x.setTransform(1,0,0,1,0,0);
   if(!P){fin();idle('NO PROGRAM');return}
   if(U.mode==='cand'&&U.cand){x.drawImage(U.cand.full,0,0,D,D);fin();idle('REFERENCE?','candidate · '+U.cand.size+' px','Is this image good?','Valid or retake');return}
@@ -1236,9 +1269,11 @@ function drawScreen(ts){
     drawAreas(x,null,false);fin();
     idle('LEARNED IMAGE','learned picture',checks().map(a=>`${a.name} ${s.labels[a.id]==='ng'?'NG':s.labels[a.id]==='ok'?'OK':'—'}`).join(' · '),'');return}
   if(U.mode==='result'&&U.last){x.drawImage(U.last.frame.full,0,0,D,D);if(U.heat)heat(x,U.last.r);drawAreas(x,U.last.r,false);fin();
-    const mt=U.last.meta;$('imgName').textContent=(mt?`${mt.idx}/${mt.n} · ${mt.path.split('/').slice(-2).join('/')}`+(mt.expect?(mt.agree?` · ✓ folder: ${mt.expect.toUpperCase()}`:` · ✗ folder says ${mt.expect.toUpperCase()}`):''):'triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`)+(U.last.learned?' · learned':'');readout(U.last.r,false);return}
+    const mt=U.last.meta,nm=$('imgName');
+    nm.textContent=(mt?`${mt.idx}/${mt.n} · ${shortPath(mt.path)}`+(mt.expect?(mt.agree?` · ✓ folder: ${mt.expect.toUpperCase()}`:` · ✗ folder says ${mt.expect.toUpperCase()}`):'')+(mt.note?` · ${mt.note}`:''):
+      'triggered '+new Date(U.last.ts).toLocaleTimeString()+` · ${U.last.frame.size} px`)+(U.last.learned&&!(mt&&mt.learn)?' · learned':'');
+    nm.title=mt?mt.path:'';readout(U.last.r,false);return}
   const src=liveSrc();
-  if(!src&&SRC.kind==='play'){const pl=SRC.play;fin();idle('PLAYBACK',pl.items.length?`${pl.i}/${pl.items.length} pictures played`:'no folder chosen',pl.items.length?(pl.i>=pl.items.length?'End of the folder: ↺ Restart':'Press Trigger or ▶ Auto'):'Choose it in ⚙ PROGRAM → 1 Image','');return}
   if(!src){fin();idle(SRC.kind==='file'?'FILES':'NO LIVE IMAGE',SRC.kind==='phone'?'phone not connected':'—',SRC.kind==='file'?'Trigger opens a file':'Connect the phone',SRC.kind==='phone'?'and start its camera':'');return}
   drawSrc(x,src);
   if(P.valid&&P.ref&&!learning){if(!ts||ts-U.lastLive>400||!U.live){U.lastLive=ts||0;U.live=inspect(makeFrame(src,900));if(U.page==='run')renderRun()}
@@ -1249,14 +1284,14 @@ function loop(ts){requestAnimationFrame(loop);if(L.role==='cam'||(U.mode==='live
 
 /* ---------- panel rendering ---------- */
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
-function ask(text,{ok='OK',cancel='Cancel',input=null}={}){ // in-page dialog: browser pop-ups can be blocked inside claude.ai
+function ask(text,{ok='OK',cancel='Cancel',input=null,safe=false}={}){ // in-page dialog: browser pop-ups can be blocked inside claude.ai; safe: Cancel is the default button
   return new Promise(res=>{
     const bg=el('div','askbg'),bx=el('div','askbox');bx.setAttribute('role','dialog');bx.setAttribute('aria-modal','true');bx.append(el('p',null,text));
     let inp=null;if(input!=null){inp=document.createElement('input');inp.type='text';inp.value=input;inp.className='askin';inp.setAttribute('aria-label',text);bx.append(inp)}
-    const row=el('div','row'),b1=el('button','btn primary',ok),b2=el('button','btn',cancel);b1.type=b2.type='button';
+    const row=el('div','row'),b1=el('button',safe?'btn':'btn primary',ok),b2=el('button',safe?'btn primary':'btn',cancel);b1.type=b2.type='button';
     const done=v=>{bg.remove();res(v)};b1.onclick=()=>done(inp?inp.value:true);b2.onclick=()=>done(null);
     bg.addEventListener('keydown',e=>{if(e.key==='Escape')done(null);else if(e.key==='Enter'&&inp)done(inp.value)});
-    row.append(b1,b2);bx.append(row);bg.append(bx);document.body.append(bg);(inp||b1).focus();
+    row.append(b1,b2);bx.append(row);bg.append(bx);document.body.append(bg);(inp||(safe?b2:b1)).focus();
   });
 }
 function sliderRow(label,min,max,step,val,fmt,onInput,extra){
@@ -1429,16 +1464,17 @@ function renderTools3(R){ // PROGRAM step 3: the same lines, selecting the tool 
 const STEPS={1:{t:'Image',h:'Choose the camera and frame the part. The camera zoom and position are saved in the program.'},
   2:{t:'Master',h:'Put one good part in its exact position and register it as the master image: everything else is set on it.'},
   3:{t:'Tools',h:'Add inspection tools on the master image, place them and set their limits. Select a tool in the list to change it.'},
-  4:{t:'Outputs',h:'Choose what the two outputs signal, then finish: the program goes to RUN.'}};
-const stepDone=n=>!P?false:n===1?true:n===2?!!P.ref:n===3?!!(P.ref&&(checks().length||measures().length)):!!P.valid;
+  4:{t:'Learn',h:'Teach the areas with folders of good (OK) and defective (NG) pictures: each one is triggered, judged, then learned. Optional: you can go on to step 5.'},
+  5:{t:'Outputs',h:'Choose what the two outputs signal, then finish: the program goes to RUN.'}};
+const stepDone=n=>!P?false:n===1?true:n===2?!!P.ref:n===3?!!(P.ref&&(checks().length||measures().length)):n===4?P.samples.length>0:!!P.valid;
 const stepOk=n=>n<=2||(n===3?!!(P&&P.ref):!!(P&&P.ref&&(checks().length||measures().length)));
 function renderSteps(){
   let st=U.step||1;while(st>1&&!stepOk(st))st--;U.step=st;
   $('progPanel').dataset.step=st;
-  for(let n=1;n<=4;n++){const b=$('st'+n);b.setAttribute('aria-current',n===st?'step':'false');b.disabled=!stepOk(n);b.classList.toggle('done',stepDone(n))}
+  for(let n=1;n<=5;n++){const b=$('st'+n);b.setAttribute('aria-current',n===st?'step':'false');b.disabled=!stepOk(n)||LB.run;b.classList.toggle('done',stepDone(n))}
   $('pStepNo').textContent=`STEP ${st}`;$('pStepTitle').textContent=STEPS[st].t;$('pStepHint').textContent=STEPS[st].h;
-  $('stepBack').disabled=st<=1;$('stepNext').hidden=st>=4;
-  $('stepNext').textContent=['','Next: master ▶','Next: tools ▶','Next: outputs ▶'][st]||'Next ▶';
+  $('stepBack').disabled=st<=1||LB.run;$('stepNext').hidden=st>=5;$('stepNext').disabled=LB.run;
+  $('stepNext').textContent=['','Next: master ▶','Next: tools ▶','Next: learn ▶',P&&P.samples.length?'Next: outputs ▶':'Skip · outputs ▶'][st]||'Next ▶';
 }
 const outSel=k=>(P&&P.out&&P.out[k])||(k==='o1'?'ok':'ng');
 function outName(v){if(v==='ok')return'OK';if(v==='ng')return'NG';if(v==='marg')return'⚠ marginal';if(v==='none')return'—';
@@ -1461,7 +1497,7 @@ function histSpec(a){ // range, OK test and limit lines of the selected tool's h
     else{lo=0;hi=1}
     return{lo,hi,band,ok:v=>v!=null&&(a.nom==null||Math.abs(v-a.nom)<=mTol(a)),fmt:v=>fmtLen(v)}}
   const lim=a.type==='ref'?(a.minScore||60):limOf(a);
-  return{lo:0,hi:100,lim,ok:v=>v!=null&&v>=lim,fmt:v=>String(Math.round(v))};
+  return{lo:0,hi:100,lim,ok:v=>v!=null&&Math.round(v)>=lim,fmt:v=>String(Math.round(v))};
 }
 function drawHist(){
   const c=$('histC'),a=histTool();if(!c||U.page!=='run'||!P||!P.valid)return;
@@ -1472,23 +1508,24 @@ function drawHist(){
   if(!a){$('histTitle').textContent='—';$('histStats').textContent='';return}
   $('histTitle').textContent=`${tNum(a)} · ${a.name} — results since the last reset`;
   const vals=U.hist[a.id]||[],sp=histSpec(a),okC=cssv('--ok'),ngC=cssv('--ng'),fg=cssv('--fg'),mu=cssv('--muted');
-  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-sp.lo)/(sp.hi-sp.lo)*pw;
+  const sc=a.type!=='measure',x0=sc?-.5:sp.lo,x1=sc?100.5:sp.hi; // scores: one bar per point, 0 … 100
+  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-x0)/(x1-x0)*pw,LX=sc&&sp.lim!=null?X(sp.lim-.5):null;
   // zones: red = NG, green = OK
-  const zone=(v0,v1,col)=>{const a0=Math.max(sp.lo,v0),a1=Math.min(sp.hi,v1);if(a1>a0){x.fillStyle=col;x.fillRect(X(a0),pt,X(a1)-X(a0),ph)}};
+  const zone=(v0,v1,col)=>{const a0=Math.max(x0,v0),a1=Math.min(x1,v1);if(a1>a0){x.fillStyle=col;x.fillRect(X(a0),pt,X(a1)-X(a0),ph)}};
   x.globalAlpha=.16;
-  if(sp.band){zone(sp.lo,sp.band[0],ngC);zone(sp.band[0],sp.band[1],okC);zone(sp.band[1],sp.hi,ngC)}
-  else if(sp.lim!=null){zone(sp.lo,sp.lim,ngC);zone(sp.lim,sp.hi,okC)}
-  else zone(sp.lo,sp.hi,okC);
+  if(sp.band){zone(x0,sp.band[0],ngC);zone(sp.band[0],sp.band[1],okC);zone(sp.band[1],x1,ngC)}
+  else if(sp.lim!=null){zone(x0,sp.lim-.5,ngC);zone(sp.lim-.5,x1,okC)}
+  else zone(x0,x1,okC);
   x.globalAlpha=1;
   // bars: green part = OK results, red part = NG results
-  const NB=20,n=new Array(NB).fill(0),nok=new Array(NB).fill(0);let miss=0;
-  for(const v of vals){if(v==null){miss++;continue}const i=Math.min(NB-1,Math.max(0,Math.floor((v-sp.lo)/(sp.hi-sp.lo)*NB)));n[i]++;if(sp.ok(v))nok[i]++}
-  const mx=Math.max(1,...n),bw=pw/NB;
-  for(let i=0;i<NB;i++){if(!n[i])continue;const h=n[i]/mx*ph,ho=nok[i]/mx*ph;
-    x.fillStyle=ngC;x.fillRect(pl+i*bw+1,pt+ph-h,Math.max(1,bw-2),h-ho);x.fillStyle=okC;x.fillRect(pl+i*bw+1,pt+ph-ho,Math.max(1,bw-2),ho)}
+  const NB=sc?101:100,n=new Array(NB).fill(0),nok=new Array(NB).fill(0);let miss=0;
+  for(const v of vals){if(v==null){miss++;continue}const i=Math.min(NB-1,Math.max(0,sc?Math.round(v):Math.floor((v-sp.lo)/(sp.hi-sp.lo)*NB)));n[i]++;if(sp.ok(v))nok[i]++}
+  const mx=Math.max(1,...n),bw=pw/NB,w=bw>=3?bw-1:bw; // thin bars, one per value band
+  for(let i=0;i<NB;i++){if(!n[i])continue;const h=Math.max(2,n[i]/mx*ph),ho=nok[i]?Math.max(2,nok[i]/mx*ph):0,bx=pl+i*bw;
+    x.fillStyle=ngC;x.fillRect(bx,pt+ph-h,w,h-ho);x.fillStyle=okC;x.fillRect(bx,pt+ph-ho,w,ho)}
   // limit: solid line; tolerance: dashed lines
   x.strokeStyle=fg;x.lineWidth=2;
-  if(sp.lim!=null){x.beginPath();x.moveTo(X(sp.lim),pt-4);x.lineTo(X(sp.lim),pt+ph);x.stroke()}
+  if(LX!=null){x.beginPath();x.moveTo(LX,pt-4);x.lineTo(LX,pt+ph);x.stroke()}
   if(sp.band){x.setLineDash([4,3]);for(const v of sp.band){x.beginPath();x.moveTo(X(v),pt-4);x.lineTo(X(v),pt+ph);x.stroke()}x.setLineDash([])}
   // axes
   x.strokeStyle=mu;x.lineWidth=1;x.beginPath();x.moveTo(pl,pt+ph+.5);x.lineTo(pl+pw,pt+ph+.5);x.stroke();
@@ -1500,7 +1537,7 @@ function drawHist(){
   const nums=vals.filter(v=>v!=null),ok=vals.filter(sp.ok).length;
   $('histStats').textContent=vals.length?`${vals.length} trigger${vals.length>1?'s':''} · OK ${ok} · NG ${vals.length-ok}`+
     (nums.length?` · max ${sp.fmt(Math.max(...nums))} · min ${sp.fmt(Math.min(...nums))} · avg ${sp.fmt(nums.reduce((s,v)=>s+v,0)/nums.length)}`:'')+(miss?` · no edges ${miss}`:'')+
-    (nums.length&&sp.lim!=null?` · closest to the limit: ${Math.round(Math.min(...nums.map(v=>Math.abs(v-sp.lim))))} points`:'')+
+    (nums.length&&sp.lim!=null?((c=>` · closest to the limit: ${c} point${c===1?'':'s'}`)(Math.round(Math.min(...nums.map(v=>Math.abs(v-sp.lim)))))):'')+
     (nums.length&&sp.band?` · closest to a tolerance edge: ${fmtLen(Math.min(...nums.map(v=>Math.min(Math.abs(v-sp.band[0]),Math.abs(v-sp.band[1])))))}`:''):'No trigger yet for this tool.';
 }
 function renderHistLim(){ // "limit adjustment" for the selected tool, right under its histogram
@@ -1516,24 +1553,23 @@ function render(){
   if(L.role==='cam'){$('srcStat').textContent=C.stream?'This phone camera':'Camera off';$('progStat').textContent='VS-1 camera';$('modeTag').textContent='CAMERA';drawScreen();return}
   const mb=$('msgBox');mb.hidden=!U.msg;mb.textContent=U.msg||'';
   // step 1: image source and camera zoom
-  for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile'],['play','srcPlay']])$(id).setAttribute('aria-pressed',SRC.kind===k);
-  $('phoneRow').hidden=SRC.kind!=='phone';$('playRow').hidden=SRC.kind!=='play';
+  for(const[k,id]of[['phone','srcPhone'],['demo','srcDemo'],['file','srcFile']])$(id).setAttribute('aria-pressed',SRC.kind===k);
+  $('phoneRow').hidden=SRC.kind!=='phone';
   const ss=$('srcState'),sh=$('srcHint');
   if(SRC.kind==='phone'){const on=L.conn&&L.conn.open;ss.className='state'+(on&&L.camOn?' good':' warn');ss.textContent=on?(L.camOn?'Live':'Camera off on phone'):'Not connected';
     sh.textContent=L.kind==='peer'?'Open this page on the phone, choose 📱 Camera, start the camera and type its code here.':'The phone link needs the page opened directly (GitHub Pages), not inside claude.ai. Use the demo camera or files here.'}
   else if(SRC.kind==='demo'){ss.className='state good';ss.textContent='Simulated';sh.textContent='A simulated camera (1280 px): a new part arrives every 2.5 s, slightly shifted, about 1 in 3 with a defect. Use it to try the whole flow without the phone.'}
-  else if(SRC.kind==='play'){const pl=SRC.play;ss.className='state'+(pl.items.length?' good':' warn');ss.textContent=pl.items.length?`${pl.items.length} pictures`:'No folder';
-    sh.textContent='Each Trigger takes the next picture of the folder, like parts arriving on a line; ▶ Auto in RUN plays them every few seconds. After a page reload, choose the folder again.'}
   else{ss.className='state';ss.textContent='Files';sh.textContent='No live view: each Trigger or Register master asks you for an image file.'}
-  $('srcStat').textContent=({phone:'Phone camera',demo:'Demo camera',file:'Image files',play:'Folder playback'}[SRC.kind]||'')+(SRC.kind==='play'&&SRC.play.items.length?` ${SRC.play.i}/${SRC.play.items.length}`:'')+(P&&P.ref?` · ${P.ref.size} px`:'');
+  $('srcStat').textContent=({phone:'Phone camera',demo:'Demo camera',file:'Image files'}[SRC.kind]||'')+(P&&P.ref?` · ${P.ref.size} px`:'');
   const cam=P?P.cam:{zoom:1,ox:0,oy:0},locked=!!(P&&P.ref);
   $('zoomIn').value=cam.zoom;$('zoomOut').textContent='×'+(+cam.zoom).toFixed(1);$('panX').value=cam.ox;$('panY').value=cam.oy;
   $('zoomIn').disabled=$('panX').disabled=$('panY').disabled=locked;$('panRow').hidden=cam.zoom<=1.01;
   $('zoomLock').hidden=!locked;$('zoomLockTxt').textContent=`Zoom ×${(+cam.zoom).toFixed(1)} is locked by the master image.`;
   // program
-  if(document.activeElement!==$('progName'))$('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P;
+  if(document.activeElement!==$('progName'))$('progName').value=P?P.name:'';$('progName').disabled=!P;$('delBtn').disabled=!P||LB.run;
+  $('progSel').disabled=$('newBtn').disabled=LB.run; // the program stays the same while folders are learned
   $('progStat').textContent=P?`P${String(P.id).padStart(2,'0')} · ${P.name}`:'—';
-  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=learning?'Learning…':P?(P.valid?'Finished':'Not finished'):'—';
+  $('progState').className='state'+(P&&P.valid?' good':P?' warn':'');$('progState').textContent=learning||LB.run?'Learning…':P?(P.valid?'Finished':'Not finished'):'—';
   // step 2: master image
   $('refStep').classList.toggle('locked',!P);
   const rb=$('refBox');rb.innerHTML='';
@@ -1553,15 +1589,14 @@ function render(){
   $('editBtn').classList.toggle('on',!!(U.only&&sa&&U.only===sa.id));$('addBtn').disabled=!(P&&P.ref);
   $('doneBtn').hidden=!U.only||U.mode!=='edit';
   $('addRef').textContent=refTool()?'⌖ Position reference (edit)':'⌖ Position reference';
-  // step 4: outputs
-  renderOutputs();
+  // step 4: learn from folders · step 5: outputs
+  renderLearn();renderOutputs();
   $('validBtn').disabled=!(P&&P.ref&&(checks().length||measures().length));$('validBtn').textContent=P&&P.valid?'✔ Finished · go to RUN':'✔ Finish · go to RUN';
   renderSteps();
   // RUN
   const ok=!!(P&&P.valid);
   $('runHint').hidden=ok;$('toolList').hidden=$('histo').hidden=!ok;$('trigBtn').disabled=$('runBtn').disabled=!ok;
   $('runBtn').textContent=U.timer?'■ Stop auto':`▶ Auto every ${U.period||3} s`;$('runPer').value=String(U.period||3);
-  $('playBar').hidden=SRC.kind!=='play';$('playTxt').textContent=playTxt();$('playOrder').value=SRC.play.order;
   $('modeTag').textContent=U.timer?'RUN':ok?'READY':'SETUP';$('modeTag').classList.toggle('run',!!U.timer);
   $('runState').className='state'+(ok?' good':' warn');$('runState').textContent=ok?(U.timer?'Running':'Ready'):'Not finished';
   $('runStep').dataset.rt=U.rtab||'hist';
@@ -1616,7 +1651,7 @@ function render(){
   else{$('cTime').textContent='—';$('cTimeS').textContent='max · min · avg'}
   $('sbZoom').textContent=P?`Camera zoom ×${(+P.cam.zoom).toFixed(1)}`:'';
   $('sbLearn').textContent=P?`${P.areas.length} tool${P.areas.length===1?'':'s'} · ${P.samples.length} learned image${P.samples.length===1?'':'s'}`+(P.scale?` · 1 px = ${(P.scale*1000).toFixed(1)} µm`:''):'';
-  renderRep();renderFT();renderTF();
+  renderRep();renderFT();
   $('liveBtn').disabled=U.mode==='live';$('vzVal').textContent='×'+V.z.toFixed(1);
   drawScreen();
   if(ok&&(U.rtab||'hist')==='hist')drawHist();
@@ -1669,16 +1704,19 @@ function toolOk(a,v){ // OK / NG of one tool value with today's limits (null: th
 }
 function toolMarg(a,v){if(!a||v==null)return false;if(a.type==='measure')return measMarg(a,{found:true,value:v});return Math.abs(v-toolLim(a))<BAND}
 const ftOk=it=>it.tools.every(t=>toolOk(P.areas.find(a=>a.id===t.id),t.v)!==false);
-async function ftStart(list){
-  if(FT.run||TF.run)return;
-  if(!P||!P.valid){flashMsg('Finish the program first: ⚙ PROGRAM → step 4 → Finish.');return}
+async function ftStart(list){ // every picture triggered in turn, like parts on a line: shown, judged, compared with the folder name
+  if(FT.run||LB.run)return;
+  if(!P||!P.valid){flashMsg('Finish the program first: ⚙ PROGRAM → step 5 → Finish.');return}
   const items=ftCollect(list);
   if(!items.length){flashMsg('No pictures found (PNG, JPG, BMP or WebP). Defect masks in "ground_truth" or "mask" folders are skipped.');return}
   stopRun();REP.run=false;
-  const exp=$('ftExp').value;
+  const exp=$('ftExp').value,alive=()=>FT.run;
   Object.assign(FT,{run:true,items:[],done:0,total:items.length,t0:performance.now(),res:null,lastShow:0,cur:'',stamp:{id:P.id,n:P.samples.length}});
   U.rtab='folder';render();
-  for(const it of items){
+  for(const[k,it]of items.entries()){
+    if(!FT.run)break;
+    const T=(+$('ftPer').value||0)*1000;
+    if(k>0){if(T)await pause(T,alive);else await sleep(0)}
     if(!FT.run)break;
     FT.cur=it.path;
     let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){FT.items.push({path:it.path,file:it.file,err:true,tools:[]});FT.done++;continue}
@@ -1691,15 +1729,15 @@ async function ftStart(list){
     item.ok=ftOk(item);
     if(expect&&expect!==(item.ok?'ok':'ng'))item.thumb=thumbOf(f.full,96,.7);
     FT.items.push(item);FT.done++;
+    U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false,test:true,ft:it.path,
+      meta:{idx:k+1,n:items.length,path:it.path,expect,agree:expect?expect===(item.ok?'ok':'ng'):null,note:known?'the same as a taught picture: not counted':''}};
+    U.mode='result';U.view=null;
     const now=performance.now();
-    if(now-FT.lastShow>500){FT.lastShow=now;
-      U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false,test:true,ft:it.path};U.mode='result';render()}
-    else ftProgress();
-    await sleep(0);
+    if(T||now-FT.lastShow>250){FT.lastShow=now;if(T)flash();render()}else{drawScreen();ftProgress()} // "fast": the panel follows a few times a second
   }
   FT.run=false;FT.res=true;render();
   const s=ftStats();
-  flashMsg(`Folder test finished: ${s.total} picture${s.total===1?'':'s'}`+(s.n?`, ${Math.round(s.acc*100)} % judged right on the ${s.n} with a label from the folder names.`:'.'));
+  flashMsg(`Folder test ${FT.done<FT.total?'stopped':'finished'}: ${s.total} picture${s.total===1?'':'s'}`+(s.n?`, ${Math.round(s.acc*100)} % judged right on the ${s.n} with a label from the folder names.`:'.'));
 }
 function ftStats(){ // counts with today's limits
   const it=FT.items.filter(x=>!x.err),use=it.filter(x=>!x.known);
@@ -1739,7 +1777,7 @@ async function ftOpen(item,teach){ // show one tested picture on the screen (and
 }
 function ftProgress(){
   const p=$('ftProg');if(!p)return;p.hidden=!FT.run;
-  if(FT.run){$('ftBar').style.width=(FT.total?FT.done/FT.total*100:0)+'%';$('ftState').className='state';$('ftState').textContent=`${FT.done}/${FT.total}`}
+  if(FT.run){$('ftBar').style.width=(FT.total?FT.done/FT.total*100:0)+'%';$('rtFolder').textContent=`Test a folder ${FT.done}/${FT.total}`}
 }
 function ftDraw(a){ // scores of the tested pictures for one tool: green = good folders, red = defect folders, grey = no label
   const c=$('ftC');if(!c||!a)return;const W=c.clientWidth;if(!W)return;
@@ -1753,13 +1791,15 @@ function ftDraw(a){ // scores of the tested pictures for one tool: green = good 
     else if(vs.length){lo=Math.min(...vs);hi=Math.max(...vs);const p=(hi-lo)*.1||1;lo-=p;hi+=p}}
   else lim=toolLim(a);
   const okC=cssv('--ok'),ngC=cssv('--ng'),fg=cssv('--fg'),mu=cssv('--muted');
-  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-lo)/(hi-lo||1)*pw;
-  const NB=25,b={ok:new Array(NB).fill(0),ng:new Array(NB).fill(0),un:new Array(NB).fill(0)};
-  for(const p of pts){const i=Math.min(NB-1,Math.max(0,Math.floor((p.v-lo)/(hi-lo||1)*NB)));b[p.e==='ok'?'ok':p.e==='ng'?'ng':'un'][i]++}
-  const mx=Math.max(1,...b.ok,...b.ng,...b.un),bw=pw/NB,sw=Math.max(1,(bw-2)/3);
-  for(let i=0;i<NB;i++)[['ok',okC],['ng',ngC],['un',mu]].forEach(([k,col],j)=>{const n=b[k][i];if(!n)return;const h=n/mx*ph;x.fillStyle=col;x.fillRect(pl+i*bw+1+j*sw,pt+ph-h,sw,h)});
+  const sc=a.type!=='measure',x0=sc?-.5:lo,x1=sc?100.5:hi; // scores: one bar per point, 0 … 100
+  const pl=30,pr=12,pt=10,pb=22,pw=W-pl-pr,ph=H-pt-pb,X=v=>pl+(v-x0)/(x1-x0||1)*pw;
+  const NB=sc?101:100,b={ok:new Array(NB).fill(0),ng:new Array(NB).fill(0),un:new Array(NB).fill(0)};
+  for(const p of pts){const i=Math.min(NB-1,Math.max(0,sc?Math.round(p.v):Math.floor((p.v-lo)/(hi-lo||1)*NB)));b[p.e==='ok'?'ok':p.e==='ng'?'ng':'un'][i]++}
+  const tot=b.ok.map((v,i)=>v+b.ng[i]+b.un[i]),mx=Math.max(1,...tot),bw=pw/NB,w=bw>=3?bw-1:bw;
+  for(let i=0;i<NB;i++){if(!tot[i])continue;let y=pt+ph; // stacked: good folders, defect folders, no label
+    for(const[k,col]of[['ok',okC],['ng',ngC],['un',mu]]){const n=b[k][i];if(!n)continue;const h=Math.max(2,n/mx*ph);x.fillStyle=col;x.fillRect(pl+i*bw,y-h,w,h);y-=h}}
   x.strokeStyle=fg;x.lineWidth=2;
-  if(lim!=null){x.beginPath();x.moveTo(X(lim),pt-4);x.lineTo(X(lim),pt+ph);x.stroke()}
+  if(lim!=null){const lx=X(lim-.5);x.beginPath();x.moveTo(lx,pt-4);x.lineTo(lx,pt+ph);x.stroke()}
   if(band){x.setLineDash([4,3]);for(const v of band){x.beginPath();x.moveTo(X(v),pt-4);x.lineTo(X(v),pt+ph);x.stroke()}x.setLineDash([])}
   x.strokeStyle=mu;x.lineWidth=1;x.beginPath();x.moveTo(pl,pt+ph+.5);x.lineTo(pl+pw,pt+ph+.5);x.stroke();
   x.fillStyle=mu;x.font='11px "IBM Plex Mono",ui-monospace,monospace';x.textBaseline='top';
@@ -1771,13 +1811,13 @@ function renderFT(){
   const out=$('ftOut'),st=$('ftState');if(!out)return;
   if(FT.stamp&&P&&FT.stamp.id!==P.id&&!FT.run){FT.res=null;FT.items=[];FT.stamp=null}
   const ok=!!(P&&P.valid);
-  $('ftStop').hidden=!FT.run;$('ftDir').disabled=$('ftFiles').disabled=FT.run||!ok;$('ftExp').disabled=FT.run;
+  $('ftStop').hidden=!FT.run;$('ftDir').disabled=$('ftFiles').disabled=FT.run||LB.run||!ok;$('ftExp').disabled=FT.run;
   $('rtFolder').textContent='Test a folder'+(FT.run?` ${FT.done}/${FT.total}`:'');
   ftProgress();out.innerHTML='';$('ftMist').innerHTML='';
-  if(FT.run){$('ftHistBox').hidden=true;out.append(el('p','hint',`Picture ${Math.min(FT.done+1,FT.total)} of ${FT.total}: ${FT.cur}`));return}
-  if(!FT.res){$('ftHistBox').hidden=true;st.className='state';st.textContent='—';return}
+  if(!FT.res&&!FT.run){$('ftHistBox').hidden=true;st.className='state';st.textContent='—';return}
+  if(FT.run){const p=el('p','hint lnow',`Picture ${FT.done} of ${FT.total}: ${FT.cur}`);out.append(p)}
   const s=ftStats(),c=s.c;
-  st.className='state'+(s.n?(c.ngok?' warn':c.okng?'':' good'):'');st.textContent=s.n?`${Math.round(s.acc*100)} % right`:`${s.total} tested`;
+  st.className='state'+(s.n?(c.ngok?' warn':c.okng?'':' good'):'');st.textContent=(FT.run?`${FT.done}/${FT.total}`+(s.n?' · ':''):'')+(s.n?`${Math.round(s.acc*100)} % right`:FT.run?'':`${s.total} tested`);
   const card=(n,txt,cls)=>{const d=el('div','ftc'+(cls?' '+cls:''));d.append(el('b',null,n),el('span',null,txt));return d};
   if(s.n){const g=el('div','ftgrid');
     g.append(card(`${c.okok}/${c.okok+c.okng}`,'good parts accepted'),card(String(c.okng),'good parts rejected (false alarms)',c.okng?'warn':''),
@@ -1801,7 +1841,7 @@ function renderFT(){
   const a=tools.find(t=>t.id===FT.tool);
   $('ftLegend').textContent='green: pictures from good folders · red: from defect folders · grey: no label · line: limit (dashed: tolerance)';
   const bb=$('ftBest');bb.innerHTML='';
-  if(a&&a.type!=='measure'){const best=ftBest(a);
+  if(a&&a.type!=='measure'&&!FT.run){const best=ftBest(a);
     if(best){const row=el('div','row');
       row.append(el('span','stats',`If ${a.name} alone decided: limit ${best.lo===best.hi?best.L:`${best.lo}–${best.hi} (middle ${best.L})`} judges ${Math.round(best.acc*100)} % of ${best.n} labelled pictures right.`));
       if(best.L!==toolLim(a)){const u=el('button','btn small',`Use ${best.L}`);u.type='button';u.title='Set this limit; it is tuned on this folder only, check it on other pictures too';
@@ -1819,120 +1859,213 @@ function renderFT(){
       row.append(im,nm,b1,b2);box.append(row)}
     if(mist.length>40)box.append(el('p','hint',`… and ${mist.length-40} more.`))}
 }
-/* ---------- teach a folder as good: look at every picture, keep a representative selection per area ---------- */
-const TF={run:false,phase:'',done:0,total:0,out:null};
-const TF_KEEP=50; // at most this many good examples per area (learning time grows with the square of the examples)
+/* ---------- PROGRAM step 4 · Learn: folders of OK and NG pictures, each one triggered like a part, judged, then learned ---------- */
+U.period=+stored('vs1-per')||3;
+const LB_KEEP=50; // at most this many OK (and NG) examples per area: learning time grows with the square of the examples
+const LB={run:false,queue:[],cur:null,log:[],prog:null,loop:null};
+function lbStop(){LB.run=false;LB.queue=[]} // what was learned so far is kept
+const shortPath=p=>p.split('/').slice(-2).join('/');
+const okCount=a=>P?P.samples.filter(s=>s.labels[a.id]==='ok').length:0;
+const ngCount=a=>P?P.samples.filter(s=>s.labels[a.id]==='ng').length:0;
+const areaNames=ids=>ids.map(id=>{const a=P.areas.find(t=>t.id===id);return a?a.name:'?'}).join(', ');
+async function pause(ms,alive){const t=performance.now()+ms;while(alive()&&performance.now()<t)await sleep(Math.min(100,Math.max(1,t-performance.now())))}
+function newSampleId(){let id=Date.now();while(P.samples.some(s=>s.id===id))id++;return id}
 function small(g,gw,gh){ // a coarse copy (long side ≤ 48 points) used to compare many pictures quickly
   const k=Math.max(1,Math.ceil(Math.max(gw,gh)/48)),w=Math.ceil(gw/k),h=Math.ceil(gh/k),o=new Float32Array(w*h);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;
     for(let j=y*k;j<Math.min(gh,(y+1)*k);j++)for(let i=x*k;i<Math.min(gw,(x+1)*k);i++){s+=g[j*gw+i];n++}o[y*w+x]=s/n}
   return o;
 }
-function tfProgress(){
-  const p=$('tfProg');if(!p)return;p.hidden=!TF.run;
-  if(TF.run){$('tfBar').style.width=(TF.total?TF.done/TF.total*100:0)+'%';const o=$('tfOut');if(o&&o.firstChild)o.firstChild.textContent=`${TF.phase}… ${TF.done}/${TF.total}`}
+const lbPer=()=>{const s=$('lPer');return s?+s.value:3}; // seconds per picture, 0 = as fast as possible
+const lbAlive=()=>LB.run&&P===LB.prog;
+async function lbAdd(list,kind){ // a folder (or pictures) for OK or NG: it waits in line, OK folders before NG folders
+  if(!P||!P.ref||!checks().length){flashMsg('Register the master and add at least one area first (steps 2 and 3).');return}
+  if(FT.run||REP.run){flashMsg('Wait for the folder test or the repeatability test to finish first.');return}
+  const all=ftCollect(list),opp=kind==='ok'?'ng':'ok';
+  const items=all.filter(x=>ftLabel(x.path)!==opp),skipped=all.length-items.length;
+  if(!items.length){flashMsg(all.length?`All these pictures are in ${kind==='ok'?'defect':'good'} folders: choose a folder of ${kind==='ok'?'good':'defective'} pictures.`:
+    'No pictures found (PNG, JPG, BMP or WebP). Defect masks in "ground_truth" or "mask" folders are skipped.');return}
+  const roots=[...new Set(items.map(x=>x.path.includes('/')?x.path.split('/')[0]:''))],name=roots[0]?roots[0]+(roots.length>1?` + ${roots.length-1} more`:''):`${items.length} picture${items.length===1?'':'s'}`;
+  const b={pid:P.id,kind,name,items,skipped,n:items.length,i:0,prep:0,phase:'wait',learned:0,similar:0,odd:[],none:[],notFound:[],forced:0,full:0,err:0,measOnly:0,perArea:{}};
+  if(kind==='ok'){const k=LB.queue.findIndex(x=>x.kind==='ng');k<0?LB.queue.push(b):LB.queue.splice(k,0,b)}else LB.queue.push(b);
+  if(LB.run){flashMsg(`${kind.toUpperCase()} folder "${name}" (${items.length} pictures) waits in line.`);render();return}
+  if(LB.loop)await LB.loop; // after a Stop, the previous run finishes its picture first
+  if(!LB.run&&LB.queue.length)LB.loop=lbRun();
 }
-async function tfStart(list){
-  if(TF.run||FT.run||REP.run)return;
-  if(!P||!P.ref||!checks().length){flashMsg('Register the master and add at least one area first (⚙ PROGRAM, steps 2 and 3).');return}
-  let items=ftCollect(list);const skipped=items.filter(x=>ftLabel(x.path)==='ng').length;items=items.filter(x=>ftLabel(x.path)!=='ng');
-  if(!items.length){flashMsg(skipped?'All these pictures are in defect folders: choose a folder of good pictures.':'No pictures found in that folder.');return}
-  stopRun();
-  Object.assign(TF,{run:true,phase:'Reading the pictures',done:0,total:items.length,out:null});render();
+async function lbRun(){
+  if(LB.run)return;
+  LB.run=true;LB.prog=P;stopRun();REP.run=false;U.only=null;U.drag=null;resetView();render();
+  while(lbAlive()&&LB.queue.length){
+    const b=LB.queue.shift();LB.cur=b;b.phase='start';render();
+    if(learning)await learning;
+    if(b.kind==='ng'){ // NG learned on top of too few good pictures: normal differences would be taken for defects
+      const few=checks().filter(a=>okCount(a)<4);
+      if(few.length&&!await ask(`${few.map(a=>a.name).join(', ')} ${few.length===1?'knows':'know'} only ${Math.min(...few.map(okCount))} good picture${Math.min(...few.map(okCount))===1?'':'s'} besides the master. `+
+        'With so few, normal differences between good parts look like defects, and areas without the defect could be learned as NG. Learn an OK folder first?',{ok:'Learn NG anyway',cancel:'Not now',safe:true})){
+        b.phase='cancel';LB.log.unshift(b);continue}
+    }
+    if(b.kind==='ok')await lbPlanOk(b);
+    if(lbAlive())await lbPlay(b);
+    b.phase=lbAlive()?'done':'stopped';
+    LB.log.unshift(b);if(LB.log.length>6)LB.log.pop();
+    if(P===LB.prog)save();
+    flashMsg(`${b.kind.toUpperCase()} folder "${b.name}": ${b.i} of ${b.n} pictures shown, ${b.learned} learned.`+(b.phase==='stopped'?' Stopped: what was learned so far is kept.':'')+
+      (b.odd.length+b.none.length?` ⚠ ${b.odd.length+b.none.length} to check: see the list.`:''));
+  }
+  LB.run=false;LB.cur=null;LB.loop=null;render();
+}
+async function lbPlanOk(b){ // a quick look at every picture first: leave out the odd ones, keep the ones that bring something new
+  b.phase='prep';b.prep=0;render();
   const A=checks(),rt=refTool(),cand=[];
-  for(const it of items){ // 1. every picture: where the part is, and a coarse copy of each area
-    if(!TF.run)break;
-    let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){TF.done++;continue}
+  for(const it of b.items){
+    if(!lbAlive())return;
+    it.plan=new Set();it.odd=new Set();
+    let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){it.err=true;b.prep++;continue}
     const f=makeFrame(bmp);if(bmp.close)bmp.close();
     const pos=findPos(f.full,f.size),off=pos.found?{dx:pos.dx,dy:pos.dy}:{dx:0,dy:0},sm={};
+    it.found=pos.found||!rt;
     for(const a of A){const{gw,gh}=grid(a);sm[a.id]=small(areaGray(f.full,f.size,a,off),gw,gh)}
-    cand.push({it,off,sm,found:pos.found});TF.done++;
-    if(TF.done%4===0){tfProgress();await sleep(0)}
+    if(it.found)cand.push({it,sm});b.prep++;
+    if(b.prep%4===0){lbProgress();await sleep(0)}
   }
-  if(!TF.run){TF.out={cancel:true};render();return}
-  TF.phase='Choosing a representative selection';TF.done=0;TF.total=A.length;tfProgress();await sleep(0);
-  const use=cand.filter(c=>c.found||!rt),keep=new Map(),odd=new Set(),perArea={};
-  for(const a of A){ // 2. per area: leave out the odd pictures, then keep the most different ones (farthest first)
-    const{gw,gh}=grid(a),k=Math.max(1,Math.ceil(Math.max(gw,gh)/48)),w=Math.ceil(gw/k),h=Math.ceil(gh/k),mk=maskOf(a,w,h),len=w*h;
+  b.phase='plan';lbProgress();await sleep(0);
+  for(const a of A){ // per area: leave out the odd pictures, then the most different ones first (farthest first)
+    const{gw,gh}=grid(a),k=Math.max(1,Math.ceil(Math.max(gw,gh)/48)),w=Math.ceil(gw/k),h=Math.ceil(gh/k),mk=maskOf(a,w,h),len=w*h,n=cand.length;
+    if(!n)break;
     const dist=(x,y)=>{let m=0;for(let i=0;i<len;i++){if(mk&&!mk[i])continue;const d=Math.abs(x[i]-y[i]);if(d>m)m=d}return m/FLOOR};
-    const n=use.length,med=new Float32Array(len),buf=new Float32Array(n);
-    for(let i=0;i<len;i++){for(let j=0;j<n;j++)buf[j]=use[j].sm[a.id][i];buf.sort();med[i]=n%2?buf[n>>1]:(buf[(n>>1)-1]+buf[n>>1])/2}
-    const dm=use.map(c=>dist(c.sm[a.id],med)),srt=[...dm].sort((p,q)=>p-q),m=srt[n>>1]||0,mad=srt.map(v=>Math.abs(v-m)).sort((p,q)=>p-q)[n>>1]||0;
+    const med=new Float32Array(len),buf=new Float32Array(n);
+    for(let i=0;i<len;i++){for(let j=0;j<n;j++)buf[j]=cand[j].sm[a.id][i];buf.sort();med[i]=n%2?buf[n>>1]:(buf[(n>>1)-1]+buf[n>>1])/2}
+    const dm=cand.map(c=>dist(c.sm[a.id],med)),srt=[...dm].sort((p,q)=>p-q),m=srt[n>>1]||0,mad=srt.map(v=>Math.abs(v-m)).sort((p,q)=>p-q)[n>>1]||0;
     const lim=m+Math.max(4*1.4826*mad,3); // much farther from the typical picture than the others: probably not a good part
-    const ok=[];use.forEach((c,i)=>{if(n>=8&&dm[i]>lim)odd.add(c);else ok.push(c)});
+    const ok=[];cand.forEach((c,i)=>{if(n>=8&&dm[i]>lim)c.it.odd.add(a.id);else ok.push(c)});
     const known=[small(refGray(a),gw,gh)];for(const s of P.samples)if(s.labels[a.id]==='ok'&&sGray(s,a))known.push(small(sGray(s,a),gw,gh));
-    const dmin=ok.map(c=>Math.min(...known.map(g=>dist(c.sm[a.id],g)))),sel=[],room=Math.max(0,TF_KEEP-(known.length-1));
-    while(sel.length<room){let bi=-1,bd=noiseOf(a);for(let i=0;i<ok.length;i++)if(dmin[i]>bd){bd=dmin[i];bi=i}
+    const dmin=ok.map(c=>Math.min(...known.map(g=>dist(c.sm[a.id],g)))),room=Math.max(0,LB_KEEP-okCount(a));let nSel=0;
+    while(nSel<room){let bi=-1,bd=noiseOf(a);for(let i=0;i<ok.length;i++)if(dmin[i]>bd){bd=dmin[i];bi=i}
       if(bi<0)break; // every remaining picture is within camera noise of one already kept: nothing new to learn
-      const c=ok[bi];sel.push(c);dmin[bi]=-1;for(let i=0;i<ok.length;i++)if(dmin[i]>0)dmin[i]=Math.min(dmin[i],dist(ok[i].sm[a.id],c.sm[a.id]))}
-    perArea[a.id]=sel.length;for(const c of sel){if(!keep.has(c))keep.set(c,new Set());keep.get(c).add(a.id)}
-    TF.done++;tfProgress();await sleep(0);
+      const c=ok[bi];c.it.plan.add(a.id);nSel++;dmin[bi]=-1;for(let i=0;i<ok.length;i++)if(dmin[i]>0)dmin[i]=Math.min(dmin[i],dist(ok[i].sm[a.id],c.sm[a.id]))}
+    if(nSel>=room&&room<ok.length)b.full++;
+    await sleep(0);
   }
-  TF.phase='Saving the selected pictures';TF.done=0;TF.total=keep.size;tfProgress();
-  const added=[];
-  for(const[c,areas]of keep){ // 3. store the kept pictures (full resolution, so areas can still be moved later)
-    if(!TF.run)break;
-    let bmp=null;try{bmp=await createImageBitmap(c.it.file)}catch(e){continue}
+}
+async function lbPlay(b){ // each picture like a trigger on the line: shown with its judgment, then learned
+  b.phase='play';b.i=0;render();
+  for(const it of b.items){
+    if(!lbAlive())return;
+    const T=lbPer()*1000;
+    if(b.i>0){if(T)await pause(T/2,lbAlive);else await sleep(0)}
+    if(!lbAlive())return;
+    b.i++;
+    if(it.err){b.err++;continue}
+    let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){b.err++;continue}
     const f=makeFrame(bmp);if(bmp.close)bmp.close();
-    const labels={},cache={};for(const a of A)if(areas.has(a.id)){labels[a.id]='ok';cache[gKey(a)]=areaGray(f.full,f.size,a,c.off)}
-    added.push({id:Date.now()*1000+added.length,blob:await toBlob(f.full),thumb:thumbOf(f.full),labels,cache,off:{key:refKey(),dx:c.off.dx,dy:c.off.dy}});
-    TF.done++;tfProgress();await sleep(0);
+    if(learning)await learning;
+    const t0=performance.now(),r=inspect(f),dt=performance.now()-t0;
+    const meta={idx:b.i,n:b.n,path:it.path,expect:b.kind,agree:(b.kind==='ng')===!!r.ng,learn:b.kind,note:''};
+    U.last={frame:f,r,dt,labels:Object.fromEntries(r.res.map(x=>[x.id,x.ng?'ng':'ok'])),ts:Date.now(),learned:false,test:true,ft:it.path,meta};
+    U.mode='result';U.view=null;b.curPath=it.path;b.curNote='';
+    if(T)flash();render();
+    if(T)await pause(T/2,lbAlive);else await sleep(0);
+    if(!lbAlive())return; // stopped before this picture was learned: it is not
+    const dec=b.kind==='ok'?lbDecideOk(b,it):lbDecideNg(b,it,r);
+    if(dec.labels){
+      const cache={};for(const x of r.res)if(dec.labels[x.id])cache[x.key]=x.gray;
+      P.samples.push({id:newSampleId(),blob:await toBlob(f.full),thumb:thumbOf(f.full),labels:dec.labels,cache,off:{key:refKey(),dx:r.off.dx,dy:r.off.dy}});
+      b.learned++;for(const id in dec.labels)b.perArea[id]=(b.perArea[id]||0)+1;
+      U.last.learned=true;U.last.labels={...U.last.labels,...dec.labels};
+      meta.note=dec.note;b.curNote=dec.note;
+      await learnAll();save();
+    }else{meta.note=dec.note;b.curNote=dec.note}
+    render();
   }
-  if(!TF.run){TF.out={cancel:true};render();return}
-  P.samples.push(...added);
-  TF.phase='Learning';tfProgress();
-  await learnAll();save();
-  TF.run=false;
-  TF.out={seen:cand.length,kept:added.length,perArea,odd:[...odd].map(c=>c.it),skipped,notFound:cand.length-use.length};
-  render();
-  flashMsg(`Folder taught: ${cand.length} pictures looked at, ${added.length} kept as good examples.`+(odd.size?` ⚠ ${odd.size} looked very different and were not taught: see Additional learning.`:''));
 }
-function renderTF(){
-  const out=$('tfOut');if(!out)return;
-  $('tfStop').hidden=!TF.run;$('tfDir').disabled=TF.run||FT.run||!(P&&P.ref&&checks().length);
+function lbDecideOk(b,it){
+  if(!it.found){b.notFound.push(it);return{note:'position reference not found: not learned'}}
+  const L=[...it.plan],O=[...it.odd];
+  if(O.length)b.odd.push({it,areas:O});
+  if(L.length)return{labels:Object.fromEntries(L.map(id=>[id,'ok'])),note:`learned as OK ✓ (${areaNames(L)})`+(O.length?` · ⚠ not in ${areaNames(O)}: looks different there`:'')};
+  if(O.length)return{note:`⚠ looks very different from the other good pictures (${areaNames(O)}): not learned — check it`};
+  b.similar++;return{note:'like pictures already learned: nothing new, not stored'};
+}
+function lbDecideNg(b,it,r){
+  if(refTool()&&!r.pos.found){b.notFound.push(it);return{note:'position reference not found: not learned'}}
+  const v=$('lNgArea')?$('lNgArea').value:'auto',forced=v==='auto'?null:+v,res=id=>r.res.find(x=>x.id===id);
+  let tgt=forced!=null?checks().filter(a=>a.id===forced&&res(a.id)):checks().filter(a=>res(a.id)&&res(a.id).ng);
+  if(!tgt.length){
+    const mm=r.meas.filter(m=>!m.ok).map(m=>m.name);
+    if(mm.length){b.measOnly++;return{note:`seen only by ${mm.join(', ')} (measures do not learn): nothing to learn`}}
+    b.none.push({it});return{note:'⚠ no area sees a defect (every score is above its limit): not learned — check it'};
+  }
+  const full=tgt.filter(a=>ngCount(a)>=LB_KEEP);tgt=tgt.filter(a=>ngCount(a)<LB_KEEP);
+  const same=tgt.filter(a=>res(a.id).nearNg&&res(a.id).dev===0);tgt=tgt.filter(a=>!same.includes(a));
+  if(!tgt.length){if(full.length){b.full++;return{note:`not stored: ${full.map(a=>a.name).join(', ')} already ${full.length===1?'has':'have'} ${LB_KEEP} NG examples`}}
+    b.similar++;return{note:'the same as an NG picture already learned: not stored'}}
+  const high=forced!=null&&!res(forced).ng;if(high)b.forced++;
+  return{labels:Object.fromEntries(tgt.map(a=>[a.id,'ng'])),note:`learned as NG ✓ (${tgt.map(a=>a.name).join(', ')})`+(high?` · it scored ${res(forced).score}, above the limit: taught NG because you chose ${tgt[0].name}`:'')};
+}
+function lbProgress(){
+  const p=$('lProg');if(!p)return;const b=LB.cur;p.hidden=!LB.run||!b||b.phase==='start';if(p.hidden)return;
+  const frac=b.phase==='prep'||b.phase==='plan'?b.prep/b.n:b.i/b.n;$('lBar').style.width=Math.round(frac*100)+'%';
+  const ln=$('lNow');if(ln)ln.textContent=lbNowTxt(b);
+}
+function lbNowTxt(b){
+  const head=`${b.kind.toUpperCase()} folder "${b.name}" — `;
+  if(b.phase==='prep')return head+`looking at every picture first… ${b.prep}/${b.n}`;
+  if(b.phase==='plan')return head+'choosing the pictures that bring something new…';
+  if(b.phase==='play')return head+`picture ${b.i} of ${b.n}: ${shortPath(b.curPath||'')}`+(b.curNote?` → ${b.curNote}`:' → judged, learning…');
+  return head+'starting…';
+}
+function lbSummary(b){ // what one folder gave, and what to check
+  const box=el('div','lsum'+(b.kind==='ng'?' ng':''));
+  const pa=Object.keys(b.perArea).map(id=>`${areaNames([+id])}: ${b.perArea[id]}`).join(', ');
+  box.append(el('b',null,`${b.kind.toUpperCase()} folder "${b.name}"`+(b.phase==='stopped'?' — stopped':b.phase==='cancel'?' — not learned':'')));
+  if(b.phase==='cancel'){box.append(el('div','hs','Not learned: learn an OK folder first, then add this NG folder again.'));return box}
+  const parts=[`${b.i} of ${b.n} picture${b.n===1?'':'s'} shown`,`${b.learned} learned`+(pa?` (${pa})`:'')];
+  if(b.similar)parts.push(`${b.similar} like pictures already learned`);
+  if(b.skipped)parts.push(`${b.skipped} skipped (in ${b.kind==='ok'?'defect':'good'} folders)`);
+  if(b.measOnly)parts.push(`${b.measOnly} seen only by a measure`);
+  if(b.err)parts.push(`${b.err} could not be read`);
+  box.append(el('div','hs',parts.join(' · ')));
+  const list=(title,arr,tip)=>{if(!arr.length)return;const w=el('div','warnbox');w.append(el('b',null,title));
+    w.append(el('div',null,arr.slice(0,12).map(x=>shortPath(x.it?x.it.path:x.path)+(x.areas?` (${areaNames(x.areas)})`:'')).join(' · ')+(arr.length>12?` … and ${arr.length-12} more`:'')));
+    if(tip)w.append(el('div',null,tip));box.append(w)};
+  list(`⚠ ${b.odd.length} picture${b.odd.length===1?'':'s'} looked very different from the others and ${b.odd.length===1?'was':'were'} not learned there:`,b.odd,
+    'Check them: a defective part may be hidden in the folder. If one is really good, teach it alone in ▶ RUN → Additional learning.');
+  list(`⚠ ${b.none.length} picture${b.none.length===1?'':'s'}: no area sees a defect, not learned:`,b.none,
+    'The defect may be too small for the area, or outside every area. Check them; to force one area, choose it in "Learn NG in" and add the pictures again.');
+  list(`${b.notFound.length} picture${b.notFound.length===1?'':'s'}: the position reference was not found, not learned:`,b.notFound.map(it=>({it})),'');
+  if(b.forced)box.append(el('div','warnbox',`${b.forced} picture${b.forced===1?'':'s'} scored above the limit in the chosen area and ${b.forced===1?'was':'were'} taught NG anyway: good parts that look like ${b.forced===1?'it':'them'} will be rejected too.`));
+  if(b.full)box.append(el('div','hs',`Some areas reached ${LB_KEEP} examples: more pictures would only slow learning down.`));
+  if(b.kind==='ok'&&b.n<8&&b.phase==='done')box.append(el('div','hs','Fewer than 8 pictures: odd ones cannot be spotted automatically — check them yourself.'));
+  return box;
+}
+function lbThumbs(box,lab){
+  box.innerHTML='';if(!P)return;
+  const ss=P.samples.filter(s=>Object.values(s.labels).includes(lab)).slice(-8);
+  if(!ss.length){box.append(el('span','hint',lab==='ok'?'Only the master image so far.':'No NG picture yet.'));return}
+  for(const s of ss){const im=document.createElement('img');im.src=s.thumb;im.alt='';im.title=checks().filter(a=>s.labels[a.id]===lab).map(a=>a.name).join(', ');box.append(im)}
+}
+function renderLearn(){
+  const out=$('lOut');if(!out)return;
+  const A=P?checks():[],ready=!!(P&&P.ref&&A.length),run=LB.run;
+  const nOk=P?P.samples.filter(s=>Object.values(s.labels).includes('ok')).length:0,nNg=P?P.samples.filter(s=>Object.values(s.labels).includes('ng')).length:0;
+  $('lnOk').textContent=nOk;$('lnNg').textContent=nNg;
+  $('lsOk').textContent=A.length?A.map(a=>`${a.name}: master + ${okCount(a)}`).join(' · '):'';
+  $('lsNg').textContent=A.length?A.map(a=>`${a.name}: ${ngCount(a)}`).join(' · '):'';
+  lbThumbs($('ltOk'),'ok');lbThumbs($('ltNg'),'ng');
+  for(const id of['lOkDir','lOkFiles','lNgDir','lNgFiles'])$(id).disabled=!ready||FT.run;
+  const sel=$('lNgArea');
+  if(document.activeElement!==sel){const cur=sel.value||'auto';sel.innerHTML='';
+    for(const[v,t]of[['auto','the area(s) where the defect is seen'],...A.map(a=>[String(a.id),`${tNum(a)} · ${a.name} only`])]){const o=document.createElement('option');o.value=v;o.textContent=t;sel.appendChild(o)}
+    sel.value=[...sel.options].some(o=>o.value===cur)?cur:'auto'}
+  $('lNgHint').hidden=!(ready&&nOk<3&&!run);
+  $('lStop').hidden=!run;
+  $('learnState').className='state'+(nOk||nNg?' good':'');$('learnState').textContent=nOk+nNg?`${nOk} OK · ${nNg} NG`:'Optional';
   out.innerHTML='';
-  if(TF.run){out.append(el('p','hint',`${TF.phase}… ${TF.done}/${TF.total}`));tfProgress();return}
-  tfProgress();
-  const o=TF.out;if(!o)return;
-  if(o.cancel){out.append(el('div','stats','Stopped: nothing was taught.'));return}
-  out.append(el('div','stats',`Looked at ${o.seen} picture${o.seen===1?'':'s'} · kept ${o.kept} as good examples (`+checks().map(a=>`${a.name}: ${o.perArea[a.id]||0}`).join(', ')+')'+
-    (o.skipped?` · ${o.skipped} in defect folders skipped`:'')+(o.notFound?` · ${o.notFound} where the position reference was not found, not taught`:'')));
-  if(o.odd.length){const w=el('div','warnbox');
-    w.append(el('b',null,`${o.odd.length} picture${o.odd.length===1?'':'s'} looked very different from the others and ${o.odd.length===1?'was':'were'} not taught:`));
-    w.append(el('div',null,o.odd.slice(0,12).map(it=>it.path.split('/').slice(-2).join('/')).join(' · ')+(o.odd.length>12?` … and ${o.odd.length-12} more`:'')));
-    w.append(el('div',null,'Check them: a defective part may be hidden in the folder. If one is really good, teach it alone (Trigger it with 📁 Image files, then Learn).'));
-    out.append(w)}
-}
-
-/* ---------- folder playback: a folder used as the camera, one picture per trigger ---------- */
-SRC.play={all:null,items:[],i:0,order:'mixed',name:'',agree:0,disagree:0};
-U.period=+stored('vs1-per')||3;
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-function playLoad(list){
-  const items=ftCollect(list).map(x=>({...x,expect:ftLabel(x.path)}));
-  if(!items.length){flashMsg('No pictures found in that folder.');return}
-  const pl=SRC.play;pl.all=items;pl.name=items[0].path.includes('/')?items[0].path.split('/')[0]:'pictures';
-  playRestart(true);
-  const nOk=items.filter(x=>x.expect==='ok').length,nNg=items.filter(x=>x.expect==='ng').length;
-  flashMsg(`${items.length} pictures loaded`+(nOk+nNg?` (${nOk} in good folders, ${nNg} in defect folders)`:'')+'. In ▶ RUN, press Trigger or ▶ Auto.');
-}
-function playRestart(quiet){
-  const pl=SRC.play;if(!pl.all)return;
-  pl.items=pl.order==='mixed'?shuffle([...pl.all]):[...pl.all];pl.i=0;pl.agree=pl.disagree=0;
-  if(!quiet)flashMsg('Playback starts again from the first picture.');render();
-}
-async function playNext(){ // the next picture of the folder, as a camera frame
-  const pl=SRC.play;
-  if(!pl.items.length){stopRun();flashMsg('Choose the folder to play first (⚙ PROGRAM → 1 Image → 🎞 Folder playback).');render();return null}
-  if(pl.i>=pl.items.length){stopRun();flashMsg(`End of the folder: ${pl.items.length} pictures played. Press ↺ Restart to play it again.`);render();return null}
-  const it=pl.items[pl.i++];
-  let bmp=null;try{bmp=await createImageBitmap(it.file)}catch(e){flashMsg('Could not read '+it.path);return null}
-  const f=makeFrame(bmp);if(bmp.close)bmp.close();
-  f.meta={path:it.path,expect:it.expect,idx:pl.i,n:pl.items.length};return f;
-}
-function playTxt(){
-  const pl=SRC.play;if(!pl.items.length)return'No folder chosen yet: ⚙ PROGRAM → 1 Image → 🎞 Folder playback.';
-  return`🎞 ${pl.name}: ${pl.i}/${pl.items.length} played`+(pl.agree+pl.disagree?` · ✓ ${pl.agree} agree · ✗ ${pl.disagree} disagree with the folder names`:'')+` · ${pl.order==='mixed'?'mixed order':'in order'}`;
+  if(!ready){out.append(el('div','empty',P&&P.ref?'Add at least one area (▭ or ◯) in step 3: measures and the position reference do not learn.':'Register the master image first (step 2).'));lbProgress();return}
+  if(run&&LB.cur){const p=el('p','hint lnow');p.id='lNow';out.append(p)}
+  if(LB.queue.length)out.append(el('div','hs','Waiting: '+LB.queue.map(q=>`${q.kind.toUpperCase()} "${q.name}" (${q.n})`).join(' · ')));
+  lbProgress();
+  for(const b of LB.log)if(b.pid===P.id)out.append(lbSummary(b)); // summaries of this program only
 }
 
 /* ---------- pointer: move, resize and turn tools, pan the zoomed screen, hand cursors ---------- */
@@ -2118,19 +2251,19 @@ $('addMenu').addEventListener('click',()=>toggleAddMenu(false));
 $('addMenu').addEventListener('keydown',e=>{if(e.key==='Escape'){toggleAddMenu(false);$('addBtn').focus()}});
 document.addEventListener('click',e=>{if(!$('addMenu').hidden&&!e.target.closest('.addwrap'))toggleAddMenu(false)});
 $('pageProg').onclick=()=>setPage('prog');$('pageRun').onclick=()=>setPage('run');
-for(let n=1;n<=4;n++)$('st'+n).onclick=()=>setStep(n);
+for(let n=1;n<=5;n++)$('st'+n).onclick=()=>setStep(n);
 $('stepNext').onclick=stepNext;$('stepBack').onclick=stepBack;
 for(const[id,k]of[['rtHist','hist'],['rtTeach','teach'],['rtRep','rep'],['rtFolder','folder']])$(id).onclick=()=>{U.rtab=k;render()};
 $('ftDir').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
 $('ftFiles').onchange=e=>{const f=[...e.target.files];e.target.value='';ftStart(f)};
 $('ftStop').onclick=()=>{FT.run=false};
-$('srcPlay').onclick=()=>setSrc('play');
-$('playDir').onchange=e=>{const f=[...e.target.files];e.target.value='';playLoad(f)};
-$('playOrder').onchange=e=>{SRC.play.order=e.target.value;playRestart(true)};
-$('playRestart').onclick=()=>playRestart();$('playRestart2').onclick=()=>playRestart();
 $('runPer').onchange=e=>{U.period=+e.target.value||3;store('vs1-per',String(U.period));if(U.timer){stopRun();toggleRun()}render()};
-$('tfDir').onchange=e=>{const f=[...e.target.files];e.target.value='';tfStart(f)};
-$('tfStop').onclick=()=>{TF.run=false};
+for(const[k,ids]of[['ok',['lOkDir','lOkFiles']],['ng',['lNgDir','lNgFiles']]])for(const id of ids)$(id).onchange=e=>{const f=[...e.target.files];e.target.value='';lbAdd(f,k)};
+$('lStop').onclick=()=>{lbStop();render()};
+$('goLearn').onclick=()=>{setPage('prog');setStep(4)};
+for(const[id,key]of[['lPer','vs1-lper'],['ftPer','vs1-ftper']]){const sl=$(id),v=stored(key);if(v!=null&&[...sl.options].some(o=>o.value===v))sl.value=v;sl.onchange=()=>store(key,sl.value)}
+for(const[id,k]of[['lbOk','ok'],['lbNg','ng']]){const z=$(id);z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});z.addEventListener('dragleave',()=>z.classList.remove('drag'));
+ z.addEventListener('drop',async e=>{e.preventDefault();z.classList.remove('drag');if(!$('lOkDir').disabled)lbAdd(await ftDropFiles(e.dataTransfer),k)})}
 $('ftTool').onchange=e=>{FT.tool=+e.target.value;renderFT()};
 {const z=$('ftStep');z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('drag')});z.addEventListener('dragleave',()=>z.classList.remove('drag'));
  z.addEventListener('drop',async e=>{e.preventDefault();z.classList.remove('drag');if(!FT.run)ftStart(await ftDropFiles(e.dataTransfer))})}
@@ -2149,7 +2282,7 @@ $('lockBtn').onclick=lockCam;
 document.addEventListener('keydown',e=>{if(L.role==='ctl'&&e.code==='Space'&&e.target===document.body&&P&&P.valid){e.preventDefault();trigger()}});
 
 /* ---------- start ---------- */
-if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage,ftLabel,get FT(){return FT},get TF(){return TF}}; // test hook
+if(Q.has('debug'))window.__vs1={get P(){return P},get U(){return U},get SRC(){return SRC},measureTool,findPos,inspect,measRef,samplePart,makeFrame,learnAll,setStep,setPage,ftLabel,get FT(){return FT},get LB(){return LB},lbAdd}; // test hook
 (async()=>{
   try{DBH=await idb();progs=(await tx('readonly',st=>st.getAll()))||[]}catch(e){DBH=null;progs=[]}
   const cur=+stored('vs1-cur');
