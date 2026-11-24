@@ -4,7 +4,8 @@ Prototype of an industrial vision sensor (OK / NG part inspection) built on a Ra
 
 | File | What it is |
 |---|---|
-| `inspection-console.html` | The sensor software (runs in a browser). The phone plays the sensor until the hardware arrives. |
+| `inspection-console.html` | The sensor software (runs in a browser). The phone plays the sensor until the hardware arrives. Built from `app/` — do not edit it by hand. |
+| `app/` | Source of the console: React + TypeScript web application (see *Source code* below) |
 | `vs1-carte.html` | Carrier board layout |
 | `vs1-boitier.html` | Enclosure drawings |
 | `bom3.py` → `VS-1_Estimation_Composants.xlsx` | Bill of materials and cost estimate |
@@ -101,3 +102,34 @@ Program flow on the PC:
 Programs are saved in the PC browser (IndexedDB, with the full-resolution pictures). The PC screen can be zoomed with the mouse wheel (drag to pan, double-click or Fit to reset).
 A **demo camera** (simulated parts) and **image files** can replace the phone for testing.
 Inside claude.ai the phone link is not available (the camera is blocked there): use the demo camera.
+
+## Source code (React + TypeScript)
+
+The console is a React 19 + TypeScript web application in `app/`, built with Vite into **one
+self-contained file**, `inspection-console.html` at the root of the repository (scripts and styles
+inside it), so it still works on GitHub Pages, inside claude.ai and opened straight from the disk.
+
+```
+cd app
+npm install
+npm run dev      # development: http://localhost:5173 (reloads on every change)
+npm run build    # type check + build + copy to ../inspection-console.html
+```
+
+After a change, run `npm run build` and commit `inspection-console.html` with the source: GitHub
+Pages serves that file to the phone and the PC.
+
+- `app/src/core/` — the engine, without React: `analysis.ts` (areas at their own resolution, position
+  reference, measures), `learning.ts` (learning by examples, scores, margin, audit), `tools.ts`,
+  `source.ts` (phone, demo camera, image files), `camera.ts` + `link.ts` (phone camera and PeerJS link),
+  `storage.ts` (programs in IndexedDB), `actions.ts` (what the buttons do), `folderTest.ts`,
+  `folderLearn.ts`, `repeat.ts`, `draw.ts` (the image screen, drawn on a canvas up to 60 times a
+  second), `pointer.ts` (moving, resizing and turning tools), `state.ts` (the live state).
+- `app/src/ui/` — the React components: toolbar and steps (`Frame.tsx`), the image side
+  (`ImagePanel.tsx`), PROGRAM (`ProgramPanel.tsx`), RUN (`RunPanel.tsx`), tool lines and settings
+  (`ToolList.tsx`), charts (`charts.ts`).
+- The engine changes the state and calls `render()`; the components draw it again. The image and the
+  live view are drawn outside React, so the screen stays at full speed on the phone.
+- Programs are stored in the same format as before the React version: programs saved earlier open
+  unchanged, with the same scores.
+- PeerJS (phone link) is part of the page, no longer loaded from a CDN.

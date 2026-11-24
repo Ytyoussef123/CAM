@@ -1,0 +1,26 @@
+{
+  "name": "vs1-console",
+  "private": true,
+  "version": "1.0.0",
+  "description": "VS-1 vision sensor console (React + TypeScript). The build is one self-contained HTML file.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build && node scripts/publish.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "peerjs": "1.5.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vite-plugin-singlefile": "2.3.4"
+  }
+}
